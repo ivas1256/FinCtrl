@@ -1,0 +1,142 @@
+﻿@using FinCtrl.DAL.Models
+@using FinCtrl.Website.BL.Data
+@using System.Text.Json
+
+@{
+    var statTable = (List<List<MainStatisticGroupItem>>)ViewData["statTable"];
+    var periods = (List<DatePeriod>)ViewData["columnHeaders"];
+}
+<form action="#" type="GET" id="statistic-dates" class="form-inline">
+    <div class="row">
+        <div class="col-3 mb-2">
+            <input type="text" class="input-sm form-control period" 
+                value="@ViewBag.PeriodFrom.ToString("dd.MM.yyyy") - @ViewBag.PeriodTo.ToString("dd.MM.yyyy")">
+
+            <input type="hidden" name="periodFrom" />
+            <input type="hidden" name="periodTo" />
+        </div>
+        
+        <div class="col-3 mb-2">
+            @Html.DropDownList("periodType", (IEnumerable<SelectListItem>)ViewBag.GroupingType,
+                new { @class = "form-control col-3 period-type"})
+        </div>
+    </div>
+</form>
+
+<div id="statistic-table" class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <td class="td-boarded"></td>
+                @foreach (var period in @periods)
+                {
+                    <td class="td-boarded" scope="col">@period</td>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (var i = 0; i < @statTable.Count; i++)
+            {
+                <tr @((@statTable[i][0]?.Category?.IsOnlyIncome ?? false) ? "class=bg-success td-boarded" : "class=td-boarded")>
+                    <td class="p-1">@statTable[i].FirstOrDefault(x => !string.IsNullOrEmpty(x?.Category?.CategoryName))?.Category?.CategoryName</td>
+                    @for (var j = 0; j < @statTable[i].Count; j++)
+                    {
+                        <td class="statistic-cell p-1 text-end td-boarded" data-payments="@JsonSerializer.Serialize(statTable[i][j]?.Payments)">@statTable[i][j]?.TotalSum.ToString("N")</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="container-fluid p-0">
+    <div class="row">
+        <div class="col">
+            <h5 class="card-title"><span class="category-name"></span><span class="period"></span></h5>
+            <ul class="list-group selected-payments-list">
+            </ul>
+        </div>
+        <div class="col">
+        </div>
+    </div>
+</div>
+
+
+<li id="payments-item-template" class="list-group-item px-0 py-1 d-none">
+    <div class="row m-0">
+        <div class="col">
+            <p class="mb-1 info-label">@*Category*@</p>
+            <p class="text-secondary payment-info category-label"> @*Source (description)*@</p>
+        </div>
+        <div class="col text-end">
+            <p class="mb-1 price-label">@*9 9999.99*@</p>
+            <p class="text-secondary payment-info date-label">@*01.01.2023*@</p>
+        </div>
+    </div>
+</li>
+
+
+@section Scripts {
+    <script>
+        function submitSearchForm() {
+            var periodStr = $(".period").val().split(' - ');
+
+            $('input[name="periodFrom"]').val(periodStr[0])
+            $('input[name="periodTo"]').val(periodStr[1])
+
+            $("#statistic-dates").submit();
+        }
+
+        $(document).ready(function() {
+            $('.period').daterangepicker({
+                opens: 'left',
+                locale: {
+                    format: "DD.MM.YYYY"
+                }
+            });
+
+            $('.period').change(function() {
+                submitSearchForm();
+            })
+
+            $('.period-type').change(function() {
+                submitSearchForm();
+            })
+
+            $('.statistic-cell').click(function() {
+                var data = $(this).data("payments");
+
+                $("#statistic-table td").removeClass("statistic-cell-active");
+                $(this).addClass("statistic-cell-active");
+
+                $('.selected-payments-list').empty();
+                data.forEach(element => {
+                    let template = $("#payments-item-template").clone();
+                    var infoText = element.PaymentSource?.PaymentSourceName;
+                    var categoryText = element.Category?.CategoryName;
+                    
+                    if(element.PaymentSource?.Description)
+                        infoText +=  '<i> (' + element.PaymentSource?.Description + ')</i>';
+                    if (element.PaymentDescription)
+                        infoText += '<i> (' + element.PaymentDescription + ")</i>";
+                    categoryText += ' [id=' + element.PaymentId + "]";
+
+                    template.find(".category-label").text(categoryText);
+                    template.find(".info-label").html(infoText);
+
+                    template.find(".price-label").text($.number(element.PaymentSum, 2, ',', ' '));
+                    if (element.PaymentSum > 0)
+                        template.find(".price-label").addClass("text-success");
+                    else
+                        template.find(".price-label").removeClass("text-success");
+
+                    template.find(".date-label").text($.format.date(element.PaymentDate, "dd.MM.yyyy HH:mm"));
+
+                    template.removeClass("d-none");
+
+                    $(template).appendTo('.selected-payments-list');
+                });
+            });
+        })
+    </script>
+}

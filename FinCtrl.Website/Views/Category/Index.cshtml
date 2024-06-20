@@ -1,0 +1,22 @@
+﻿@using FinCtrl.Domain;
+@{
+    ViewData["Title"] = "Категории";
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th scope="col">ID</th>            
+            <th scope="col">Категория</th>            
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in (List<Category>)@ViewData["items"])
+        {
+            <tr>
+                <td>@item.CategoryId</td>                
+                <td>@item.CategoryName</td>
+            </tr>
+        }
+    </tbody>
+</table>

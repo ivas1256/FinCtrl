@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="30.0.1" />
+    <PackageReference Include="EPPlus" Version="6.0.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\FinCtrl.Common\FinCtrl.Common.csproj" />
+    <ProjectReference Include="..\FinCtrl.Domain\FinCtrl.Domain.csproj" />
+    <ProjectReference Include="..\FinCtrl.Infrastructure\FinCtrl.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

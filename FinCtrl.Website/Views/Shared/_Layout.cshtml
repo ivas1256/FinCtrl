@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - $FinCtrl$</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/daterangepicker/daterangepicker.css"/>
+
+    <link rel="stylesheet" href="~/css/site.css" />
+    @*<link href="https://unpkg.com/tabulator-tables/dist/css/tabulator.min.css" rel="stylesheet">*@
+
+    <link rel="stylesheet" href="~/lib/tabulator/tabulator_bootstrap5.min.css"/>
+</head>
+<body>
+    <div class="container-fluid my-2">
+        <div class="row">
+            <div class="col-1">
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <a asp-controller="MainPage" asp-action="Index">Главная</a>                        
+                    </li>
+                    <li class="list-group-item">
+                        <a asp-controller="Payment" asp-action="Index">Операции</a>
+                    </li>
+                    <li class="list-group-item">
+                        <a asp-controller="PaymentSource" asp-action="Index">Источники платежей</a>
+                    </li>
+                    <li class="list-group-item">
+                        <a asp-controller="Category" asp-action="Index">Категории</a>
+                    </li>                
+                </ul>
+            </div>
+            <div class="col content-col">
+                <main role="main" class="py-3">
+                    @RenderBody()
+                </main> 
+            </div> 
+        </div>    
+    
+    </div>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/lib/jquery-number-format/jquery.number.min.js"></script>
+    <script src="~/lib/jquery-dateFormat/jquery-dateformat.js"></script>
+    <script src="~/lib/daterangepicker/moment.min.js"></script>
+    <script src="~/lib/daterangepicker/daterangepicker.js"></script>
+
+    <script src="~/lib/luxon/luxon.min.js"></script>
+    <script src="~/lib/tabulator/tabulator.js"></script>
+
+
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

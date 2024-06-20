@@ -1,0 +1,84 @@
+﻿@using System.Text.Json
+@using System.Text.Encodings.Web
+@using System.Text.Unicode
+@{
+    ViewData["Title"] = "Источники платежей";
+    var jso = new JsonSerializerOptions
+        {
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin, UnicodeRanges.Cyrillic),
+        };
+}
+
+<div id="sources-grid" style="width: 90%"></div>
+
+<button class="btn-primary btn-save-payments d-none">Сохранить</button>
+
+@section Scripts{
+    <script>
+        var sources = @Html.Raw(@JsonSerializer.Serialize(@ViewBag.Items, jso));
+        var categories = @Html.Raw(@JsonSerializer.Serialize(@ViewBag.Categories, jso));
+        var editedData = [];
+    </script>
+
+    <script>
+        $(document).ready(function() {
+            var table = new Tabulator("#sources-grid", {
+                data: sources,
+                layout: "fitColumns",
+                columns: [
+                    { title: "ID", field: "PaymentSourceId" },
+                    { title: "Источник", field: "PaymentSourceName" },
+                    {
+                        title: "Категория", field: "PaymentSourceCategory.CategoryId", editor: "list",
+                        editorParams: {
+                            values: categories
+                        },
+                        formatter: function(cell, formatterParams, onRendered) {
+                            return categories[cell.getValue()];
+                        }
+                    },
+                    { title: "Описание", field: "Description", editor: "input" },
+                ],
+            });
+
+            table.on("cellEdited", function(cell) {
+                console.log("edit");
+                var data = cell.getRow().getData();
+
+                if (editedData.some(x => x.paymentSourceId == data.PaymentSourceId)) {
+                    for (var i = 0; i < editedData.length; i++) {
+                        if (editedData[i].paymentSourceId === data.PaymentSourceId) {
+                            editedData.splice(i, 1);
+                        }
+                    }
+                }
+
+                editedData.push({
+                    paymentSourceId: data.PaymentSourceId,
+                    paymentSourceName: data.PaymentSourceName,
+                    categoryId: data.Category.CategoryId,
+                    description: data.Description
+                });
+
+                $(".btn-save-payments").removeClass("d-none");
+            });
+
+            $(".btn-save-payments").click(function() {
+                $.ajax({
+                    type: "POST",
+                    url: window.location.href,
+                    contentType: "application/json",
+                    data: JSON.stringify(editedData),
+                    dataType: "json",
+                    success: function(data, textStatus) {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    }
+                }).done(function() {
+                    window.location.href = data.redirect;
+                });
+            });
+        })
+    </script>
+}

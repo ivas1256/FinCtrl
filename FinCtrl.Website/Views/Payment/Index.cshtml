@@ -1,0 +1,118 @@
+﻿@using System.Text.Json
+@using System.Text.Encodings.Web
+@using System.Text.Unicode
+@{
+    ViewData["Title"] = "Операции";
+
+    var jso = new JsonSerializerOptions
+            {
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin, UnicodeRanges.Cyrillic),
+            };
+}
+
+<div class="container-fluid test">
+    <form enctype="multipart/form-data" method="post" action="@Url.Action("UploadFile", "Payment")" class="pb-2">
+        <div class="row">
+            <div class="col-3">
+                <label class="form-label">Excel из банка с операциями по карте:</label>
+
+                <div class="input-group">
+                    <input type="file" class="form-control excel-file-input" aria-describedby="file-load-btn" aria-label="Upload"
+                           name="file" accept=".xlsx,.csv">
+                    <button class="btn btn-outline-secondary" type="submit" id="file-load-btn">Загрузить</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div id="payments-grid" style="width: 90%"></div>
+</div>
+
+<button class="btn-primary btn-save-payments d-none">Сохранить</button>
+
+@section Scripts {
+    <script>
+        var payments = @Html.Raw(@JsonSerializer.Serialize(@ViewBag.Items, jso));
+        var categories = @Html.Raw(@JsonSerializer.Serialize(@ViewData["categoriesList"], jso));
+        var editedData = [];
+    </script>
+
+    <script>
+        $(document).ready(function() {
+            console.log($(".content-col").width())
+
+            var table = new Tabulator("#payments-grid", {
+                data: payments,
+                layout: "fitColumns",
+                columns: [
+                    { title: "ID", field: "PaymentId" },
+                    {
+                        title: "Дата", field: "PaymentDate", formatter: "datetime",
+                        formatterParams: {
+                            inputFormat: "iso",
+                            outputFormat: "dd.MM.yyyy HH:ss",
+                        }
+                    },
+                    {
+                        title: "Сумма", field: "PaymentSum", formatter: "money",
+                        formatterParams: {
+                            decimal: ",",
+                            thousand: " ",
+                            symbol: "",
+                        }
+                    },
+                    { title: "Источник", field: "PaymentSource.PaymentSourceName" },
+                    {
+                        title: "Категория", field: "PaymentCategory.CategoryId", editor: "list",
+                        editorParams: {
+                            values: categories
+                        },
+                        formatter: function(cell, formatterParams, onRendered) {
+                            return categories[cell.getValue()];
+                        }
+                    },
+                    { title: "Описание", field: "PaymentDescription", editor: "input" },
+                ],
+            });
+
+            table.on("cellEdited", function(cell) {
+                var data = cell.getRow().getData();
+
+                if (editedData.some(x => x.paymentId == data.PaymentId)) {
+                    for (var i = 0; i < editedData.length; i++) {
+                        if (editedData[i].paymentId === data.PaymentId) {
+                            editedData.splice(i, 1);
+                        }
+                    }
+                }
+
+                editedData.push({
+                    paymentId: data.PaymentId,
+                    categoryId: data.PaymentCategory.CategoryId,
+                    description: data.PaymentDescription
+                });
+
+                console.log(editedData);
+
+                $(".btn-save-payments").removeClass("d-none");
+            });
+
+            $(".btn-save-payments").click(function() {
+                $.ajax({
+                    type: "POST",
+                    url: window.location.href,
+                    contentType: "application/json",
+                    data: JSON.stringify(editedData),
+                    dataType: "json",
+                    success: function(data, textStatus) {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    }
+                });
+            }).done(function() {
+                window.location.href = data.redirect;
+            });
+        })
+    </script>
+}
