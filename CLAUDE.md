@@ -7,13 +7,16 @@ FinCtrl — личное приложение для учёта финансов
 - `FinCtrl/` — backend, .NET 9 + MS SQL Server (Dapper, без ORM).
 - `FinCtrl.Frontend/FinCtrl.Frontend/` — frontend, Vue 3 + Vite.
 
-Подробный контекст проекта — в `.ai-docs/`: `project-summary.md` (домен, API, известные грабли, история доработок), `styleguide.md` (UI- и backend-конвенции — следовать при создании новых страниц/компонентов), `payments-table-heatmap.md` (спецификация тепловой карты на главной). При существенных изменениях актуализировать `project-summary.md`.
+Подробный контекст проекта — в `.ai-docs/`, сгруппирован по двум папкам:
+
+- `.ai-docs/project/` — описание проекта и документация: `project-summary.md` (домен, API, известные грабли, история доработок), `general architecture.md` (исходное описание идеи и домена), `payments-table-heatmap.md` (спецификация тепловой карты на главной). При существенных изменениях актуализировать `project-summary.md`.
+- `.ai-docs/workflow/` — регламенты работы: `task-workflow.md` (регламент работы над задачей, см. ниже), `styleguide.md` (UI- и backend-конвенции — следовать при создании новых страниц/компонентов).
 
 ## Регламент работы над задачей
 
 **Обязателен для любой задачи, меняющей код** (ветка, папка задачи в `.ai-tasks/`, тесты, сборка, PR, журнал `.ai-tasks/tasks.md`). Полный текст:
 
-@.ai-docs/task-workflow.md
+@.ai-docs/workflow/task-workflow.md
 
 ## Команды
 

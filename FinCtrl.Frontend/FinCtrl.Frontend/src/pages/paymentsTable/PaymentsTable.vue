@@ -596,7 +596,7 @@ watch(formData, (newValue) => {
     border-bottom: 1px solid #dee2e6;
 }
 
-/* Тепловая карта — см. .ai-docs/payments-table-heatmap.md */
+/* Тепловая карта — см. .ai-docs/project/payments-table-heatmap.md */
 .hm-wrap {
     overflow-x: auto;
 }

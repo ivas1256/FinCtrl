@@ -1,4 +1,4 @@
-// Тепловая карта таблицы расходов — см. .ai-docs/payments-table-heatmap.md
+// Тепловая карта таблицы расходов — см. .ai-docs/project/payments-table-heatmap.md
 
 export const PALETTE = [
   '#4e79a7', '#f28e2b', '#e15759', '#76b7b2',
