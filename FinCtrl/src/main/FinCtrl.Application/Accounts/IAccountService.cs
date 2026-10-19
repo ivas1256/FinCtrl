@@ -1,0 +1,19 @@
+using FinCtrl.Domain;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace FinCtrl.Application.Accounts
+{
+    public interface IAccountService
+    {
+        Task<List<Account>> GetAll();
+        Task<Account?> GetById(int accountId);
+        Task<Account?> GetByExcelName(string excelAccountName);
+
+        Task<int> Create(Account account);
+        Task Update(params Account[] accounts);
+        Task Delete(params Account[] accounts);
+
+        Task<bool> Exists(string excelAccountName);
+    }
+}

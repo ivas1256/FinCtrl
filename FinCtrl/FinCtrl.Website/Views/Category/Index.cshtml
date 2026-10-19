@@ -1,0 +1,184 @@
+﻿@using FinCtrl.Domain;
+@{
+    ViewData["Title"] = "Категории";
+}
+
+@section Head {
+    <link rel="stylesheet" href="lib/jstree/themes/default/style.min.css" />
+    <style>
+        #category-tree {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .category {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .category-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .category-name {
+            padding-left: 5px;
+        }
+
+        .jstree-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .child-category {
+            padding-left: 30px;
+        }
+
+        .category-content:hover {
+            background-color: #f0f0f0; /* Цвет подсветки при наведении */
+            cursor: pointer; /* Изменение курсора при наведении */
+        }
+
+        .category:nth-child(even) .category-content {
+            background-color: #f9f9f9; /* Цвет фона для четных строк */
+        }
+
+            .category:nth-child(even) .category-content:hover {
+                background-color: #e0e0e0; /* Цвет фона при наведении на четные строки */
+            }
+
+        .category-content {
+            border-bottom: 1px solid #dee2e6; /* Линия между строками */
+            padding: 8px 0; /* Отступы для лучшего визуального разделения */
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="lib/jstree/jstree.min.js"></script>
+
+    <script>
+        var items = @Html.Raw(@ViewData["tree"]);
+
+        $(document).ready(function() {
+            function buildTree(categories, parent, level = 0) {
+                categories.forEach(category => {
+                    const categoryDiv = $('<div>').addClass('category mb-2').addClass(level > 0 ? 'child-category' : '');
+                    const categoryContent = $('<div>').addClass('category-content mb-2');
+                    const categoryName = $('<span>').addClass('category-name')
+                    .text(category.name);
+                    const actions = $('<div>').addClass('jstree-actions');
+                    const editButton = $('<button type="button" class="btn btn-primary">edit</button>')
+                        .text('Edit').click(() => editCategory(category));
+                    const deleteButton = $('<button type="button" class="btn btn-primary btn-delete-category">delete</button>')
+                        .text('Delete').click(() => deleteCategory(category, categoryDiv));
+
+                    actions.append(editButton, deleteButton);
+                    categoryContent.append(categoryName, actions);
+                    categoryDiv.append(categoryContent);
+                    parent.append(categoryDiv);
+
+                    if (category.subcategories && category.subcategories.length > 0) {
+                        buildTree(category.subcategories, categoryDiv, level + 1);
+                    }
+                });
+            }
+
+            let currentCategory = null;
+
+            function editCategory(category) {
+                $('#categoryId').val(category.id);
+                $('#categoryName').val(category.name);
+                $('#isIncome').prop('checked', category.isIncome || false);
+                $('#sortIndex').val(category.sortIndex || 0);
+                
+                $('#parentCategory').val(category.parentCategoryId);
+
+                // Открытие модального окна
+                const modal = new bootstrap.Modal(document.getElementById('editModal'));
+                modal.show();
+            }
+
+            function deleteCategory(category, categoryDiv) {
+                if (confirm(`Are you sure you want to delete ${category.name}?`)) {
+                    categoryDiv.remove();
+                }
+            }
+
+
+            // Функция для построения опций родительских категорий
+            function buildParentOptions(categories, parentSelect, excludeId, level = 0) {
+                categories.forEach(cat => {
+                    if (cat.id !== excludeId) {
+                        parentSelect.append(`<option value="${cat.id}">${'&nbsp;'.repeat(level * 4)}${cat.name}</option>`);
+                        if (cat.subcategories && cat.subcategories.length > 0) {
+                            buildParentOptions(cat.subcategories, parentSelect, excludeId, level + 1);
+                        }
+                    }
+                });
+            }
+
+            // Обработчик сохранения изменений
+            $('#saveChanges').click(function() {
+                if (currentCategory) {
+                    currentCategory.name = $('#categoryName').val();
+                    currentCategory.parentId = $('#parentCategory').val() || null;
+                    currentCategory.isIncome = $('#isIncome').is(':checked');
+                    currentCategory.sortIndex = parseInt($('#sortIndex').val());
+
+                    // Обновление дерева
+                    $('#category-tree').empty();
+                    buildTree(data.categories, $('#category-tree'));
+
+                    // Закрытие модального окна
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+                    modal.hide();
+                }
+            });
+
+            buildTree(items, $('#category-tree'));
+        });
+    </script>
+}
+
+<div id="category-tree">
+</div>
+
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Edit Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editForm" method="post" action="/category/update" enctype="application/json">
+                <div class="modal-body">
+                    <input type="hidden" name="CategoryId"  id="categoryId"/>
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="categoryName" name="CategoryName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="parentCategory" class="form-label">Родительская категория</label>
+                        @Html.DropDownList("ParentCategoryId", (IEnumerable<SelectListItem>)ViewData["allCategories"], new { @class = "form-select", @id = "parentCategory"})
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="isIncome" name="IsOnlyIncomeStr">
+                        <label class="form-check-label" for="isIncome">Доходы</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sortIndex" class="form-label">Индекс для сортировки</label>
+                        <input type="number" class="form-control" id="sortIndex" name="OrderIndex" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="saveChanges">Сохранить</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>

@@ -1,0 +1,913 @@
+﻿@using FinCtrl.Common
+@using System.Text.Json
+@using FinCtrl.Domain.Statistic;
+@using System.Text.Encodings.Web
+@using System.Text.Unicode
+
+@{
+    var statTable = (List<List<MainStatisticGroupItem>>)ViewData["statTable"];
+    var periods = (List<string>)ViewData["columnHeaders"];
+    var jso = new JsonSerializerOptions
+            {
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin, UnicodeRanges.Cyrillic),
+                WriteIndented = true
+            };
+}
+
+@section Head {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --income-color: #38a169;
+            --expense-color: #e53e3e;
+            --hover-bg: rgba(56, 161, 105, 0.05);
+            --border-color: #e0e0e0;
+        }
+
+        .table tbody td.income {
+            color: var(--income-color);
+            /* font-weight: 500; */
+        }
+
+        .statistic-cell {
+            text-align: right;
+        }
+
+        .category-name {
+            display: flex;
+            align-items: center;
+        }
+
+        .tree-toggle {
+            cursor: pointer;
+            margin-right: 10px;
+            transition: transform 0.2s;
+        }
+
+            .tree-toggle i {
+                width: 15px;
+                text-align: center;
+            }
+
+        .expanded .tree-toggle i {
+            transform: rotate(90deg);
+        }
+
+        .child-row {
+            display: none;
+        }
+
+        .has-children.expanded + .child-row,
+        .has-children.expanded ~ .child-row[data-parent] {
+            display: table-row;
+        }
+
+        .income-badge {
+            background-color: var(--income-color);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.75rem;
+            margin-left: 0.75rem;
+            font-weight: 500;
+        }
+
+        .compact-card {
+            border-radius: 8px !important;
+        }
+
+            .compact-card .card-body {
+                padding: 0.6rem;
+            }
+
+        .category-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .price-badge {
+            font-size: 0.9em;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        .list-group-item {
+            border-left: 0;
+            border-right: 0;
+            border-radius: 0 !important;
+        }
+
+        .list-group-item {
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+            .list-group-item:first-child {
+                border-top: 0;
+            }
+
+            .list-group-item:last-child {
+                border-bottom: 0;
+            }
+
+        .text-truncate {
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .list-group-item {
+            margin-bottom: 4px;
+            transition: all 0.2s ease;
+            background-color: #fff;
+        }
+
+            .list-group-item:nth-child(even) {
+                background-color: #f8f9fa;
+            }
+
+            .list-group-item:hover {
+                background-color: #e9ecef !important;
+                transform: translateX(5px);
+                box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+            }
+
+        .list-group {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .badge {
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 0.5em 0.8em;
+            min-width: 36px;
+            text-align: center;
+        }
+
+        .text-truncate {
+            max-width: 400px;
+        }
+
+        .action-btn {
+            opacity: 0.7;
+            padding: 4px;
+        }
+
+            .action-btn:hover {
+                opacity: 1;
+                outline: 2px solid currentColor;
+                outline-offset: 2px;
+            }
+
+        .modal-content {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .form-select {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+        }
+
+            .form-select:focus {
+                border-color: #f57c00;
+                box-shadow: 0 0 0 2px rgba(245, 124, 0, 0.2);
+            }
+
+        .form-check-input:checked {
+            background-color: #f57c00;
+            border-color: #f57c00;
+        }
+
+        .form-control-plaintext {
+            padding: 0.25rem 0;
+            color: #212121;
+            cursor: default;
+        }
+
+        .statistic-cell-active {
+            background-color: var(--hover-bg);
+            position: relative;
+        }
+
+            .statistic-cell-active:after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                border: 2px solid var(--income-color);
+                pointer-events: none;
+            }
+
+        /* Добавьте в существующие стили для таблицы источников */
+        .source-stats-table tbody tr {
+            transition: all 0.2s ease;
+            background-color: #fff;
+        }
+
+            .source-stats-table tbody tr:hover {
+                background-color: #f3f4f6 !important;
+                transform: translateX(3px);
+                box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+                cursor: pointer;
+            }
+
+            /* Для плавного перехода между четными/нечетными строками */
+            .source-stats-table tbody tr:nth-child(even) {
+                background-color: #f8f9fa;
+            }
+
+                .source-stats-table tbody tr:nth-child(even):hover {
+                    background-color: #f1f3f5 !important;
+                }
+
+        /* Выравнивание всей таблицы */
+        #statistic-table {
+            margin-left: 0;
+            width: auto;
+            max-width: 100%;
+        }
+
+            /* Стили для столбца категории */
+            #statistic-table th:first-child,
+            #statistic-table td:first-child {
+                width: 25%;
+                min-width: 200px;
+                max-width: 300px;
+                text-align: left;
+                padding-left: 1.5rem;
+            }
+
+            /* Выравнивание ячеек */
+            #statistic-table td {
+                text-align: left !important;
+            }
+
+        /* Перенос длинных названий категорий */
+        .category-name {
+            white-space: normal !important;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        /* Выравнивание контейнеров */
+        .container {
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+
+        .row {
+            margin-left: 0;
+            margin-right: 0;
+        }
+    </style>
+}
+
+<form action="#" type="GET" id="statistic-dates" class="form-inline">
+    <div class="row">
+        <div class="col-3 mb-2">
+            <input type="text" class="input-sm form-control period"
+                   value="@ViewBag.PeriodFrom.ToString("dd.MM.yyyy") - @ViewBag.PeriodTo.ToString("dd.MM.yyyy")">
+
+            <input type="hidden" name="periodFrom" />
+            <input type="hidden" name="periodTo" />
+        </div>
+
+        <div class="col-3 mb-2">
+            @Html.DropDownList("periodType", (IEnumerable<SelectListItem>)ViewBag.GroupingType,
+                     new { @class = "form-control col-3 period-type" })
+        </div>
+    </div>
+</form>
+
+<div class="mt-4 text-left">
+    <div class="row justify-content-start">
+        <table id="statistic-table" class="table table-hover">
+            <thead class="table-light">
+                <tr id="tableHeader">
+                    <th>Категория</th>
+                </tr>
+            </thead>
+            <tbody id="reportBody"></tbody>
+        </table>
+    </div>
+
+    <div class="row justify-content-start">
+        <div class="col-4 py-3">
+            <!-- Шапка -->
+            <header class="payments-list-header d-none d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success total-sum-weekdays">Будни: ₽15,400</span>
+                    <span class="badge bg-success total-sum-weekends">Выходные: ₽15,400</span>
+                </div>
+            </header>
+
+            <!-- Список карточек -->
+            <div class="selected-payments-list row row-cols-1">
+            </div>
+        </div>
+
+        <div class="col-4 py-3 source-stats-table-card d-none ">
+            <div class="card compact-card mb-3">
+                <div class="card-body">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card compact-card">
+                <div class="card-body">
+                    <table class="table table-sm source-stats-table">
+                        <thead>
+                            <tr>
+                                <th>Источник</th>
+                                <th class="text-end">Будни</th>
+                                <th class="text-end">Выходные</th>
+                                <th class="text-end">Всего</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editPaymentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content payment-card">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Редактирование платежа</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form id="editPaymentForm" action="payment/edit" method="post">
+                <div class="modal-body">
+                    <input type="hidden" name="PaymentId" />
+                    <!-- Строка с суммой -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted small">Сумма:</span>
+                        <span class="fs-5 fw-bold edit-label-sum">₽1,500.00</span>
+                    </div>
+
+                    <!-- Строка с датой -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted small">Дата:</span>
+                        <span class="edit-label-date">25.10.2024</span>
+                    </div>
+
+                    <!-- Строка с источником -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <span class="text-muted small">Источник:</span>
+                        <span class="text-truncate edit-label-source" style="max-width: 200px;">Планета Здоровья</span>
+                    </div>
+
+                    <!-- Редактируемые поля -->
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Категория</label>
+                        <select class="form-select" id="paymentCategory" name="CategoryId">
+                            @foreach (var cat in ViewBag.Categories)
+                            {
+                                <option value="@cat.CategoryId">@cat.CategoryName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Описание</label>
+                        <textarea class="form-control"
+                                  id="paymentDescription"
+                                  rows="2"
+                                  name="Description"
+                                  placeholder="Добавьте описание..."></textarea>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="excludeFromStats" name="ExcludeFromStatsStr">
+                        <label class="form-check-label small" for="excludeFromStats">
+                            Не учитывать в статистике
+                        </label>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-0">
+                    <button type="submit" class="btn btn-success">Сохранить</button>
+                    <button type="button" class="btn btn-link text-muted" data-bs-dismiss="modal">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const periods = @Html.Raw(@JsonSerializer.Serialize(@ViewBag.Periods, jso));
+    </script>
+    <script>
+        var inputData = @Html.Raw(@JsonSerializer.Serialize(@ViewBag.Items, jso));
+    </script>
+
+    <script>
+        // Обработка данных
+        function processData(data) {
+            const allPeriods = new Set();
+
+            function collectPeriods(node) {
+                if(node.Periods){
+                    Object.keys(node.Periods).forEach(period => allPeriods.add(period));
+                }
+                node.Children?.forEach(child => collectPeriods(child));
+            }
+
+            data.forEach(node =>  collectPeriods(node));
+
+            // Сортировка периодов
+            const sortedPeriods = Array.from(allPeriods).sort((a, b) => {
+                let periodType = $('.period-type').val();
+
+                if(periodType == 1){
+                    // Извлекаем месяц и год из строки (первые 2 цифры - месяц, остальные - год)
+                    const monthA = parseInt(a.substring(0, 2));
+                    const yearA = parseInt(a.substring(2));
+
+                    const monthB = parseInt(b.substring(0, 2));
+                    const yearB = parseInt(b.substring(2));
+
+                    // Сначала сравниваем годы, затем месяцы
+                    return yearA !== yearB ? yearA - yearB : monthA - monthB;
+                }
+                else {
+                    const [dayA, monthA, yearA] = a.split('.');
+                    const [dayB, monthB, yearB] = b.split('.');
+                    return new Date(`${yearA}-${monthA}-${dayA}`) - new Date(`${yearB}-${monthB}-${dayB}`);
+                }
+            });
+
+            return {
+                periods: sortedPeriods,
+                categories: data
+            };
+        }
+
+        // Форматирование даты
+        function formatDate(periodKey) {
+            const periodType = $('.period-type').val(); // Получаем тип группировки из ViewBag
+            const period = periods[periodKey]; // Получаем данные периода
+
+            const startDate = new Date(period.From);
+            const endDate = new Date(period.To);
+
+            // Функция для форматирования даты в "день месяц год"
+            const formatDayMonthYear = (date) => {
+                const monthNames = [
+                    'января', 'февраля', 'марта', 'апреля',
+                    'мая', 'июня', 'июля', 'августа',
+                    'сентября', 'октября', 'ноября', 'декабря'
+                ];
+                return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+            };
+
+            if (periodType == 1) {
+                // Для месяца: "Апрель 2025"
+                const monthNames = [
+                    'Январь', 'Февраль', 'Март', 'Апрель',
+                    'Май', 'Июнь', 'Июль', 'Август',
+                    'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+                ];
+                return `${monthNames[startDate.getMonth()]} ${startDate.getFullYear()}`;
+            }
+
+            if (periodType == 2) {
+                // Для недели: "1-15 апреля 2025" или "25 марта - 5 апреля 2025"
+                let startDay = startDate.getDate();
+                const endDay = endDate.getDate() - 1; // Исключаем последний день (To в периоде exclusive)
+
+                const isSameMonth = startDate.getMonth() === endDate.getMonth();
+                const isSameYear = startDate.getFullYear() === endDate.getFullYear();
+
+                let dateRange = `${startDay}-${endDay}`;
+
+                if (!isSameMonth) {
+                    var t = formatDayMonthYear(startDate).split(' ');
+                    startDay += ` ${formatDayMonthYear(startDate).split(' ')[0]}`;
+                }
+
+                return `${startDay}-${endDay} ${formatDayMonthYear(endDate)}`;
+            }
+
+            return periodKey; // Для других типов
+        }
+
+        // Генерация строк таблицы
+        function createRows(node, level = 0, parentId = null) {
+            if (!node) return $();
+
+            const hasChildren = node.Children && node.Children.length > 0;
+            const categoryName = node.CategoryName || '';
+            const categoryId = node.CategoryId || '';
+            const isIncome = node.IsOnlyIncome === true;
+            const incomeBadge = isIncome ? '<span class="income-badge">Доход</span>' : '';
+
+            const row = $(`
+                <tr class="${hasChildren ? 'has-children' : ''}"
+                    data-id="${categoryId}"
+                    data-parent="${parentId}"
+                    data-level="${level}">
+                    <td>
+                        <div class="category-name" style="padding-left: ${level * 30}px">
+                            ${hasChildren ? '<span class="tree-toggle"><i class="fas fa-chevron-right"></i></span>' : ''}
+                            ${categoryName}
+                            ${incomeBadge}
+                        </div>
+                    </td>
+                    ${window.periods && Array.isArray(window.periods) ? window.periods.map(period => {
+                        const periodData = node.Periods ? node.Periods[period] : undefined;
+                        const sum = periodData && periodData.TotalSum !== undefined ? periodData.TotalSum : 0;
+                        const typeClass = isIncome ? 'income' : sum < 0 ? 'expense' : '';
+                        let payments  = node.Periods[period] ? JSON.stringify(node.Periods[period].Payments) : ''
+
+                        var tr = $(`<td class="statistic-cell ${typeClass}">${Math.abs(sum).toLocaleString('ru-RU')}</td>`);
+
+                        tr = tr.attr("data-payments", payments)
+                        tr = tr.attr("data-period-key", period)
+
+                        return tr[0].outerHTML;
+                    }).join('') : ''}
+                </tr>
+            `);
+
+            let allChildRows = $();
+            if (hasChildren) {
+                node.Children.forEach(child => {
+                    if (child) {
+                        const childRow = createRows(child, level + 1, categoryId);
+                        childRow.addClass('child-row');
+                        allChildRows = allChildRows.add(childRow);
+                    }
+                });
+            }
+
+            return row.add(allChildRows);
+        }
+
+        // Генерация таблицы
+        function generateTable(processedData) {
+            if (!processedData || !processedData.periods) return;
+
+            window.periods = processedData.periods; // Делаем доступным для createRows
+            const $header = $('#tableHeader');
+
+            // Очищаем и добавляем заголовки периодов
+            $header.empty().append('<th>Категория</th>');
+            window.periods.forEach(period => {
+                $header.append(`<th class="statistic-cell">${formatDate(period)}</th>`);
+            });
+
+            // Добавляем строки в таблицу
+            const $tbody = $('#reportBody').empty();
+            if (processedData.categories) {
+                processedData.categories.forEach(node => {
+                    var html = createRows(node)
+                    $tbody.append(html);
+                })
+            }
+        }
+
+        // Инициализация
+        $(document).ready(() => {
+            const processedData = processData(inputData);
+            generateTable(processedData);
+
+            $('#reportBody').on('click', '.tree-toggle', function() {
+                const $row = $(this).closest('tr');
+                $row.toggleClass('expanded');
+                $(this).find('i').css('transform', $row.hasClass('expanded') ? 'rotate(90deg)' : 'rotate(0deg)');
+            });
+        });
+    </script>
+
+    <script>
+        function submitSearchForm() {
+            var periodStr = $(".period").val().split(' - ');
+
+            $('input[name="periodFrom"]').val(periodStr[0])
+            $('input[name="periodTo"]').val(periodStr[1])
+
+            $("#statistic-dates").submit();
+        }
+
+        $(document).ready(function() {
+            $('.period').daterangepicker({
+                opens: 'left',
+                locale: {
+                    format: "DD.MM.YYYY",
+                    firstDay: 1
+                }
+            });
+
+            $('.period').change(function() {
+                submitSearchForm();
+            })
+
+            $('.period-type').change(function() {
+                submitSearchForm();
+            })
+
+            $('.statistic-cell').click(function() {
+                var data = $(this).data("payments");
+                var periodKey = $(this).data("period-key");
+
+                $("#statistic-table td").removeClass("statistic-cell-active");
+                $(this).addClass("statistic-cell-active");
+
+                renderList(data, periodKey);
+            });
+
+            $(document).on('click', '.fa-edit', function() {
+                const payment = $(this).closest('a').data('payment');
+                const modal = $('#editPaymentModal');
+
+                modal.find("input[name='PaymentId']").val(payment.PaymentId);
+
+                // Заполнение неизменяемых полей
+                modal.find('.edit-label-sum').text(`₽${Math.abs(payment.PaymentSum).toFixed(2)}`);
+                modal.find('.edit-label-date').text(formatDateForList(payment.PaymentDate));
+                modal.find('.edit-label-source').text(payment.PaymentSource.PaymentSourceName);
+
+                // Заполнение редактируемых полей
+                if(payment.Category)
+                    modal.find('#paymentCategory').val(payment.Category.CategoryId).change();
+                modal.find('#paymentDescription').val(payment.PaymentDescription || '').change();
+                modal.find('#excludeFromStats').prop('checked', payment.ExcludeFromStats || false);
+
+                // Показать модальное окно
+                new bootstrap.Modal(modal).show();
+            });
+
+            $(document).on('click', '.btn-delete-payment', function(e) {
+                e.preventDefault();
+                const paymentId = $(this).data('id');
+
+                if (confirm('Вы уверены, что хотите удалить этот платеж?')) {
+                    $.ajax({
+                        url: `Payment/delete?paymentId=${paymentId}`,
+                        method: 'DELETE',
+                        success: function() {
+                            location.reload();
+                        },
+                        error: function(xhr) {
+                            if (xhr.status === 500) {
+                                alert('Ошибка при удалении платежа');
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Обработка отправки формы редактирования
+            $('#editPaymentForm').submit(function(e) {
+                e.preventDefault();
+
+                const form = $(this);
+
+                $.ajax({
+                    url: form.attr('action'),
+                    method: form.attr('method'),
+                    data: form.serialize(),
+                    success: function() {
+                        $('#editPaymentModal').modal('hide');
+                        location.reload(); // Обновляем страницу после успеха
+                    },
+                    error: function(xhr) {
+                        if (xhr.status === 500) {
+                            alert('Ошибка сохранения. Проверьте данные и повторите попытку.');
+                        }
+                    }
+                });
+            });
+
+            function formatDateForList(dateString) {
+                const date = new Date(dateString);
+                const formattedDate = `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
+                const formattedTime = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                return `${formattedDate} ${formattedTime}`;
+            }
+
+            function renderList(payments, periodKey) {
+                $('.payments-list-header').removeClass("d-none");
+                $('.source-stats-table-card').removeClass("d-none");
+
+                const $container = $('.selected-payments-list');
+                $container.empty();
+
+                let totalWeekdays = 0;
+                let totalWeekends = 0;
+                const sourcesMap = {}; // { sourceName: { weekdays: X, weekends: Y } }
+                // Данные для диаграммы
+                const allDays = getAllDaysInPeriod(periodKey);
+                // Инициализируем объект для сумм
+                const dailySums = allDays.reduce((acc, date) => {
+                    const dateStr = formatDateForChart(date);
+                    acc[dateStr] = 0;
+                    return acc;
+                }, {});
+
+                // Сортировка платежей по дате (новые сверху)
+                const sortedPayments = [...(payments || [])].sort((a, b) => {
+                    const dateA = new Date(a.PaymentDate);
+                    const dateB = new Date(b.PaymentDate);
+                    return dateB - dateA; // Сортировка по убыванию
+                });
+
+                sortedPayments?.forEach(payment => {
+                    // Расчет сумм для будней/выходных
+                    const dayOfWeek = new Date(payment.PaymentDate).getDay(); // 0-6 (вс-сб)
+                    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                    const amount = payment.PaymentSum;
+                    const sourceName = payment.PaymentSource?.PaymentSourceName || 'Без источника';
+
+                    if (isWeekend) {
+                        totalWeekends += amount;
+                    } else {
+                        totalWeekdays += amount;
+                    }
+
+                    if (!sourcesMap[sourceName]) {
+                        sourcesMap[sourceName] = {
+                            weekdays: 0,
+                            weekends: 0,
+                            total: 0 // Добавляем поле для общей суммы
+                        };
+                    }
+
+                    if (isWeekend) {
+                        sourcesMap[sourceName].weekends += amount;
+                    } else {
+                        sourcesMap[sourceName].weekdays += amount;
+                    }
+                    sourcesMap[sourceName].total += amount; // Обновляем общую сумму
+
+                    const paymentDate = new Date(payment.PaymentDate);
+                    const dateStr = formatDateForChart(paymentDate);
+
+                    if (dailySums.hasOwnProperty(dateStr)) {
+                        dailySums[dateStr] += Math.abs(payment.PaymentSum);
+                    }
+
+                    const description = payment.PaymentDescription ? '['+payment.PaymentDescription +']' : '';
+                    const sum = payment.PaymentSum.toLocaleString('ru-RU');
+                    const date = formatDateForList(payment.PaymentDate);
+                    // Экранируем JSON для HTML атрибута
+                    const paymentData = JSON.stringify(payment)
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+
+                    //<span class="badge bg-warning-subtle text-warning-emphasis">🏥</span>
+                    const item = `
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <div class="d-flex align-items-center gap-3" style="width: 70%">
+                            <div class="d-flex flex-column">
+                                <small class="text-muted">${payment.Category?.CategoryName}</small>
+                                <span class="text-truncate">${payment.PaymentSource?.PaymentSourceName} ${description}</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-column align-items-end">
+                            <span>${sum}</span>
+                            <small class="text-muted">${date}</small>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-2">
+                            <a href="#" class="action-btn text-primary" data-payment="${paymentData}">
+                                <i class="fas fa-edit fa-lg"></i>
+                            </a>
+                            <a href="#" class="action-btn text-danger btn-delete-payment" data-id="${payment.PaymentId}">
+                                <i class="fas fa-trash-alt fa-lg"></i>
+                            </a>
+                        </div>
+                    </div>`;
+
+                    $container.append(item);
+                });
+
+                $('.total-sum-weekdays').text(`Будни: ${totalWeekdays.toLocaleString('ru-RU')}`);
+                $('.total-sum-weekends').text(`Выходные: ${totalWeekends.toLocaleString('ru-RU')}`);
+
+                // Сортировка
+                const sortedSources = Object.entries(sourcesMap).sort((a, b) => {
+                    return  a[1].total - b[1].total; // Только по убыванию суммы
+                });
+
+                // Рендеринг таблицы
+                const $sourcesTable = $('.source-stats-table tbody').empty();
+                sortedSources.forEach(([sourceName, sums]) => {
+                    $sourcesTable.append(`
+                        <tr>
+                            <td>${sourceName}</td>
+                            <td class="text-end">${sums.weekdays.toLocaleString('ru-RU')}</td>
+                            <td class="text-end">${sums.weekends.toLocaleString('ru-RU')}</td>
+                            <td class="text-end fw-bold">${sums.total.toLocaleString('ru-RU')}</td>
+                        </tr>
+                    `);
+                });
+
+                // Сортируем даты в хронологическом порядке
+                const sortedDates = allDays.map(date => formatDateForChart(date));
+
+                const backgroundColors = sortedDates.map(dateStr => {
+                    const [day, month] = dateStr.split('.');
+                    const date = new Date(`${new Date().getFullYear()}-${month}-${day}`);
+                    const isWeekend = date.getDay() === 0 || date.getDay() === 6; // 0 = воскресенье, 6 = суббота
+
+                    if (dailySums[dateStr] === 0) return '#e2e8f0'; // Нулевые значения
+                    return isWeekend ? '#e53e3e' : '#38a169'; // Красный для выходных, зеленый для будней
+                });
+
+                // Уничтожаем старую диаграмму если существует
+                if(window.dailyChartInstance) {
+                    window.dailyChartInstance.destroy();
+                }
+
+                // Создаем новую диаграмму
+                const ctx = document.getElementById('dailyChart').getContext('2d');
+                window.dailyChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedDates,
+                        datasets: [{
+                            label: 'Сумма трат по дням',
+                            data: sortedDates.map(date => dailySums[date]),
+                            backgroundColor: backgroundColors,
+                            borderColor: '#2f855a',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '₽' + value.toLocaleString('ru-RU');
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return 'Сумма: ₽' + context.parsed.y.toLocaleString('ru-RU');
+                                    }
+                                }
+                            },
+                            legend: {
+                                display: false // Отключаем встроенную легенду
+                            }
+                        }
+
+                    }
+                });
+            }
+
+            // Вспомогательная функция для форматирования даты
+            function formatDateForChart(date) {
+                const day = date.getDate().toString().padStart(2, '0');
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                return `${day}.${month}`;
+            }
+
+            function getAllDaysInPeriod(currentPeriodKey) {
+                const period = periods[currentPeriodKey]; // Предполагаем, что periodsData содержит полную информацию
+
+                const startDate = new Date(period.From);
+                const endDate = new Date(period.To);
+                const dates = [];
+
+                let currentDate = new Date(startDate);
+                while (currentDate <= endDate) {
+                    dates.push(new Date(currentDate));
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+
+                return dates;
+            }
+        });
+    </script>
+}

@@ -1,0 +1,155 @@
+<template>
+    <div class="payment-list">
+        <!-- Группировка по дате -->
+        <div v-for="(payments, date) in groupedPayments" :key="date" class="payment-date-group mb-3">
+            <h6 class="date-header border-bottom pb-2 mb-3">
+                {{ formatDisplayDate(date) }}
+                <small class="text-muted ms-2">
+                    {{ formatCurrency(getDateTotal(payments)) }}
+                </small>
+            </h6>
+            
+            <!-- Список платежей -->
+            <div v-for="payment in payments" :key="payment.paymentId" class="payment-item mb-2 p-2 border rounded">
+                <!-- Первая строка: источник, сумма, кнопка -->
+                <div class="d-flex justify-content-between align-items-center mb-1" :data-id="payment.paymentId">
+                    <div class="payment-source fw-medium">
+                        {{ payment.paymentSource?.paymentSourceName || 'Не указан' }}
+                        {{ payment.paymentSource.description }}
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span :class="['payment-amount', payment.paymentType === 1 ? 'text-danger' : 'text-success']">
+                            {{ formatCurrency(payment.paymentSum) }}
+                        </span>
+                        <button 
+                            class="btn btn-sm btn-outline-primary"
+                            @click="$emit('edit-payment', payment)"
+                            title="Редактировать платеж"
+                        >
+                            ✏️
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Вторая строка: категория и описание -->
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="payment-category small text-muted">
+                        Категория: <strong>{{ getCategoryName(payment.category) }}</strong>
+                    </div>
+                    <div class="payment-description small text-muted flex-grow-1 ms-3 text-end">
+                        {{ payment.paymentDescription || 'Нет описания' }}
+                    </div>
+                </div>
+
+                <!-- Теги -->
+                <div v-if="payment.tags && payment.tags.length > 0" class="mt-1">
+                    <span
+                        v-for="tag in payment.tags"
+                        :key="tag.tagId"
+                        class="badge bg-secondary me-1"
+                    >{{ tag.tagName }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+export default {
+    name: 'PaymentList',
+    props: {
+        payments: {
+            type: Array,
+            required: true
+        },
+        categories: {
+            type: Array,
+            default: () => []
+        }
+    },
+    emits: ['edit-payment'],
+    computed: {
+        groupedPayments() {
+            const grouped = {}
+            this.payments.forEach(payment => {
+                const date = payment.paymentDate.split('T')[0]
+                if (!grouped[date]) {
+                    grouped[date] = []
+                }
+                grouped[date].push(payment)
+            })
+            return grouped
+        }
+    },
+    methods: {
+        formatDisplayDate(dateString) {
+            const date = new Date(dateString)
+            return date.toLocaleDateString('ru-RU', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            })
+        },
+        formatCurrency(value) {
+            return new Intl.NumberFormat('ru-RU', {
+                style: 'currency',
+                currency: 'RUB',
+                minimumFractionDigits: 2
+            }).format(value)
+        },
+        getCategoryName(category) {
+            return category?.categoryName || 'Без категории'
+        },
+        getDateTotal(payments) {
+            return payments.reduce((sum, payment) => sum + payment.paymentSum, 0)
+        }
+    }
+}
+</script>
+
+<style scoped>
+.payment-list {
+    font-size: 0.9rem;
+}
+
+.date-header {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.payment-item {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+.payment-item:hover {
+    background-color: #e9ecef;
+}
+
+.payment-source {
+    font-size: 0.9rem;
+}
+
+.payment-amount {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.payment-category {
+    font-size: 0.8rem;
+}
+
+.payment-description {
+    font-size: 0.8rem;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-sm {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.75rem;
+}
+</style>

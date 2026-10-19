@@ -1,0 +1,12 @@
+# Локальные настройки Claude Code
+.claude/settings.local.json
+
+# IDE / ОС
+.vs/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Логи и отладочные дампы с реальными данными
+FinCtrl/FinCtrl.Website/internal-nlog.txt
+FinCtrl/FinCtrl.Website/items.json
