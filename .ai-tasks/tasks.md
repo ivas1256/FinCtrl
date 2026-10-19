@@ -6,4 +6,4 @@
 | ID | Ветка | Папка | Статус | PR |
 |----|-------|-------|--------|----|
 | 0001 | `chore/0001-rename-solution` | `.ai-tasks/chore/0001-rename-solution/` | в работе | |
-| 0002 | `chore/0002-pre-pr-hook` | `.ai-tasks/chore/0002-pre-pr-hook/` | в работе | |
+| 0002 | `chore/0002-pre-pr-hook` | `.ai-tasks/chore/0002-pre-pr-hook/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/1 |
