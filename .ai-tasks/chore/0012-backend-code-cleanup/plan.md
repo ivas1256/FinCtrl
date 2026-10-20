@@ -1,6 +1,6 @@
 # План: [0012] Чистка мусора в рабочем backend-коде
 
-> Статус: `в работе`. План сверен с кодом на старте (после 0011): номера строк из аудита сместились, состав мусора совпал.
+> Статус: `на ревью` (PR #15). План сверен с кодом на старте (после 0011): номера строк из аудита сместились, состав мусора совпал.
 
 ## Затрагиваемые части
 - backend: `FinCtrl.Website` (Program, Startup, appsettings.json, launchSettings, контроллеры PaymentsApi/PaymentSourcesApi, csproj), `FinCtrl.Application` (импорт, статистика, сервисы платежей/источников/тегов, csproj), `FinCtrl.Infrastructure` (репозитории платежей/источников, DbConnectionFactory), `FinCtrl.Domain`, `FinCtrl.Common`, `db/migrations/README.md`;
