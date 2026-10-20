@@ -16,7 +16,7 @@
 | 0009 | `fix/0009-payment-source-category-map` | `.ai-tasks/fix/0009-payment-source-category-map/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/12 (стек поверх #11) |
 | 0010 | `refactor/0010-remove-dead-projects` | `.ai-tasks/refactor/0010-remove-dead-projects/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/13 (стек поверх #12) |
 | 0011 | `refactor/0011-remove-legacy-mvc` | `.ai-tasks/refactor/0011-remove-legacy-mvc/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/14 (стек поверх #13) |
-| 0012 | `chore/0012-backend-code-cleanup` | `.ai-tasks/chore/0012-backend-code-cleanup/` | запланирована | — |
+| 0012 | `chore/0012-backend-code-cleanup` | `.ai-tasks/chore/0012-backend-code-cleanup/` | в работе | — |
 | 0013 | `chore/0013-backend-net9-packages` | `.ai-tasks/chore/0013-backend-net9-packages/` | запланирована | — |
 | 0014 | `refactor/0014-layer-dependencies` | `.ai-tasks/refactor/0014-layer-dependencies/` | запланирована | — |
 | 0015 | `refactor/0015-async-repositories` | `.ai-tasks/refactor/0015-async-repositories/` | запланирована | — |
