@@ -54,7 +54,7 @@
                         <tr>
                             <th class="hm-col-cat">Категория</th>
                             <th class="hm-col-period" v-for="period in periodHeaders" :key="period.key">
-                                {{ formatPeriodHeader(period) }}
+                                {{ period.label }}
                             </th>
                         </tr>
                     </thead>
@@ -212,6 +212,7 @@ import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
 import { computeMaxValue, formatHeatCurrency } from '../../utils/heatmap'
+import { formatPeriodHeader, GroupingType } from '../../utils/periodHeader'
 
 // Добавляем флаг для отслеживания загрузки категорий
 const categoriesLoaded = ref(false)
@@ -375,20 +376,12 @@ const formatCurrency = (value) => {
     }).format(value)
 }
 
-// Обновленная функция для форматирования заголовков
-const formatPeriodHeader = (period) => {
-    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
-    const monthNum = parseInt(period.key.substring(0, 2)) - 1
-    const year = period.key.substring(2)
-    return `${monthNames[monthNum]} ${year}`
-}
-
-const fetchData = async () => {
+const fetchData = async (groupingType) => {
     const params = new URLSearchParams()
     params.append('from', formData.startDate)
     params.append('to', formData.endDate)
-    if (formData.groupingType !== '0') {
-        params.append('periodType', formData.groupingType)
+    if (groupingType !== GroupingType.NotSelected) {
+        params.append('periodType', groupingType)
     }
     selectedTagIds.value.forEach(id => params.append('tagIds', id))
 
@@ -527,8 +520,11 @@ const submitForm = async () => {
     loading.value = true
     console.log('Loading payments data...') // Для отладки
     
+    // Тип группировки фиксируем на момент запроса: select могут поменять, не нажав «Показать»
+    const groupingType = Number(formData.groupingType)
+
     try {
-        const response = await fetchData()
+        const response = await fetchData(groupingType)
         console.log('Payments data received:', response.data) // Для отладки
         
         paymentsTree.value = response.data.paymentsTree || []
@@ -542,12 +538,14 @@ const submitForm = async () => {
                 key,
                 from: new Date(value.from),
                 to: new Date(value.to),
-                name: value.from.split('T')[0] + ' - ' + value.to.split('T')[0]
+                name: value.from.split('T')[0] + ' - ' + value.to.split('T')[0],
+                label: formatPeriodHeader(value, groupingType)
             }))
             .sort((a, b) => a.from - b.from)
             .map(item => ({
                 key: item.key,
-                name: item.name
+                name: item.name,
+                label: item.label
             }))
         
         console.log('Period headers:', periodHeaders.value) // Для отладки
