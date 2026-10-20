@@ -1,13 +1,12 @@
 using FinCtrl.Domain;
-using System;
 
 namespace FinCtrl.Website.RequestDto
 {
     public class AccountDto
     {
         public int AccountId { get; set; }
-        public string ExcelAccountName { get; set; }
-        public string DisplayName { get; set; }
+        public string ExcelAccountName { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime? LastUpdatedAt { get; set; }
 

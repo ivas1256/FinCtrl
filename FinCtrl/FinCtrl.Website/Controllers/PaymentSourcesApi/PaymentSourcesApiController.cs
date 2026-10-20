@@ -1,10 +1,6 @@
-﻿#nullable enable
-
-using FinCtrl.Application.PaymentSources;
+﻿using FinCtrl.Application.PaymentSources;
 using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Website.Controllers.PaymentSourcesApi
 {

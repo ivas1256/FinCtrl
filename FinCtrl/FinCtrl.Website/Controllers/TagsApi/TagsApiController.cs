@@ -2,9 +2,6 @@ using FinCtrl.Application.Tags;
 using FinCtrl.Domain;
 using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Website.Controllers.TagsApi
 {
@@ -40,7 +37,7 @@ namespace FinCtrl.Website.Controllers.TagsApi
             var newTag = Tag.CreateNew(dto.TagName, _timeProvider.GetLocalNow().DateTime);
             var id = await _tagService.Create(newTag);
 
-            return Ok(TagDto.FromModel(await _tagService.GetById(id)));
+            return Ok(TagDto.FromModel((await _tagService.GetById(id))!));
         }
 
         [HttpPut("{tagId}")]

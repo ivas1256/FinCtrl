@@ -1,7 +1,6 @@
 using FinCtrl.Application.Categories;
 using FinCtrl.Domain;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Website.Controllers.CategoriesApi
 {
@@ -71,10 +70,10 @@ namespace FinCtrl.Website.Controllers.CategoriesApi
 
     public class CategoryCrudDto
     {
-        public string CategoryName { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
         public int? ParentCategoryId { get; set; }
         public bool IsOnlyIncome { get; set; }
         public int OrderIndex { get; set; }
-        public string Color { get; set; }
+        public string? Color { get; set; }
     }
 }

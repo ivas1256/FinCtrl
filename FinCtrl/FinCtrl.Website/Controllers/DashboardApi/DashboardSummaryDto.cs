@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace FinCtrl.Website.Controllers.DashboardApi
 {
     public class DashboardSummaryDto
@@ -15,14 +12,14 @@ namespace FinCtrl.Website.Controllers.DashboardApi
         public decimal MonthSpending { get; set; }
         public DateTime MonthFrom { get; set; }
         public DateTime MonthTo { get; set; }
-        public List<CategorySummaryDto> AllCategories { get; set; }
-        public List<TopPaymentDto> TopPayments { get; set; }
+        public List<CategorySummaryDto> AllCategories { get; set; } = new();
+        public List<TopPaymentDto> TopPayments { get; set; } = new();
     }
 
     public class CategorySummaryDto
     {
-        public string CategoryName { get; set; }
-        public string FullCategoryName { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public string FullCategoryName { get; set; } = string.Empty;
         public decimal TotalSum { get; set; }
         public decimal Percentage { get; set; }
     }
@@ -32,19 +29,19 @@ namespace FinCtrl.Website.Controllers.DashboardApi
         public int PaymentId { get; set; }
         public decimal PaymentSum { get; set; }
         public DateTime PaymentDate { get; set; }
-        public string PaymentDescription { get; set; }
-        public string CategoryName { get; set; }
-        public string PaymentSourceName { get; set; }
+        public string? PaymentDescription { get; set; }
+        public string? CategoryName { get; set; }
+        public string? PaymentSourceName { get; set; }
     }
 
     public class ChartDataDto
     {
-        public List<ChartPointDto> Points { get; set; }
+        public List<ChartPointDto> Points { get; set; } = new();
     }
 
     public class ChartPointDto
     {
-        public string Label { get; set; }
+        public string Label { get; set; } = string.Empty;
         public decimal Value { get; set; }
     }
 }

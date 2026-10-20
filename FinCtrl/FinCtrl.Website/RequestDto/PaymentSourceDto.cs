@@ -1,14 +1,13 @@
 ﻿using FinCtrl.Domain;
-using System;
 
 namespace FinCtrl.Website.RequestDto
 {
     public class PaymentSourceDto
     {
         public int PaymentSourceId { get; set; }
-        public string PaymentSourceName { get; set; }
+        public string PaymentSourceName { get; set; } = string.Empty;
         public int? CategoryId { get; set; }
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         public DateTime CreatedAt { get; set; }
         public static PaymentSourceDto FromModel(PaymentSource paymentSource) => new PaymentSourceDto
