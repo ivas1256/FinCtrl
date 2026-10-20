@@ -34,7 +34,7 @@ npm run dev     # Vite dev-сервер на :5173
 npm run build
 npm run test    # Vitest (jsdom), тесты *.spec.js рядом с кодом
 ```
-Адрес API захардкожен в `config.js` (`APP_CONFIG.apiBaseUrl = http://localhost:5000`); CORS на backend разрешает origins из `appsettings.json` → `Cors:AllowedOrigins` (localhost:3000/5173/5174/8080).
+Адрес API — `src/config.js` → `APP_CONFIG.apiBaseUrl`: переменная Vite `VITE_API_BASE_URL` (задавать в `.env.local`, он не коммитится), без неё — `http://localhost:5000`; CORS на backend разрешает origins из `appsettings.json` → `Cors:AllowedOrigins` (localhost:3000/5173/5174/8080).
 
 В `.claude/launch.json` описаны preview-конфигурации `backend` и `frontend` для команд выше.
 
@@ -75,4 +75,5 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 ## Архитектура frontend
 - Vue 3 Composition API (`<script setup>`), Bootstrap 5.3 из npm (CSS импортируется в `src/main.js`, модалки — `import { Modal } from 'bootstrap'`, без CDN и глобального `bootstrap`), axios с прямыми вызовами `APP_CONFIG.apiBaseUrl + '/api/...'` (отдельного API-слоя нет), Chart.js через vue-chartjs, `vue-multiselect` для тегов.
 - Роуты описаны в корневом `index.js` (вне `src/`); страницы — в `src/pages/<фича>/`.
+- Суммы и даты форматируются только через `src/utils/format.js` (`formatCurrency`, `formatSignedCurrency`, `formatShortAmount`, `formatDate`/`formatShortDate`/`formatLongDate`/`formatDateTime`, `toInputDate`); локальные копии в компонентах запрещены (страж — `src/sharedFormat.spec.js`). Дату для `<input type="date">` — только `toInputDate` (локальный календарь), не `toISOString()`: он считает в UTC и сдвигает дату на день.
 - `src/pages/paymentsTable/PaymentsTable.vue` — главная страница (тепловая карта категория × период, модалка правки платежа); `src/pages/payments/Payments.vue` — «Операции» (пагинация/сортировка/фильтры, инлайн и массовая правка, загрузка файла).

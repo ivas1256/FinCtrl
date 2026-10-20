@@ -202,7 +202,8 @@ SELECT один — `PaymentRepository.SelectPayment`, его алиасы об�
 
 ## Frontend (`FinCtrl.Frontend/FinCtrl.Frontend`, Vue 3 + Vite)
 
-- `config.js` → `APP_CONFIG.apiBaseUrl = http://localhost:5000`.
+- `src/config.js` → `APP_CONFIG.apiBaseUrl` из `VITE_API_BASE_URL` (по умолчанию `http://localhost:5000`; с задачи 0021, раньше — захардкоженный корневой `config.js`).
+- `src/utils/format.js` — общие форматтеры сумм и дат (с задачи 0021).
 - `index.js` — роуты: `/` (главная), `/dashboard`, `/payments`
   ("Операции"), `/payment-sources`, `/categories`, `/accounts`.
 - `src/App.vue` — левое меню-сайдбар со ссылками на все роуты.
@@ -426,3 +427,11 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - Страж от регрессии — `src/bootstrapSetup.spec.js` (нет Bootstrap в `index.html`, порядок импорта CSS, нет `bootstrap.*` в `.vue`).
 - Визуальные отличия 5.0 → 5.3 (сверено поэлементно на всех 7 страницах): геометрия (положение/размеры элементов) не изменилась; изменились только токены оформления — скругления (4px → 6px, `-sm` 3.2px → 4px), цвет рамок (`rgba(0,0,0,.125)`/`#ced4da` → `#dee2e6`), `text-muted` (`#6c757d` → `rgba(33,37,41,.75)`), текст внутри `.card`/`.table` теперь `--bs-body-color` (`#212529`) вместо унаследованного из `base.css` `#2c3e50` (в тёмной схеме `base.css` заголовки карточек стали читаемыми).
 - **Грабля:** в dev-режиме CSS инжектится скриптом после первой отрисовки, а `base.css` задаёт `transition` цвета/фона у `body` — в фоновой (скрытой) вкладке вычисленный цвет `body` может временно быть чёрным/прозрачным. Это не регрессия; в production CSS подключается `<link>`.
+
+## Общие форматтеры и адрес API из env (задача 0021, 2026-10-20)
+
+- `src/utils/format.js`: `formatCurrency` (рубли с копейками, пустое = 0), `formatSignedCurrency` (со знаком, для тепловой карты; заменил `heatmap.formatHeatCurrency`), `formatShortAmount` (`12к`, `1.5М` — оси графика), `parseDate`, `formatDate` (`07.09.2026`), `formatShortDate` (`07.09`), `formatLongDate` (с днём недели), `formatDateTime` (`07.09.2026 14:05`), `toInputDate` (`YYYY-MM-DD` по локальному календарю). У форматтеров дат второй параметр — заглушка для пустого значения (по умолчанию `-`).
+- Удалены локальные копии в `Payments.vue`, `PaymentsTable.vue`, `PaymentList.vue`, `PaymentSourcesList.vue`, `PaymentSources.vue`, `Dashboard.vue`, `Accounts.vue`, `Tags.vue`, `heatmap.js`. Видимые изменения: в модалке платежей источника сумма теперь в общем формате (`-1 795,00 ₽` вместо `-1 795 ₽`).
+- **Грабля (исправлено):** дата для input через `new Date(s).toISOString()` считается в UTC, при положительном смещении пояса (UTC+5) локальная полночь даёт предыдущий день — в модалке правки платежа на главной дата была на день раньше, диапазон по умолчанию на дашборде мог сдвинуться ночью. Также `new Date("YYYY-MM-DD")` разбирается как UTC — `parseDate` разбирает такие строки как локальную полночь.
+- Адрес API: корневой `config.js` перенесён в `src/config.js`, `apiBaseUrl = resolveApiBaseUrl(import.meta.env)` — `VITE_API_BASE_URL` (завершающий `/` отбрасывается) или `http://localhost:5000`. Локальные переопределения — в `.env.local` (`*.local` и `.env` в `.gitignore`). Пример `.env.example` не добавлен: хук pre-pr-check блокирует любые `.env.*` в диффе (см. «Вне объёма» задачи 0021).
+- Тесты: `src/utils/format.spec.js` (в поясе `Asia/Yekaterinburg`, чтобы UTC-сдвиг воспроизводился на любой машине), `src/config.spec.js`, страж `src/sharedFormat.spec.js` (в `.vue` нет локальных `formatCurrency`/`formatDate`, `Intl.NumberFormat`, `toLocale*`, `toISOString().split`).
