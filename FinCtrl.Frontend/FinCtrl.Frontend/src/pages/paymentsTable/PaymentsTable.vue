@@ -76,7 +76,7 @@
                         <tr class="hm-total-row">
                             <td class="hm-cat-cell hm-total-label">Итого</td>
                             <td class="hm-total-amt" v-for="period in periodHeaders" :key="period.key">
-                                {{ formatHeatCurrency(periodTotal(period.key)) }}
+                                {{ formatSignedCurrency(periodTotal(period.key)) }}
                             </td>
                         </tr>
                     </tfoot>
@@ -150,7 +150,7 @@
                         
                         <div class="mb-3">
                             <label class="form-label">Дата</label>
-                            <input type="text" class="form-control" :value="formatDate(editingPayment.paymentDate)" disabled>
+                            <input type="text" class="form-control" :value="toInputDate(editingPayment.paymentDate)" disabled>
                         </div>
                         
                         <div class="mb-3">
@@ -213,7 +213,8 @@ import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import { Modal } from 'bootstrap'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
-import { computeMaxValue, formatHeatCurrency } from '../../utils/heatmap'
+import { computeMaxValue } from '../../utils/heatmap'
+import { formatCurrency, formatSignedCurrency, toInputDate } from '../../utils/format'
 import { formatPeriodHeader, GroupingType } from '../../utils/periodHeader'
 
 // Добавляем флаг для отслеживания загрузки категорий
@@ -258,14 +259,6 @@ const flattenCategories = (categories) => {
     }
     flatten(categories)
     return result
-}
-
-// Локальная дата в формате YYYY-MM-DD (без сдвига через UTC, в отличие от toISOString)
-const toInputDate = (date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
 }
 
 // Функция для получения даты начала (первое число 3 месяца назад)
@@ -363,20 +356,6 @@ const groupedPayments = computed(() => {
 const availableCategories = computed(() => {
     return flattenCategories(categoryTree.value)
 })
-
-const formatDate = (dateString) => {
-    if (!dateString) return ''
-    const date = new Date(dateString)
-    return date.toISOString().split('T')[0] // Возвращаем в формате YYYY-MM-DD
-}
-
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
-        minimumFractionDigits: 2
-    }).format(value)
-}
 
 const fetchData = async (groupingType) => {
     const params = new URLSearchParams()

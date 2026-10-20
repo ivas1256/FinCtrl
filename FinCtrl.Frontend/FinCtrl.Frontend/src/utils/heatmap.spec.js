@@ -7,8 +7,7 @@ import {
   heatAlpha,
   heatStyle,
   heatClass,
-  computeMaxValue,
-  formatHeatCurrency
+  computeMaxValue
 } from './heatmap'
 
 describe('catColor', () => {
@@ -90,19 +89,5 @@ describe('computeMaxValue', () => {
   it('для пустого дерева — 0', () => {
     expect(computeMaxValue([])).toBe(0)
     expect(computeMaxValue(null)).toBe(0)
-  })
-})
-
-describe('formatHeatCurrency', () => {
-  const normalize = (s) => s.replace(/\s/g, ' ')
-
-  it('показывает знак расхода и поступления', () => {
-    expect(normalize(formatHeatCurrency(-1234.5))).toBe('-1 234,50 ₽')
-    expect(normalize(formatHeatCurrency(1234.5))).toBe('+1 234,50 ₽')
-  })
-
-  it('ноль и пустое значение — без знака', () => {
-    expect(normalize(formatHeatCurrency(0))).toBe('0,00 ₽')
-    expect(normalize(formatHeatCurrency(null))).toBe('0,00 ₽')
   })
 })

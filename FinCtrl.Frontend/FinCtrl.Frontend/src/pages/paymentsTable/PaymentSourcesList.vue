@@ -51,6 +51,8 @@
 </template>
 
 <script>
+import { formatCurrency } from '../../utils/format'
+
 export default {
     name: 'PaymentSourcesList',
     props: {
@@ -109,13 +111,7 @@ export default {
         }
     },
     methods: {
-        formatCurrency(value) {
-            return new Intl.NumberFormat('ru-RU', {
-                style: 'currency',
-                currency: 'RUB',
-                minimumFractionDigits: 2
-            }).format(value)
-        },
+        formatCurrency,
         
         toggleSortOrder() {
             // Переключаем между убывающим и возрастающим порядком
