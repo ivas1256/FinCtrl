@@ -6,11 +6,11 @@
 - **Источник:** `.ai-docs/project/architecture-audit.md`, §4
 
 ## Контекст
-На главной (`PaymentsTable.vue:323`) есть группировка «Квартал» (value 3). На backend `GroupingType.Quartal` не обрабатывается ни в `MainStatisticService.cs:66-81`, ни в `PaymentsApiController.ToPeriodKey`, поэтому вылетает `NotImplementedException` и ответ 500.
+На главной (`PaymentsTable.vue:324`) есть группировка «Квартал» (value 3 = `GroupingType.Quartal`). На backend `GroupingType.Quartal` не обрабатывается ни в `MainStatisticService` (`GetDateForGrouping`/`GetEndOfPeriod`), ни в `PaymentsApiController.ToPeriodKey`, поэтому вылетает `NotImplementedException` и ответ 500. Заголовки периодов после 0007 формируются в `src/utils/periodHeader.js` (`formatPeriodHeader`); для квартала там срабатывает fallback «дата – дата».
 
 ## Постановка
-- Реализовать квартальную группировку: расчёт периода в `MainStatisticService`, ключ периода в `ToPeriodKey`, формат заголовка на frontend.
-- Если реализация окажется нецелесообразной, убрать опцию из UI. Решение согласовать с пользователем.
+- Реализовать квартальную группировку: расчёт периода в `MainStatisticService` (начало — 1-е число первого месяца квартала, конец — исключающая граница +3 месяца, как у месяца), ключ периода в `ToPeriodKey`, формат заголовка в `formatPeriodHeader`.
+- Реализация оказалась простой, поэтому вариант «убрать опцию из UI» не понадобился (см. журнал решений в `plan.md`).
 
 ## Вне объёма
 - Перенос `BuildTree`/`ToPeriodKey` в Application (0018).
