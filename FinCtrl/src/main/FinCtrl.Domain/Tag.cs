@@ -22,9 +22,9 @@ namespace FinCtrl.Domain
         public DateTime CreatedAt { get; set; }
         public DateTime? LastUpdatedAt { get; set; }
 
-        public void Updated()
+        public void Updated(DateTime now)
         {
-            LastUpdatedAt = DateTime.Now;
+            LastUpdatedAt = now;
         }
 
         public static Tag CreateFromExisting(int tagId, string tagName) => new Tag
@@ -33,10 +33,10 @@ namespace FinCtrl.Domain
             TagName = tagName,
         };
 
-        public static Tag CreateNew(string tagName) => new Tag
+        public static Tag CreateNew(string tagName, DateTime createdAt) => new Tag
         {
             TagName = tagName,
-            CreatedAt = DateTime.Now,
+            CreatedAt = createdAt,
         };
     }
 }

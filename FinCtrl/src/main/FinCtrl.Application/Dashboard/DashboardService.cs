@@ -11,16 +11,18 @@ namespace FinCtrl.Application.Dashboard
     {
         private readonly IPaymentService _paymentService;
         private readonly ICategoryService _categoryService;
+        private readonly TimeProvider _timeProvider;
 
-        public DashboardService(IPaymentService paymentService, ICategoryService categoryService)
+        public DashboardService(IPaymentService paymentService, ICategoryService categoryService, TimeProvider timeProvider)
         {
             _paymentService = paymentService;
             _categoryService = categoryService;
+            _timeProvider = timeProvider;
         }
 
         public async Task<DashboardSummary> GetSummary()
         {
-            var today = DateTime.Today;
+            var today = _timeProvider.GetLocalNow().Date;
             var yesterday = today.AddDays(-1);
             var monthStart = new DateTime(today.Year, today.Month, 1);
             var weekStart = GetWeekStart(today);

@@ -14,10 +14,12 @@ namespace FinCtrl.Application.Payments
     internal class PaymentService : IPaymentService
     {
         private readonly IPaymentRepository _paymentRepository;
+        private readonly TimeProvider _timeProvider;
 
-        public PaymentService(IPaymentRepository paymentRepository)
+        public PaymentService(IPaymentRepository paymentRepository, TimeProvider timeProvider)
         {
             _paymentRepository = paymentRepository;
+            _timeProvider = timeProvider;
         }
 
         public async Task Delete(params int[] payments)
@@ -42,9 +44,10 @@ namespace FinCtrl.Application.Payments
 
         public async Task Update(params Payment[] payments)
         {
+            var now = _timeProvider.GetLocalNow().DateTime;
             foreach (var payment in payments)
             {
-                payment.Updated();
+                payment.Updated(now);
             }
 
            await _paymentRepository.Update(payments);

@@ -35,9 +35,9 @@ namespace FinCtrl.Domain
         public DateTime CreatedAt { get;  set; }
         public DateTime? LastUpdatedAt { get;  set; }
 
-        public void Updated()
+        public void Updated(DateTime now)
         {
-            LastUpdatedAt = DateTime.Now;
+            LastUpdatedAt = now;
         }
 
         public static PaymentSource CreateFromExisting(int paymentSourceId, string paymentSourceName, Category? category, string? description)
@@ -50,10 +50,10 @@ namespace FinCtrl.Domain
             };
         }
 
-        public static PaymentSource CreateNew(string name) => new PaymentSource(0, null)
+        public static PaymentSource CreateNew(string name, DateTime createdAt) => new PaymentSource(0, null)
         {
             PaymentSourceName = name,
-            CreatedAt = DateTime.Now,
+            CreatedAt = createdAt,
         };
     }
 }

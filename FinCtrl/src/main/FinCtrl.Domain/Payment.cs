@@ -64,17 +64,17 @@ namespace FinCtrl.Domain
                 return null;
             }
         }
-        public void Updated()
+        public void Updated(DateTime now)
         {
-            LastUpdatedAt = DateTime.Now;
+            LastUpdatedAt = now;
         }
 
-        public static Payment FromExcelPayment(ExcelPayment payment, PaymentSource paymentSource, Account? account = null) => new Payment
+        public static Payment FromExcelPayment(ExcelPayment payment, PaymentSource paymentSource, Account? account, DateTime createdAt) => new Payment
         {
             PaymentType = payment.Sum <= 0 ? PaymentTypeEnum.Spending : PaymentTypeEnum.Income,
             PaymentSum = payment.Sum,
             PaymentDate = payment.Date,
-            CreatedAt = DateTime.Now,
+            CreatedAt = createdAt,
             PaymentSource = paymentSource,
             Account = account
         };

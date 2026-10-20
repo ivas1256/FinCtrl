@@ -2,6 +2,7 @@ using FinCtrl.Application.Accounts;
 using FinCtrl.Domain;
 using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,10 +13,12 @@ namespace FinCtrl.Website.Controllers.AccountsApi
     public class AccountsApiController : ControllerBase
     {
         private readonly IAccountService _accountService;
+        private readonly TimeProvider _timeProvider;
 
-        public AccountsApiController(IAccountService accountService)
+        public AccountsApiController(IAccountService accountService, TimeProvider timeProvider)
         {
             _accountService = accountService;
+            _timeProvider = timeProvider;
         }
 
         [HttpGet]
@@ -34,7 +37,7 @@ namespace FinCtrl.Website.Controllers.AccountsApi
             if (await _accountService.Exists(dto.ExcelAccountName))
                 return BadRequest("Счет с таким названием в excel файле уже существует");
 
-            var newAccount = Account.CreateNew(dto.ExcelAccountName);
+            var newAccount = Account.CreateNew(dto.ExcelAccountName, _timeProvider.GetLocalNow().DateTime);
             newAccount.DisplayName = dto.DisplayName;
             var id = await _accountService.Create(newAccount);
 

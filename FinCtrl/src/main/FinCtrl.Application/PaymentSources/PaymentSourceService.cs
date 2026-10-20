@@ -13,11 +13,13 @@ namespace FinCtrl.Application.PaymentSources
     {
         private readonly IPaymentSourceRepository _repository;
         private readonly ICategoryService _categoryService;
+        private readonly TimeProvider _timeProvider;
 
-        public PaymentSourceService(IPaymentSourceRepository repository, ICategoryService categoryService)
+        public PaymentSourceService(IPaymentSourceRepository repository, ICategoryService categoryService, TimeProvider timeProvider)
         {
             _repository = repository;
             _categoryService = categoryService;
+            _timeProvider = timeProvider;
         }
 
         public async Task<List<PaymentSource>> GetAll()
@@ -26,7 +28,7 @@ namespace FinCtrl.Application.PaymentSources
                 .OrderByDescending(x => x.PaymentSourceId)
                 .ToList();
 
-            MapCategories(paymentSources);
+            await MapCategories(paymentSources);
 
             return paymentSources;
         }
@@ -39,7 +41,7 @@ namespace FinCtrl.Application.PaymentSources
                 return null;
             }
 
-            MapCategories(new List<PaymentSource> { paymentSource });
+            await MapCategories(new List<PaymentSource> { paymentSource });
 
             return paymentSource;
         }
@@ -52,7 +54,7 @@ namespace FinCtrl.Application.PaymentSources
                 return null;
             }
 
-            MapCategories(new List<PaymentSource> { paymentSource });
+            await MapCategories(new List<PaymentSource> { paymentSource });
 
             return paymentSource;
         }
@@ -64,9 +66,10 @@ namespace FinCtrl.Application.PaymentSources
 
         public async Task Update(params PaymentSource[] paymentSource)
         {
+            var now = _timeProvider.GetLocalNow().DateTime;
             foreach (var item in paymentSource)
             {
-                item.Updated();
+                item.Updated(now);
             }
 
             await _repository.Update(paymentSource);
@@ -92,19 +95,24 @@ namespace FinCtrl.Application.PaymentSources
         //TODO delete this
         private async Task MapCategories(IEnumerable<PaymentSource> paymentSources)
         {
-            var categories = paymentSources.Where(x => x.PaymentSourceCategory is not null)
-                            .Select(x => x.PaymentSourceCategory.CategoryId)
-                            .Distinct()
-                            .Select(async x => await _categoryService.GetById(x))
-                            .ToList()
-                            .ToDictionary(x => x.Result.CategoryId, y => y.Result);
+            var categoryIds = paymentSources
+                .Select(x => x.PaymentSourceCategory?.CategoryId)
+                .OfType<int>()
+                .Distinct();
+
+            var categories = new Dictionary<int, Category>();
+            foreach (var categoryId in categoryIds)
+            {
+                var category = await _categoryService.GetById(categoryId);
+                if (category is not null)
+                    categories[categoryId] = category;
+            }
 
             foreach (var paymentSource in paymentSources)
             {
-                if (paymentSource.PaymentSourceCategory is null)
-                    continue;
-
-                paymentSource.PaymentSourceCategory = categories[paymentSource.PaymentSourceCategory.CategoryId];
+                if (paymentSource.PaymentSourceCategory is not null
+                    && categories.TryGetValue(paymentSource.PaymentSourceCategory.CategoryId, out var category))
+                    paymentSource.PaymentSourceCategory = category;
             }
         }
     }

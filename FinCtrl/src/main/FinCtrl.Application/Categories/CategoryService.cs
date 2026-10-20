@@ -11,10 +11,12 @@ namespace FinCtrl.Application.Categories
     internal class CategoryService : ICategoryService
     {
         private readonly ICategoryRepository _categoryRepository;
+        private readonly TimeProvider _timeProvider;
 
-        public CategoryService(ICategoryRepository categoryRepository)
+        public CategoryService(ICategoryRepository categoryRepository, TimeProvider timeProvider)
         {
             _categoryRepository = categoryRepository;
+            _timeProvider = timeProvider;
         }
 
         public async Task Delete(params Category[] categories)
@@ -22,7 +24,7 @@ namespace FinCtrl.Application.Categories
             await _categoryRepository.Delete(categories);
         }
 
-        public async Task<Category> GetById(int id)
+        public async Task<Category?> GetById(int id)
         {
             return await _categoryRepository.GetById(id);
         }
@@ -34,14 +36,16 @@ namespace FinCtrl.Application.Categories
 
         public async Task<int> Create(Category category)
         {
+            category.CreatedAt = _timeProvider.GetLocalNow().DateTime;
             return await _categoryRepository.Create(category);
         }
 
         public async Task Update(params Category[] categories)
         {
+            var now = _timeProvider.GetLocalNow().DateTime;
             foreach (var category in categories)
             {
-                category.Updated();
+                category.Updated(now);
             }
 
             await _categoryRepository.Update(categories);
@@ -61,7 +65,7 @@ namespace FinCtrl.Application.Categories
         }
 
         // Рекурсивный поиск категории в дереве по ID
-        private Category FindCategoryWithChildren(List<Category> categories, int categoryId)
+        private Category? FindCategoryWithChildren(List<Category> categories, int categoryId)
         {
             foreach (var category in categories)
             {

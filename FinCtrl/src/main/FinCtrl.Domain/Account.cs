@@ -24,9 +24,9 @@ namespace FinCtrl.Domain
         public DateTime CreatedAt { get; set; }
         public DateTime? LastUpdatedAt { get; set; }
 
-        public void Updated()
+        public void Updated(DateTime now)
         {
-            LastUpdatedAt = DateTime.Now;
+            LastUpdatedAt = now;
         }
 
         public static Account CreateFromExisting(int accountId, string excelAccountName, string displayName) => new Account
@@ -36,11 +36,11 @@ namespace FinCtrl.Domain
             DisplayName = displayName,
         };
 
-        public static Account CreateNew(string excelAccountName) => new Account
+        public static Account CreateNew(string excelAccountName, DateTime createdAt) => new Account
         {
             ExcelAccountName = excelAccountName,
             DisplayName = excelAccountName,
-            CreatedAt = DateTime.Now,
+            CreatedAt = createdAt,
         };
     }
 }

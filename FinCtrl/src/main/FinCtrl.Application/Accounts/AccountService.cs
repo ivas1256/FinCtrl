@@ -8,10 +8,12 @@ namespace FinCtrl.Application.Accounts
     internal class AccountService : IAccountService
     {
         private readonly IAccountRepository _repository;
+        private readonly TimeProvider _timeProvider;
 
-        public AccountService(IAccountRepository repository)
+        public AccountService(IAccountRepository repository, TimeProvider timeProvider)
         {
             _repository = repository;
+            _timeProvider = timeProvider;
         }
 
         public async Task<List<Account>> GetAll()
@@ -36,9 +38,10 @@ namespace FinCtrl.Application.Accounts
 
         public async Task Update(params Account[] accounts)
         {
+            var now = _timeProvider.GetLocalNow().DateTime;
             foreach (var account in accounts)
             {
-                account.Updated();
+                account.Updated(now);
             }
 
             await _repository.Update(accounts);

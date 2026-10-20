@@ -2,6 +2,7 @@ using FinCtrl.Application.Tags;
 using FinCtrl.Domain;
 using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,10 +13,12 @@ namespace FinCtrl.Website.Controllers.TagsApi
     public class TagsApiController : ControllerBase
     {
         private readonly ITagService _tagService;
+        private readonly TimeProvider _timeProvider;
 
-        public TagsApiController(ITagService tagService)
+        public TagsApiController(ITagService tagService, TimeProvider timeProvider)
         {
             _tagService = tagService;
+            _timeProvider = timeProvider;
         }
 
         [HttpGet]
@@ -34,7 +37,7 @@ namespace FinCtrl.Website.Controllers.TagsApi
             if (await _tagService.Exists(dto.TagName))
                 return BadRequest("Тег с таким названием уже существует");
 
-            var newTag = Tag.CreateNew(dto.TagName);
+            var newTag = Tag.CreateNew(dto.TagName, _timeProvider.GetLocalNow().DateTime);
             var id = await _tagService.Create(newTag);
 
             return Ok(TagDto.FromModel(await _tagService.GetById(id)));

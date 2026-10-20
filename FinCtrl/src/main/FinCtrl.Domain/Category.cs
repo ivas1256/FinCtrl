@@ -21,7 +21,7 @@ namespace FinCtrl.Domain
         }
 
         public int CategoryId { get;  set; }
-        public string CategoryName { get;  set; }
+        public string CategoryName { get;  set; } = string.Empty;
         public int? ParentCategoryId { get;  set; }
         public bool IsOnlyIncome { get; set; }
         public int OrderIndex { get; set; }
@@ -33,9 +33,9 @@ namespace FinCtrl.Domain
 
         public List<Category> Children { get; set; } = new List<Category>();
 
-        public void Updated()
+        public void Updated(DateTime now)
         {
-            LastUpdatedAt = DateTime.Now;
+            LastUpdatedAt = now;
         }
 
         public static Category CreateFakeEmpty() => new Category(int.MinValue)

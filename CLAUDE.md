@@ -23,6 +23,7 @@ FinCtrl — личное приложение для учёта финансов
 Backend (из `FinCtrl/`):
 ```bash
 dotnet build FinCtrl.Backend.sln
+dotnet test FinCtrl.Backend.sln   # xUnit-тесты из tests/
 dotnet run --project FinCtrl.Website/FinCtrl.Website.csproj --urls http://localhost:5000
 ```
 Swagger — `/swagger` в Development. Dev-строка подключения (`FinCtrl.Website/appsettings.Development.json`): локальный SQL Server `Ivan`, база `FinCtrl_db_dev2`, Windows-аутентификация.
@@ -38,7 +39,7 @@ npm run build
 
 `.claude/settings.json` подключает хук `.claude/hooks/pre-pr-check.mjs`: на `git push` / `gh pr create` он выполняет автоматическую часть «Проверки перед PR» (сборка/тесты затронутых частей, гигиена диффа, папка задачи) и блокирует команду при провале — см. регламент, раздел 4.
 
-Автотестов и линтера пока нет ни в backend, ни во frontend — первая задача, меняющая соответствующую часть, заводит тестовую инфраструктуру (см. регламент, раздел 3).
+Backend-тесты — xUnit + NSubstitute в `FinCtrl/tests/FinCtrl.<Проект>.Tests/` (`FinCtrl.Domain.Tests`, `FinCtrl.Application.Tests`); текущее время в Domain/Application — только через `TimeProvider` (в тестах `FakeTimeProvider`). Во frontend автотестов и линтера пока нет — первая задача, меняющая frontend, заводит тестовую инфраструктуру (см. регламент, раздел 3).
 
 ### Миграции БД
 `FinCtrl/db/migrations/000N_описание.sql` — просто SQL-файлы, без раннера и без таблицы учёта применённых миграций. Не править существующие файлы — добавлять новый со следующим номером; накатывать вручную:
