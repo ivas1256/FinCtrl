@@ -1,6 +1,6 @@
 # План: [0015] Async-репозитории, единые SELECT'ы, OUTPUT INSERTED
 
-> Статус: `в работе`. План сверен с кодом после задач 0005–0014 (интерфейсы репозиториев — в Application, реализации — `internal` в Infrastructure).
+> Статус: `на ревью`. План сверен с кодом после задач 0005–0014 (интерфейсы репозиториев — в Application, реализации — `internal` в Infrastructure).
 
 ## Состояние на старте (сверка с кодом)
 - Синхронные вызовы Dapper: `RepositoryBase.Execute` (`conn.Execute`) и `FirstOrDefault` (`QueryFirstOrDefault`), `ExecuteScalar` в `Create` у `AccountRepository`, `TagRepository`, `PaymentSourceRepository`. Все Update/Delete идут через синхронный `Execute`.
@@ -19,15 +19,15 @@
 - Frontend не затрагивается.
 
 ## Шаги
-- [ ] RepositoryBase: только async (`ExecuteAsync`, `QueryAsync`, `QueryFirstOrDefaultAsync`, + `ExecuteScalar<T>` через `ExecuteScalarAsync`)
-- [ ] Account/Tag: `QueryAsync<T>` вместо `dynamic`, `OUTPUT INSERTED` + `ExecuteScalarAsync<int>`
-- [ ] PaymentSource: `OUTPUT INSERTED` + `ExecuteScalarAsync<int>`
-- [ ] Category: один `const` SELECT, `QueryAsync<Category>` вместо `dynamic`
-- [ ] Payment: один SELECT для `Get/GetByDateRange/GetBySource/FindDuplicate/GetListPaged`, исправлен алиас, `OUTPUT INSERTED` вместо `SCOPE_IDENTITY()`, теги — `QueryAsync<PaymentTagRow>` пачками ≤ 2000 id
-- [ ] Юнит-тест: все колонки SELECT'а платежей совпадают со свойствами `PaymentDto`
-- [ ] Ручная проверка на dev-базе
-- [ ] Сборка + тесты + ручная проверка (Definition of Done)
-- [ ] Документация: `CLAUDE.md` (грабли про два SELECT'а), `project-summary.md`, `backend-guide.md` (техдолг)
+- [x] RepositoryBase: только async (`ExecuteAsync`, `QueryAsync`, `QueryFirstOrDefaultAsync`, + `ExecuteScalar<T>` через `ExecuteScalarAsync`)
+- [x] Account/Tag: `QueryAsync<T>` вместо `dynamic`, `OUTPUT INSERTED` + `ExecuteScalarAsync<int>`
+- [x] PaymentSource: `OUTPUT INSERTED` + `ExecuteScalarAsync<int>`
+- [x] Category: один `const` SELECT, `QueryAsync<Category>` вместо `dynamic`
+- [x] Payment: один SELECT для `Get/GetByDateRange/GetBySource/FindDuplicate/GetListPaged`, исправлен алиас, `OUTPUT INSERTED` вместо `SCOPE_IDENTITY()`, теги — `QueryAsync<PaymentTagRow>` пачками ≤ 2000 id
+- [x] Юнит-тест: все колонки SELECT'а платежей совпадают со свойствами `PaymentDto`
+- [x] Ручная проверка на dev-базе
+- [x] Сборка + тесты + ручная проверка (Definition of Done)
+- [x] Документация: `CLAUDE.md` (грабли про два SELECT'а), `project-summary.md`, `backend-guide.md` (техдолг)
 - [ ] PR
 
 ## Тесты
@@ -61,10 +61,22 @@ SQL репозиториев юнит-тестами не покрывается
 - 2026-10-20: `WITH (NOLOCK)` в едином SELECT'е платежей оставлен как был (он был в обоих SELECT'ах) — его убирает задача 0016.
 - 2026-10-20: N+1 в `GetCategoriesTree` (рекурсивные запросы) оставлен — задача 0016; здесь только единый SELECT.
 - 2026-10-20: заодно исправлен лимит 2100 параметров в `GetTagsForPayments` (из «Вне объёма» задачи 0005): метод всё равно переписывается на типизированный маппинг, а фикс — разбиение id на пачки — тривиален. В dev-базе ~6650 платежей, так что статистика за весь период падала с 500.
+- 2026-10-20: `SelectPayment` объявлен `internal const`, а не `private` (отступление от §5 гайда): к нему обращается тест через `InternalsVisibleTo`; читать константу рефлексией было бы хрупче.
+- 2026-10-20: в SELECT платежей не добавлен `Color` категорий — у `Payment.PaymentCategory`/категории источника цвет никто не читает (цвета берутся из дерева категорий), расширять выборку без потребителя незачем.
 - 2026-10-20: юнит-тест на соответствие SELECT'а и `PaymentDto` — в `FinCtrl.Infrastructure.Tests` (без БД, разбор алиасов из константы) — фиксирует исправление алиаса и защищает от расхождения в будущем.
 
 ## Вне объёма (найдено попутно)
--
+- `GET api/PaymentsApi?periodType=0` (группировка не выбрана) → `NotImplementedException` и 500 — относится к 0017 (ошибки/валидация, `NotImplementedException` для группировки).
+- В `GET api/PaymentsApi/list` у `paymentSource.createdAt` всегда `0001-01-01`: `PaymentsApiController` маппит `PaymentSourceDto` вручную и не переносит `CreatedAt` (в `PaymentSourceDto.FromModel` поле есть). Относится к 0018 (один маппинг на пару типов).
 
 ## Итог
-Заполняется по завершении.
+Сделано:
+- `RepositoryBase` и все репозитории — только async Dapper; хелпер `ExecuteScalar<T>` в базе.
+- Id после вставки — `OUTPUT INSERTED` + `ExecuteScalarAsync<int>` в Account/Tag/PaymentSource/Payment (Category уже так делал).
+- Один `const`-SELECT на репозиторий; у платежей — единый `SelectPayment`, исправлен алиас `PaymentSourceCategory_ParentCategoryId`.
+- Типизированный маппинг вместо `dynamic` (`QueryAsync<Account|Tag|Category>`, `PaymentTagRow`).
+- Теги платежей грузятся пачками по 2000 id (фикс лимита 2100 параметров из 0005).
+- Тест `PaymentRepositoryTests` (алиасы SELECT'а ↔ `PaymentDto`; без фикса алиаса падает). Тесты: Domain 8, Application 16, Infrastructure 11 — зелёные.
+- Ручная проверка (preview backend + frontend): все 7 страниц открываются, в консоли браузера и логах backend ошибок нет; через API — CRUD счёта/тега/категории (id из `OUTPUT INSERTED`, удаление тега вместе со связью), правка платежа (категория, счёт, теги, описание), фильтр «Операций» по тегу, правка источника, `parentCategoryId` у категории источника в `by-source`, главная за весь период (6650 платежей) — 200, импорт CSV (новый источник и платёж создаются, повторная загрузка дублей не создаёт). Тестовые данные удалены, исходные значения платежа 6536 и источника 925 восстановлены, identity-сиды таблиц возвращены.
+
+Отложено: транзакции, N+1 дерева категорий, `NOLOCK` — задача 0016.

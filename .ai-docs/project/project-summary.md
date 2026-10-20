@@ -37,8 +37,8 @@
 удалена задачей 0010.
 
 **Доступ к данным:** без ORM, чистый Dapper поверх Microsoft.Data.SqlClient. Все запросы — raw SQL
-внутри репозиториев. `RepositoryBase` даёт только хелперы
-`Execute/Query/FirstOrDefault`. Dommel/FluentMap в коде нет, раньше
+внутри репозиториев. `RepositoryBase` даёт только async-хелперы
+`Execute/ExecuteScalar/Query/FirstOrDefault` (с задачи 0015 синхронных вызовов Dapper нет). Dommel/FluentMap в коде нет, раньше
 документация упоминала их по ошибке.
 
 **БД:** MS SQL Server, дев-строка подключения в
@@ -146,14 +146,15 @@ lookup-сущности, создаваемой автоматически пр�
 - **AccountsApi** — полный CRUD: `GET`, `POST`, `PUT {id}`, `DELETE {id}`.
 - **CategoriesApi** — дерево категорий и т.п.
 
-**Грабля, на которую уже наступали:** в `PaymentRepository` информация о
-платеже собирается двумя раздельно написанными SQL-блоками:
-`_selectPaymentInfo` (общий, используется в `Get/GetByDateRange/
-GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
-`GetListPaged`. Это два разных места, которые надо синхронно обновлять —
-при первой доработке колонку `Account` забыли добавить именно в
-`GetListPaged`, из-за чего страница "Операции" не показывала счёт, хотя
-в БД он был. **При добавлении новых полей к Payment — искать оба места.**
+**Грабля, на которую уже наступали:** раньше в `PaymentRepository` было два
+раздельно написанных SELECT'а платежей (`_selectPaymentInfo` и inline
+`dataSql` в `GetListPaged`), и они расходились (колонку `Account` забыли в
+`GetListPaged`, алиас `ParentCategoryId` был неверным в другом). С задачи 0015
+SELECT один — `PaymentRepository.SelectPayment`, его алиасы обязаны совпадать
+со свойствами `PaymentDto` (проверяет `PaymentRepositoryTests`). **При
+добавлении нового поля к Payment** — колонка в `SelectPayment`, свойство в
+`PaymentDto` (Infrastructure) + `MapToPayment`, а также Website-DTO,
+`MainStatisticPayment` и оба пути маппинга в `PaymentsApiController`.
 
 ## Frontend (`FinCtrl.Frontend/FinCtrl.Frontend`, Vue 3 + Vite)
 
@@ -210,8 +211,7 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
   (`src/main/FinCtrl.Application/Tags`), `TagsApiController` (полный CRUD,
   по образцу `AccountsApiController`).
 - `Payment.Tags` (домен) и `MainStatisticPayment.Tags` заполняются не через
-  SQL join в `_selectPaymentInfo`/`dataSql` (это два хрупких места, см.
-  выше), а отдельным батч-запросом `PaymentRepository.GetTagsForPayments` +
+  SQL join в `SelectPayment`, а отдельным батч-запросом `PaymentRepository.GetTagsForPayments` +
   `AttachTags`, вызываемым после основной выборки в `GetByDateRange` (кормит
   главную страницу через дерево статистики) и `GetListPaged` (кормит
   "Операции"). Фильтр по тегам — SQL `EXISTS`-подзапрос в `GetListPaged`
@@ -268,7 +268,7 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 
 - Раньше `GroupingType.Quartal` (= 3) не обрабатывался на backend → `NotImplementedException` и 500. Теперь `MainStatisticService` группирует по началу квартала (1-е число месяцев 1/4/7/10), конец периода — исключающая граница `+3 месяца` (как у месяца/года); `PaymentsApiController.ToPeriodKey` даёт ключ `Q<N><yyyy>` (например `Q42025`).
 - Тесты: `FinCtrl/tests/FinCtrl.Application.Tests/Statistic/MainStatisticServiceTests.cs`, `periodHeader.spec.js`.
-- **Грабля (не исправлена, вне объёма 0005):** `PaymentRepository.GetTagsForPayments` передаёт все id платежей одним `IN @Ids` — при периоде больше ~2100 платежей SQL Server отвечает «too many parameters», и `GET api/PaymentsApi` падает с 500 при любой группировке (на dev-базе — период с 01.01.2025).
+- **Грабля (исправлена задачей 0015 — id грузятся пачками по 2000):** `PaymentRepository.GetTagsForPayments` передаёт все id платежей одним `IN @Ids` — при периоде больше ~2100 платежей SQL Server отвечает «too many parameters», и `GET api/PaymentsApi` падает с 500 при любой группировке (на dev-базе — период с 01.01.2025).
 
 ## Одиночное сохранение источника платежа (задача 0006, 2026-10-20)
 
@@ -326,3 +326,12 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - Импорт: `XlsxFileFormat`, `CsvFileFormat`, `FileFormatFactory` (теперь `internal`) — в `Infrastructure/PaymentsImport/`, пакет EPPlus — в Infrastructure. В Application — `IFileFormat` и новый `IFileFormatFactory` (`PaymentsImportService` зависит от интерфейса, регистрация — в `AddInfrastructure()`).
 - Новый тестовый проект `FinCtrl/tests/FinCtrl.Infrastructure.Tests` (тесты парсеров и фабрики форматов, `InternalsVisibleTo` в Infrastructure); тесты `PaymentsImportService` с моками — `FinCtrl/tests/FinCtrl.Application.Tests/PaymentsImport/`.
 - **Грабля (не исправлена):** `CsvFileFormat` парсит сумму через `decimal.Parse` в текущей культуре — на машине с ru-RU сумма с точкой (`-55.5`) падает с `FormatException` (500), нужна запятая.
+
+## Async-репозитории и единые SELECT'ы (задача 0015, 2026-10-20)
+
+- `RepositoryBase` и все репозитории используют только async Dapper (`ExecuteAsync`, `ExecuteScalarAsync`, `QueryAsync`, `QueryFirstOrDefaultAsync`); хелперы базы — `Execute`, `ExecuteScalar<T>`, `Query<T>`, `FirstOrDefault<T>`.
+- Id после вставки во всех репозиториях — `OUTPUT INSERTED.<Id>` + `ExecuteScalarAsync<int>` (убраны `@generated_keys` и отдельный `SELECT SCOPE_IDENTITY()` у платежей).
+- Один `const`-SELECT на репозиторий; у платежей — `PaymentRepository.SelectPayment` для `Get/GetByDateRange/GetBySource/FindDuplicate/GetListPaged`. Исправлен алиас: `PaymentSourceCategory_ParentCategoryId` (у категории источника платежа теперь заполнен `parentCategoryId`). Тест `FinCtrl/tests/FinCtrl.Infrastructure.Tests/Payments/PaymentRepositoryTests.cs` сверяет алиасы SELECT'а со свойствами `PaymentDto`.
+- Маппинг без `dynamic`: `QueryAsync<Account>`/`<Tag>`/`<Category>` (у категорий `NULL`-цвет заменяется на `Category.DefaultColor`), теги платежей — через `PaymentTagRow`.
+- `GetTagsForPayments` грузит теги пачками по 2000 id — нет 500 на периодах с > 2100 платежами.
+- Без изменений (задача 0016): `WITH (NOLOCK)` в SELECT'е платежей, рекурсивная загрузка дерева категорий, отсутствие транзакций.
