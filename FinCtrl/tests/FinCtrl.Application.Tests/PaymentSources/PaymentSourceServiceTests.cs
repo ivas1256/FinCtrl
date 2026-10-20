@@ -25,6 +25,59 @@ public class PaymentSourceServiceTests
     }
 
     [Fact]
+    public async Task GetAll_ReturnsCategoriesLoadedByRepositoryWithoutExtraQueries()
+    {
+        var food = new Category(7) { CategoryName = "Еда", Color = "#00ff00" };
+        var shop = new PaymentSource(1, "Магазин", null, null, Now, null) { PaymentSourceCategory = food };
+        var cafe = new PaymentSource(2, "Кафе", null, null, Now, null);
+        _repository.GetAll().Returns(new List<PaymentSource> { shop, cafe });
+
+        var result = await _service.GetAll();
+
+        Assert.Equal(new[] { 2, 1 }, result.Select(x => x.PaymentSourceId));
+        Assert.Null(result[0].PaymentSourceCategory);
+        Assert.Same(food, result[1].PaymentSourceCategory);
+        await _categoryService.DidNotReceive().GetById(Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task GetById_ReturnsCategoryLoadedByRepositoryWithoutExtraQueries()
+    {
+        var food = new Category(7) { CategoryName = "Еда" };
+        var shop = new PaymentSource(1, "Магазин", null, null, Now, null) { PaymentSourceCategory = food };
+        _repository.GetById(1).Returns(shop);
+
+        var result = await _service.GetById(1);
+
+        Assert.NotNull(result);
+        Assert.Same(food, result.PaymentSourceCategory);
+        Assert.Equal("Еда", result.PaymentSourceCategory!.CategoryName);
+        await _categoryService.DidNotReceive().GetById(Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task GetByName_ReturnsCategoryLoadedByRepositoryWithoutExtraQueries()
+    {
+        var food = new Category(7) { CategoryName = "Еда" };
+        var shop = new PaymentSource(1, "Магазин", null, null, Now, null) { PaymentSourceCategory = food };
+        _repository.GetByName("Магазин").Returns(shop);
+
+        var result = await _service.GetByName("Магазин");
+
+        Assert.NotNull(result);
+        Assert.Same(food, result.PaymentSourceCategory);
+        await _categoryService.DidNotReceive().GetById(Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task GetById_UnknownSource_ReturnsNull()
+    {
+        _repository.GetById(1).Returns((PaymentSource?)null);
+
+        Assert.Null(await _service.GetById(1));
+    }
+
+    [Fact]
     public async Task Edit_WithCategory_UpdatesSourceWithLoadedCategory()
     {
         var food = new Category(7) { CategoryName = "Еда" };
