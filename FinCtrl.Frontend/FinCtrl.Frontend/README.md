@@ -1,38 +1,24 @@
 # FinCtrl.Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+Frontend приложения FinCtrl — Vue 3 (`<script setup>`) + Vite, Bootstrap 5, axios, Chart.js.
 
-## Recommended IDE Setup
+Общий контекст проекта, архитектура и регламент работы — в [`CLAUDE.md`](../../CLAUDE.md) в корне репозитория.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+## Команды
 
 ```sh
-npm install
+npm install      # установить зависимости
+npm run dev      # dev-сервер Vite на http://localhost:5173
+npm run build    # production-сборка в dist/
+npm run test     # юнит-тесты Vitest (jsdom), файлы *.spec.js рядом с кодом
 ```
 
-### Compile and Hot-Reload for Development
+Адрес backend API задаётся в `config.js` (`APP_CONFIG.apiBaseUrl`, по умолчанию `http://localhost:5000`).
 
-```sh
-npm run dev
-```
+## Структура
 
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
+- `index.js` — роуты приложения;
+- `src/App.vue` — каркас и боковое меню;
+- `src/pages/<фича>/` — страницы;
+- `src/components/` — общие компоненты;
+- `src/utils/` — чистые функции (с тестами `*.spec.js`).
