@@ -75,6 +75,14 @@ namespace FinCtrl.Application.PaymentSources
             await _repository.Update(paymentSource);
         }
 
+        public async Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description)
+        {
+            var category = categoryId.HasValue ? await _categoryService.GetById(categoryId.Value) : null;
+            var toUpdate = PaymentSource.CreateFromExisting(paymentSourceId, paymentSourceName, category, description);
+
+            await Update(toUpdate);
+        }
+
         public async Task<bool> Exists(string paymentSourceName)
         {
             return await _repository.Exists(paymentSourceName);

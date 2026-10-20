@@ -15,6 +15,12 @@ namespace FinCtrl.Application.PaymentSources
 
         Task<int> Create(PaymentSource paymentSource);
         Task Update(params PaymentSource[] paymentSources);
+
+        /// <summary>
+        /// Правит источник платежа: имя, категорию и описание.
+        /// </summary>
+        /// <param name="categoryId">Категория источника; <c>null</c> — снять категорию.</param>
+        Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description);
         Task Delete(params PaymentSource[] paymentSources);
 
         Task<bool> Exists(string paymentSourceName);
