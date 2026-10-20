@@ -1,6 +1,6 @@
 # План: [0011] Удалить legacy MVC-фронтенд, оставить только REST API
 
-> Статус: `в работе` → PR. План сверен с кодом 2026-10-20.
+> Статус: `на ревью` (PR https://github.com/ivas1256/FinCtrl/pull/14). План сверен с кодом 2026-10-20.
 
 ## Затрагиваемые части
 - `FinCtrl.Website/Controllers/*Controller.cs` (не Api)
