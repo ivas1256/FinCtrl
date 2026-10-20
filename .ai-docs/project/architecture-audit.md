@@ -130,7 +130,7 @@
 - **С:** `"on"`-строки вместо `bool` (`PaymentEditDto.ExcludeFromStatsStr`, `CategoryDto`). Нет DataAnnotations. `[FromBody]`/`[FromRoute]` расставлены непоследовательно → **0017** (валидация), **0018** (контракт DTO).
 - **Н:** DTO лежат в технической папке `RequestDto/` и в файлах с несколькими типами (`DashboardSummaryDto.cs`). `Ok()` используется вместо `NoContent()`. В `PaymentsApiController.cs:158-159` магические годы `1753`/`9999` → **0018**.
 - **С:** в Website не включены `Nullable`/`ImplicitUsings`, что даёт CS8632. TFM: Website net9, Domain/Application/Infrastructure net7, Common net6. Используется legacy `System.Data.SqlClient` → **0013**.
-- **Н:** в git лежит `appsettings.Production.json` со строкой подключения к prod-базе (секретов нет, Windows-auth) — нужно решение пользователя. CORS-origins захардкожены → **0012**.
+- **Н:** в git лежит `appsettings.Production.json` со строкой подключения к prod-базе (секретов нет, Windows-auth) — по решению пользователя остаётся в git. CORS-origins захардкожены → **0012**.
 
 ### 2.6. Сквозное
 - **В:** нет тестов. Нет `FinCtrl/tests/` и `InternalsVisibleTo`, а все сервисы `internal`. Логика зависит от `DateTime.Now` → **0003**.
