@@ -1,4 +1,3 @@
-﻿using Dapper;
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
@@ -32,9 +31,7 @@ namespace FinCtrl.Infrastructure.PaymentSources
 
         public async Task<List<PaymentSource>> GetAll()
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync<PaymentSourceRow>(SelectPaymentSource))
+            return (await Query<PaymentSourceRow>(SelectPaymentSource))
                 .Select(x => x.MapToPaymentSource())
                 .ToList();
         }
@@ -43,9 +40,7 @@ namespace FinCtrl.Infrastructure.PaymentSources
         {
             var sql = SelectPaymentSource + " WHERE ps.PaymentSourceId = @paymentSourceId;";
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync<PaymentSourceRow>(sql, new { paymentSourceId }))
+            return (await Query<PaymentSourceRow>(sql, new { paymentSourceId }))
                 .Select(x => x.MapToPaymentSource())
                 .SingleOrDefault();
         }
@@ -54,9 +49,7 @@ namespace FinCtrl.Infrastructure.PaymentSources
         {
             var sql = SelectPaymentSource + " WHERE ps.PaymentSourceName = @paymentSourceName;";
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync<PaymentSourceRow>(sql, new { paymentSourceName }))
+            return (await Query<PaymentSourceRow>(sql, new { paymentSourceName }))
                 .Select(x => x.MapToPaymentSource())
                 .FirstOrDefault();
         }
@@ -109,10 +102,8 @@ namespace FinCtrl.Infrastructure.PaymentSources
                 Take = pageSize
             };
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-
             var countSql = $"SELECT COUNT(*) FROM PaymentSources ps {where}";
-            var totalCount = await conn.ExecuteScalarAsync<int>(countSql, queryParams);
+            var totalCount = await ExecuteScalar<int>(countSql, queryParams);
 
             var dataSql = new StringBuilder(SelectPaymentSource);
             dataSql.Append(where);
@@ -120,7 +111,7 @@ namespace FinCtrl.Infrastructure.PaymentSources
             if (pageSize.HasValue)
                 dataSql.Append(" OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY");
 
-            var items = (await conn.QueryAsync<PaymentSourceRow>(dataSql.ToString(), queryParams))
+            var items = (await Query<PaymentSourceRow>(dataSql.ToString(), queryParams))
                 .Select(x => x.MapToPaymentSource())
                 .ToList();
 

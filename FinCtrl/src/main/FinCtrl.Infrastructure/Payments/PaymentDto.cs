@@ -63,10 +63,7 @@ namespace FinCtrl.Infrastructure.Payments
                 ExcludeFromStats = ExcludeFromStats,
             };
 
-            if(payment.PaymentType == PaymentTypeEnum.Spending && payment.PaymentSum > 0)
-            {
-                payment.PaymentSum = payment.PaymentSum * -1;
-            }
+            payment.NormalizeSumSign();
 
             if (PaymentSourceId.HasValue)
             {

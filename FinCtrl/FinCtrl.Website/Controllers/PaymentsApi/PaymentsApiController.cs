@@ -115,8 +115,9 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
             return Ok(await _paymentService.GetBySource(PaymentSourceId));
         }
 
+        /// <summary>Импорт банковской выгрузки (xlsx/csv) одной транзакцией; отмена запроса откатывает импорт.</summary>
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadFile(IFormFile file)
+        public async Task<IActionResult> UploadFile(IFormFile file, CancellationToken cancellationToken)
         {
             if (file == null || file.Length == 0)
                 return BadRequest("Файл не выбран");
@@ -124,7 +125,7 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
             try
             {
                 using var stream = file.OpenReadStream();
-                await _paymentsImportService.Upload(file.FileName, stream);
+                await _paymentsImportService.Upload(file.FileName, stream, cancellationToken);
             }
             catch (NotImplementedException ex)
             {

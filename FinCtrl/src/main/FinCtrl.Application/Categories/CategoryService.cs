@@ -45,9 +45,25 @@ namespace FinCtrl.Application.Categories
             await _categoryRepository.Update(categories);
         }
 
+        // Дерево собирается в памяти из одного SELECT'а (раньше — запрос на каждый узел).
+        // Категории с несуществующим родителем (и циклы) недостижимы от корней и в дерево не попадают.
         public async Task<List<Category>> GetCategoriesTree()
         {
-            return await _categoryRepository.GetCategoriesTree();
+            var categories = (await _categoryRepository.GetAll())
+                .OrderBy(c => c.OrderIndex)
+                .ThenBy(c => c.CategoryId)
+                .ToList();
+
+            var childrenByParentId = categories
+                .Where(c => c.ParentCategoryId.HasValue)
+                .ToLookup(c => c.ParentCategoryId!.Value);
+
+            foreach (var category in categories)
+            {
+                category.Children = childrenByParentId[category.CategoryId].ToList();
+            }
+
+            return categories.Where(c => c.ParentCategoryId is null).ToList();
         }
 
         public List<Category> GetAllChildCategories(int parentCategoryId, List<Category> categoriesTree)

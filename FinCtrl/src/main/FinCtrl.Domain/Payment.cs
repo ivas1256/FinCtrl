@@ -64,6 +64,18 @@ namespace FinCtrl.Domain
             LastUpdatedAt = now;
         }
 
+        /// <summary>
+        /// Приводит знак суммы к правилу «расход — отрицательная сумма»: у расхода (<see cref="PaymentTypeEnum.Spending"/>)
+        /// с положительной суммой знак меняется. Нужна при чтении: в БД есть расходы, сохранённые с положительной суммой.
+        /// </summary>
+        public void NormalizeSumSign()
+        {
+            if (PaymentType == PaymentTypeEnum.Spending && PaymentSum > 0)
+            {
+                PaymentSum = -PaymentSum;
+            }
+        }
+
         public static Payment FromExcelPayment(ExcelPayment payment, PaymentSource paymentSource, Account? account, DateTime createdAt) => new Payment
         {
             PaymentType = payment.Sum <= 0 ? PaymentTypeEnum.Spending : PaymentTypeEnum.Income,

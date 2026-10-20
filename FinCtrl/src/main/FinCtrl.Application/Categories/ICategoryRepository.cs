@@ -8,7 +8,7 @@ public interface ICategoryRepository
     /// <summary>Категория по id или <c>null</c>, если не найдена.</summary>
     Task<Category?> GetById(int id);
 
-    /// <summary>Все категории плоским списком.</summary>
+    /// <summary>Все категории плоским списком, без заполненных <c>Children</c>.</summary>
     Task<IEnumerable<Category>> GetAll();
 
     /// <summary>Создаёт категорию.</summary>
@@ -20,7 +20,4 @@ public interface ICategoryRepository
 
     /// <summary>Удаляет категории.</summary>
     Task Delete(params Category[] categories);
-
-    /// <summary>Корневые категории с заполненными дочерними (дерево).</summary>
-    Task<List<Category>> GetCategoriesTree();
 }

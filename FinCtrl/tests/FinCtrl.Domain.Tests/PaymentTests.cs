@@ -42,4 +42,37 @@ public class PaymentTests
 
         Assert.Equal(now, payment.LastUpdatedAt);
     }
+
+    [Fact]
+    public void NormalizeSumSign_SpendingWithPositiveSum_MakesSumNegative()
+    {
+        var payment = new Payment { PaymentType = PaymentTypeEnum.Spending, PaymentSum = 150m };
+
+        payment.NormalizeSumSign();
+
+        Assert.Equal(-150m, payment.PaymentSum);
+    }
+
+    [Fact]
+    public void NormalizeSumSign_SpendingWithNegativeSum_KeepsSum()
+    {
+        var payment = new Payment { PaymentType = PaymentTypeEnum.Spending, PaymentSum = -150m };
+
+        payment.NormalizeSumSign();
+
+        Assert.Equal(-150m, payment.PaymentSum);
+    }
+
+    [Theory]
+    [InlineData(PaymentTypeEnum.Income, 150)]
+    [InlineData(PaymentTypeEnum.Income, -150)]
+    [InlineData(PaymentTypeEnum.CardTransfer, 150)]
+    public void NormalizeSumSign_NotSpending_KeepsSum(PaymentTypeEnum type, int sum)
+    {
+        var payment = new Payment { PaymentType = type, PaymentSum = sum };
+
+        payment.NormalizeSumSign();
+
+        Assert.Equal(sum, payment.PaymentSum);
+    }
 }

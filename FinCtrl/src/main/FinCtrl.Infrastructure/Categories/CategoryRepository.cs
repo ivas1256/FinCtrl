@@ -26,30 +26,6 @@ namespace FinCtrl.Infrastructure.Categories
             return await QueryCategories(_select);
         }
 
-        public async Task<List<Category>> GetCategoriesTree()
-        {
-            var rootCategories = await QueryCategories(_select + " WHERE c.ParentCategoryCategoryId IS NULL ORDER BY c.OrderIndex");
-            foreach (var category in rootCategories)
-            {
-                category.Children = await GetChildCategories(category.CategoryId);
-            }
-
-            return rootCategories;
-        }
-
-        private async Task<List<Category>> GetChildCategories(int categoryId)
-        {
-            var children = await QueryCategories(
-                _select + " WHERE c.ParentCategoryCategoryId = @ParentId ORDER BY c.OrderIndex",
-                new { ParentId = categoryId });
-            foreach (var childCategory in children)
-            {
-                childCategory.Children = await GetChildCategories(childCategory.CategoryId);
-            }
-
-            return children;
-        }
-
         public async Task<Category?> GetById(int id)
         {
             return (await QueryCategories(_select + " WHERE c.CategoryId = @id", new { id })).FirstOrDefault();
