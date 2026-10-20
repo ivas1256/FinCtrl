@@ -90,4 +90,31 @@ describe('computeMaxValue', () => {
     expect(computeMaxValue([])).toBe(0)
     expect(computeMaxValue(null)).toBe(0)
   })
+
+  it('узлы без periods и ячейки без totalSum не ломают расчёт', () => {
+    const tree = [
+      { children: [{ periods: { a: {} } }] },
+      { periods: { a: { totalSum: null }, b: { totalSum: -12.5 } }, children: [] }
+    ]
+
+    expect(computeMaxValue(tree)).toBe(12.5)
+  })
+})
+
+describe('граничные случаи шкалы', () => {
+  it('heatAlpha: пустое значение — 0, расход больше максимума не ограничивается', () => {
+    expect(heatAlpha(undefined, 100)).toBe(0)
+    expect(heatAlpha(null, 100)).toBe(0)
+    expect(heatAlpha(-200, 100)).toBeCloseTo(0.68)
+  })
+
+  it('heatClass: при нулевом максимуме расход — hm-hi (деление на 0 даёт Infinity)', () => {
+    // На практике maxV = 0 только когда все ячейки нулевые, и до расхода дело не доходит.
+    expect(heatClass(-1, 0)).toBe('hm-hi')
+    expect(heatClass(0, 0)).toBe('hm-zero')
+  })
+
+  it('heatStyle округляет прозрачность до сотых', () => {
+    expect(heatStyle(-1, 3)).toEqual({ background: 'rgba(200, 76, 78, 0.15)' })
+  })
 })
