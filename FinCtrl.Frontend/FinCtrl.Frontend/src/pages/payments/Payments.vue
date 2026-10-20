@@ -1,9 +1,9 @@
 <template>
     <div class="payments-container">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">Операции</h5>
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2">
                     <input
                         type="file"
                         ref="fileInput"
@@ -567,6 +567,7 @@ const onFileSelected = async (event) => {
 
 const saveSinglePayment = async (payment) => {
     saving.value = true
+    clearAlerts()
     try {
         let categoryIdToSave = payment.categoryId
         if (payment.categoryId === payment.paymentSource?.categoryId) {
@@ -591,6 +592,7 @@ const saveSinglePayment = async (payment) => {
 
 const saveAllChanges = async () => {
     saving.value = true
+    clearAlerts()
     try {
         const changed = payments.value.filter(hasChangesForPayment)
         await Promise.all(changed.map(payment => {

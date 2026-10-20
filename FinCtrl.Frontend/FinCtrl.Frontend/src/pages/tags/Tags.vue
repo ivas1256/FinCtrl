@@ -139,6 +139,7 @@ const createTag = async () => {
         return
     }
     saving.value = true
+    clearAlerts()
     try {
         await axios.post(APP_CONFIG.apiBaseUrl + '/api/TagsApi', {
             tagName: newTag.value.tagName.trim()
@@ -155,6 +156,7 @@ const createTag = async () => {
 
 const saveTag = async (tag) => {
     saving.value = true
+    clearAlerts()
     try {
         await axios.put(`${APP_CONFIG.apiBaseUrl}/api/TagsApi/${tag.tagId}`, {
             tagName: tag.tagName
@@ -171,6 +173,7 @@ const saveTag = async (tag) => {
 const deleteTag = async (tag) => {
     if (!confirm(`Удалить тег "${tag.tagName}"?`)) return
     saving.value = true
+    clearAlerts()
     try {
         await axios.delete(`${APP_CONFIG.apiBaseUrl}/api/TagsApi/${tag.tagId}`)
         await loadTags()

@@ -154,6 +154,7 @@ const createAccount = async () => {
         return
     }
     saving.value = true
+    clearAlerts()
     try {
         await axios.post(APP_CONFIG.apiBaseUrl + '/api/AccountsApi', {
             excelAccountName: newAccount.value.excelAccountName.trim(),
@@ -171,6 +172,7 @@ const createAccount = async () => {
 
 const saveAccount = async (account) => {
     saving.value = true
+    clearAlerts()
     try {
         await axios.put(`${APP_CONFIG.apiBaseUrl}/api/AccountsApi/${account.accountId}`, {
             excelAccountName: account.excelAccountName,
@@ -189,6 +191,7 @@ const saveAccount = async (account) => {
 const deleteAccount = async (account) => {
     if (!confirm(`Удалить счет "${account.displayName}"?`)) return
     saving.value = true
+    clearAlerts()
     try {
         await axios.delete(`${APP_CONFIG.apiBaseUrl}/api/AccountsApi/${account.accountId}`)
         await loadAccounts()

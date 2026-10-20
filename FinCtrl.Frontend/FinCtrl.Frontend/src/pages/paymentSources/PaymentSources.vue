@@ -383,6 +383,7 @@ const showPaymentsForSource = async (source) => {
 
 const saveSingleItem = async (source) => {
     saving.value = true
+    clearAlerts()
     try {
         await axios.put(
             `${APP_CONFIG.apiBaseUrl}/api/PaymentSourcesApi/${source.paymentSourceId}`,
@@ -404,6 +405,7 @@ const saveSingleItem = async (source) => {
 
 const saveAllChanges = async () => {
     saving.value = true
+    clearAlerts()
     try {
         const changedSources = paymentSources.value.filter(s => hasChangesForSource(s))
         await Promise.all(changedSources.map(source =>
