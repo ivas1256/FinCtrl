@@ -28,7 +28,7 @@
 - [x] Ручная проверка на dev-базе
 - [x] Сборка + тесты + ручная проверка (Definition of Done)
 - [x] Документация: `CLAUDE.md` (грабли про два SELECT'а), `project-summary.md`, `backend-guide.md` (техдолг)
-- [ ] PR
+- [x] PR — https://github.com/ivas1256/FinCtrl/pull/18
 
 ## Тесты
 | Что тестируем | Сценарии |
