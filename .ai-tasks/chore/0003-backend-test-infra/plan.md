@@ -1,6 +1,6 @@
 # План: [0003] Тестовая инфраструктура backend
 
-> Статус: `в работе`.
+> Статус: `на ревью` (PR #6).
 
 ## Затрагиваемые части
 - `FinCtrl/tests/FinCtrl.Application.Tests/*`, `FinCtrl/tests/FinCtrl.Domain.Tests/*`
@@ -18,7 +18,7 @@
 - [x] Первые тесты
 - [x] Обновить CLAUDE.md (раздел «Команды»), project-summary.md
 - [x] Сборка + тесты (Definition of Done)
-- [ ] PR
+- [x] PR — https://github.com/ivas1256/FinCtrl/pull/6
 
 ## Тесты
 - `FinCtrl.Domain.Tests/PaymentTests`: `CalculatedCategory` (своя категория приоритетнее категории источника, fallback на источник, null), `Updated(now)`.
@@ -41,4 +41,4 @@
 - `DateTime.Today` остаётся в Website: `DashboardApiController`, `PaymentsApiController`, `MainPageController` — уйдёт вместе с логикой периодов в 0018 (и 0011 для MVC).
 
 ## Итог
-Заполняется по завершении.
+Сделано всё из постановки; PR открыт. Тесты остальных сервисов — задача 0023 и профильные задачи.
