@@ -67,6 +67,59 @@ public class XlsxFileFormatTests
         Assert.Contains(expectedText, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void GetFileNodes_RowsAfterEmptyDate_Ignored()
+    {
+        var format = new XlsxFileFormat();
+        using var package = new ExcelPackage();
+        var ws = package.Workbook.Worksheets.Add("Выписка");
+        ws.Cells[2, 1].Value = new DateTime(2025, 10, 1);
+        ws.Cells[2, 8].Value = -150m;
+        ws.Cells[4, 1].Value = new DateTime(2025, 10, 3);
+        ws.Cells[4, 8].Value = -300m;
+        using var file = new MemoryStream(package.GetAsByteArray());
+
+        var row = Assert.Single(format.GetFileNodes(file));
+
+        Assert.Equal(-150m, row.Sum);
+    }
+
+    [Fact]
+    public void GetFileNodes_EmptyTextCells_MappedToNull()
+    {
+        var format = new XlsxFileFormat();
+        using var package = new ExcelPackage();
+        var ws = package.Workbook.Worksheets.Add("Выписка");
+        ws.Cells[2, 1].Value = new DateTime(2025, 10, 1, 12, 30, 0);
+        ws.Cells[2, 8].Value = -150m;
+        using var file = new MemoryStream(package.GetAsByteArray());
+
+        var row = Assert.Single(format.GetFileNodes(file));
+
+        Assert.Equal(new DateTime(2025, 10, 1, 12, 30, 0), row.Date);
+        Assert.Null(row.AccountName);
+        Assert.Null(row.SourceName);
+        Assert.Null(row.Type);
+    }
+
+    [Fact]
+    public void GetFileNodes_SeveralSheets_ReadsOnlyFirst()
+    {
+        var format = new XlsxFileFormat();
+        using var package = new ExcelPackage();
+        var first = package.Workbook.Worksheets.Add("Выписка");
+        first.Cells[2, 1].Value = new DateTime(2025, 10, 1);
+        first.Cells[2, 8].Value = -150m;
+        var second = package.Workbook.Worksheets.Add("Другой");
+        second.Cells[2, 1].Value = new DateTime(2025, 10, 2);
+        second.Cells[2, 8].Value = -300m;
+        using var file = new MemoryStream(package.GetAsByteArray());
+
+        var row = Assert.Single(format.GetFileNodes(file));
+
+        Assert.Equal(-150m, row.Sum);
+    }
+
     // Колонки выписки: 1 — дата, 3 — счёт, 4 — номер документа, 7 — источник, 8 — сумма, 10 — статус, 13 — тип
     private static MemoryStream CreateFile(
         params (DateTime Date, string Account, string Invoice, string Source, decimal Sum, string Status, string Type)[] rows)

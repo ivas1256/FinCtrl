@@ -81,6 +81,46 @@ public class CsvFileFormatTests
         Assert.Contains(expectedText, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void GetFileNodes_AnyRow_TypeEmptyAndAccountNotFilled()
+    {
+        // В CSV-выписке нет колонок типа операции и счёта: тип определяется по знаку суммы, счёт не заполняется.
+        var csv = string.Join("\n", Header, "2025-10-01;x;INV-1;Списание;x;x;-150;x;x;x;x;Магазин");
+
+        var row = Assert.Single(new CsvFileFormat().GetFileNodes(ToStream(csv)));
+
+        Assert.Equal(string.Empty, row.Type);
+        Assert.Null(row.AccountName);
+        Assert.Equal("Списание", row.Status);
+    }
+
+    [Fact]
+    public void GetFileNodes_BlankLinesAndExtraColumns_BlankLinesSkippedExtraColumnsIgnored()
+    {
+        var csv = string.Join("\r\n",
+            Header,
+            "",
+            "2025-10-01;x;INV-1;OK;x;x;-150;x;x;x;x;Магазин;лишняя;колонка",
+            "",
+            "2025-10-02;x;INV-2;OK;x;x;300;x;x;x;x;Кафе",
+            "");
+
+        var rows = new CsvFileFormat().GetFileNodes(ToStream(csv));
+
+        Assert.Equal(["Магазин", "Кафе"], rows.Select(x => x.SourceName));
+    }
+
+    [Fact]
+    public void GetFileNodes_Utf8WithBom_ParsesFirstRowAsHeader()
+    {
+        var csv = string.Join("\n", Header, "2025-10-01;x;INV-1;OK;x;x;-150;x;x;x;x;Магазин");
+        var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray();
+
+        var row = Assert.Single(new CsvFileFormat().GetFileNodes(new MemoryStream(bytes)));
+
+        Assert.Equal("Магазин", row.SourceName);
+    }
+
     private static MemoryStream ToStream(string content) => new(Encoding.UTF8.GetBytes(content));
 
     private static T WithCulture<T>(string cultureName, Func<T> action)
