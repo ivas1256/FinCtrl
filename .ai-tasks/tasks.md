@@ -27,4 +27,4 @@
 | 0020 | `refactor/0020-frontend-single-bootstrap` | `.ai-tasks/refactor/0020-frontend-single-bootstrap/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/23 (стек поверх #22) |
 | 0021 | `refactor/0021-frontend-shared-utils` | `.ai-tasks/refactor/0021-frontend-shared-utils/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/24 (стек поверх #23) |
 | 0022 | `refactor/0022-frontend-styleguide` | `.ai-tasks/refactor/0022-frontend-styleguide/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/25 (стек поверх #24) |
-| 0023 | `chore/0023-unit-tests-current-features` | `.ai-tasks/chore/0023-unit-tests-current-features/` | запланирована | — |
+| 0023 | `chore/0023-unit-tests-current-features` | `.ai-tasks/chore/0023-unit-tests-current-features/` | в работе | — |
