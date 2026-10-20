@@ -56,7 +56,7 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 - `src/main/FinCtrl.Domain` — сущности (POCO; `Payment` пока `record` — legacy, см. аудит).
 - `src/main/FinCtrl.Application` — сервисы (бизнес-логика) и интерфейсы репозиториев `Application/<Фича>/I<Entity>Repository.cs`, регистрация в `ServiceCollectionExtensions.AddApplication()`. На Infrastructure не ссылается.
 - `src/main/FinCtrl.Infrastructure` — реализации репозиториев на raw SQL через Dapper (Dommel/FluentMap и классов-маппингов нет) и парсинг файлов импорта (`PaymentsImport/`, EPPlus); ссылается на Application, регистрация в `AddInfrastructure()`. Website ссылается на Infrastructure только ради `AddInfrastructure()`.
-- `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (async-хелперы `Execute`/`ExecuteScalar`/`Query`/`FirstOrDefault` над Dapper), `IDbConnectionFactory`, `DateRange`.
+- `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (async-хелперы `Execute`/`ExecuteScalar`/`Query`/`FirstOrDefault` над Dapper), `IDbConnectionFactory`, `DateRange`; `src/common/FinCtrl.Common.Application` — исключения приложения (`NotFoundException`/`ValidationException`/`ConflictException` → 404/400/409 ProblemDetails через `Website/ErrorHandling/ApiExceptionHandler`).
 
 Других backend-проектов в репозитории нет (заброшенная попытка переписать бэкенд на EF Core удалена задачей 0010); тесты — в `tests/` (см. «Команды»).
 
