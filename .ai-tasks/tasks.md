@@ -8,7 +8,7 @@
 | 0001 | `chore/0001-rename-solution` | `.ai-tasks/chore/0001-rename-solution/` | выполнена | — (вошла в монорепо коммитом `5e2c1ea`, отдельного PR нет) |
 | 0002 | `chore/0002-pre-pr-hook` | `.ai-tasks/chore/0002-pre-pr-hook/` | выполнена | https://github.com/ivas1256/FinCtrl/pull/1 |
 | 0003 | `chore/0003-backend-test-infra` | `.ai-tasks/chore/0003-backend-test-infra/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/6 |
-| 0004 | `chore/0004-frontend-test-infra` | `.ai-tasks/chore/0004-frontend-test-infra/` | запланирована | — |
+| 0004 | `chore/0004-frontend-test-infra` | `.ai-tasks/chore/0004-frontend-test-infra/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/7 |
 | 0005 | `fix/0005-quarter-grouping` | `.ai-tasks/fix/0005-quarter-grouping/` | запланирована | — |
 | 0006 | `fix/0006-payment-source-single-save` | `.ai-tasks/fix/0006-payment-source-single-save/` | запланирована | — |
 | 0007 | `fix/0007-period-header-format` | `.ai-tasks/fix/0007-period-header-format/` | запланирована | — |
