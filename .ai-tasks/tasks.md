@@ -10,7 +10,7 @@
 | 0003 | `chore/0003-backend-test-infra` | `.ai-tasks/chore/0003-backend-test-infra/` | выполнена | https://github.com/ivas1256/FinCtrl/pull/6 |
 | 0004 | `chore/0004-frontend-test-infra` | `.ai-tasks/chore/0004-frontend-test-infra/` | выполнена | https://github.com/ivas1256/FinCtrl/pull/7 |
 | 0005 | `fix/0005-quarter-grouping` | `.ai-tasks/fix/0005-quarter-grouping/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/9 |
-| 0006 | `fix/0006-payment-source-single-save` | `.ai-tasks/fix/0006-payment-source-single-save/` | в работе | — |
+| 0006 | `fix/0006-payment-source-single-save` | `.ai-tasks/fix/0006-payment-source-single-save/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/10 (стек поверх #9) |
 | 0007 | `fix/0007-period-header-format` | `.ai-tasks/fix/0007-period-header-format/` | выполнена | https://github.com/ivas1256/FinCtrl/pull/8 |
 | 0008 | `fix/0008-source-payments-deleted` | `.ai-tasks/fix/0008-source-payments-deleted/` | запланирована | — |
 | 0009 | `fix/0009-payment-source-category-map` | `.ai-tasks/fix/0009-payment-source-category-map/` | запланирована | — |

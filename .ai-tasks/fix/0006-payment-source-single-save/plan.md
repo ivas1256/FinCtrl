@@ -1,6 +1,6 @@
 # План: [0006] Не работает одиночное сохранение источника
 
-> Статус: `в работе`. План сверен с кодом ветки `fix/0005-quarter-grouping` (2026-10-20).
+> Статус: `на ревью`. План сверен с кодом ветки `fix/0005-quarter-grouping` (2026-10-20).
 
 ## Сверка с текущим кодом
 - `PaymentSources.vue` (`saveSingleItem`, ~стр. 394) уже шлёт `PUT /api/PaymentSourcesApi/{id}` с `paymentSourceName`/`categoryId`/`description` в теле, без `paymentSourceId` — это и есть корректный по гайду запрос (id из роута). Проблема только на backend.
@@ -20,7 +20,7 @@
 - [x] Правка frontend (проверить запрос; при необходимости поправить)
 - [x] Ручная проверка одиночного и массового сохранения
 - [x] Сборка + тесты + ручная проверка (Definition of Done)
-- [ ] PR (отмечается после создания PR)
+- [x] PR — https://github.com/ivas1256/FinCtrl/pull/10 (база `fix/0005-quarter-grouping`)
 
 ## Тесты
 `PaymentSourceServiceTests` (xUnit + NSubstitute + `FakeTimeProvider`):
@@ -56,3 +56,4 @@ Preview `backend` + `frontend`, страница «Источники»: сме�
 - Добавлен `PUT api/PaymentSourcesApi/{paymentSourceId}`; логика правки — в `PaymentSourceService.Edit` (2 юнит-теста), старый массовый `PUT` работает через неё же.
 - Frontend не менялся — запрос уже был корректным.
 - `dotnet build`/`dotnet test` — 0 ошибок, 15/15 тестов зелёные.
+- PR: https://github.com/ivas1256/FinCtrl/pull/10 (в `fix/0005-quarter-grouping`, мёржить после #9).
