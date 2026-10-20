@@ -5,4 +5,4 @@
 
 | ID | Ветка | Папка | Статус | PR |
 |----|-------|-------|--------|----|
-| 0001 | `chore/0001-rename-solution` | `.ai-tasks/chore/0001-rename-solution/` | в работе | |
+| 0001 | `chore/0001-rename-solution` | `.ai-tasks/chore/0001-rename-solution/` | выполнена | — (вошла в монорепо коммитом `5e2c1ea`, отдельного PR нет) |
