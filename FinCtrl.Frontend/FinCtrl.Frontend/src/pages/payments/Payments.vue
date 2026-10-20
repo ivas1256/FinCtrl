@@ -331,6 +331,7 @@ import { APP_CONFIG } from '../../../config'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import Multiselect from 'vue-multiselect'
+import { Modal } from 'bootstrap'
 
 const payments = ref([])
 const categories = ref([])
@@ -634,8 +635,7 @@ const openBulkModal = () => {
     bulkSelectedCategories.value = []
     bulkTagIds.value = []
 
-    const modal = new bootstrap.Modal(document.getElementById('bulkTagModal'))
-    modal.show()
+    Modal.getOrCreateInstance(document.getElementById('bulkTagModal')).show()
 }
 
 const submitBulkAssign = async () => {
@@ -661,8 +661,7 @@ const submitBulkAssign = async () => {
             tagIds: bulkTagIds.value,
         })
 
-        const modal = bootstrap.Modal.getInstance(document.getElementById('bulkTagModal'))
-        modal.hide()
+        Modal.getOrCreateInstance(document.getElementById('bulkTagModal')).hide()
 
         alert(`Тегами помечено операций: ${response.data.affectedCount}`)
         await loadPayments()
