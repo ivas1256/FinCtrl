@@ -159,7 +159,7 @@ import {
 } from 'chart.js'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { Bar } from 'vue-chartjs'
-import { APP_CONFIG } from '../../../config'
+import { APP_CONFIG } from '../../config'
 import { formatCurrency, formatShortAmount, formatDate, formatShortDate, toInputDate } from '../../utils/format'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, ChartDataLabels)

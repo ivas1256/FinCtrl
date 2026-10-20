@@ -104,7 +104,7 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
 import { formatDate } from '../../utils/format'
-import { APP_CONFIG } from '../../../config'
+import { APP_CONFIG } from '../../config'
 
 const accounts = ref([])
 const loading = ref(false)

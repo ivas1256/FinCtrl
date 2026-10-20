@@ -254,7 +254,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
 import { formatCurrency, formatDate } from '../../utils/format'
-import { APP_CONFIG } from '../../../config'
+import { APP_CONFIG } from '../../config'
 import { Modal } from 'bootstrap'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 

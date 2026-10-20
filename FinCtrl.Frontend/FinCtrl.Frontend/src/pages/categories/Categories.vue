@@ -153,7 +153,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
 import { Modal } from 'bootstrap'
-import { APP_CONFIG } from '../../../config'
+import { APP_CONFIG } from '../../config'
 import CategoryNode from './CategoryNode.vue'
 import { DEFAULT_CATEGORY_COLOR } from '../../utils/heatmap'
 

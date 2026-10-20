@@ -206,7 +206,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
-import { APP_CONFIG } from '../../../config'
+import { APP_CONFIG } from '../../config'
 import PaymentCategoryRow from './PaymentCategoryRow.vue'
 import PaymentList from './PaymentList.vue'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'

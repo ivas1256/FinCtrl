@@ -21,7 +21,7 @@ import { ref, computed, watch } from 'vue'
 import Multiselect from 'vue-multiselect'
 import axios from 'axios'
 import { getErrorMessage } from '../utils/apiError'
-import { APP_CONFIG } from '../../config'
+import { APP_CONFIG } from '../config'
 
 const props = defineProps({
     modelValue: {
