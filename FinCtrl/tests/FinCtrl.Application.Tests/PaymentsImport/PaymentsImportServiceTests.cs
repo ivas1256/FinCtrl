@@ -222,6 +222,82 @@ public class PaymentsImportServiceTests
             record.Message);
     }
 
+    [Fact]
+    public async Task Upload_Parsed_ClosesStream()
+    {
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        var stream = new MemoryStream();
+
+        await _service.Upload("file.xlsx", stream);
+
+        Assert.False(stream.CanRead);
+    }
+
+    [Fact]
+    public async Task Upload_ParseError_ClosesStreamAndPropagatesException()
+    {
+        _fileFormat.GetFileNodes(Arg.Any<Stream>()).Throws(new ValidationException("Строка 2: некорректная сумма"));
+        var stream = new MemoryStream();
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.Upload("file.csv", stream));
+
+        Assert.False(stream.CanRead);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().BeginTransaction();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task Upload_RowWithoutAccountName_CreatesPaymentWithoutAccount(string? accountName)
+    {
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", accountName));
+
+        await _service.Upload("file.csv", new MemoryStream());
+
+        await _accountService.DidNotReceiveWithAnyArgs().GetByExcelName(default!);
+        await _accountService.DidNotReceiveWithAnyArgs().Create(default!);
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.Account == null && p.PaymentSource == _shop));
+    }
+
+    [Fact]
+    public async Task Upload_DuplicateWithoutAccountAndRowWithoutAccount_SkipsRow()
+    {
+        var existing = new Payment { PaymentId = 10, PaymentSum = -150m, PaymentDate = PaymentDate, Account = null };
+        _paymentService.FindDuplicate(-150m, PaymentDate).Returns(existing);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "", null));
+
+        await _service.Upload("file.csv", new MemoryStream());
+
+        await _paymentService.DidNotReceive().Create(Arg.Any<Payment>());
+        await _paymentService.DidNotReceiveWithAnyArgs().Update();
+        Assert.Null(existing.Account);
+    }
+
+    [Theory]
+    [InlineData(-150, PaymentTypeEnum.Spending)]
+    [InlineData(300, PaymentTypeEnum.Income)]
+    public async Task Upload_TypeNotSpendingOrIncome_TypeBySumSign(decimal sum, PaymentTypeEnum expectedType)
+    {
+        SetRows(new ExcelPayment(PaymentDate, sum, "Магазин", "INV-1", "OK", "Перевод", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentType == expectedType && p.PaymentSum == sum));
+    }
+
+    [Fact]
+    public async Task Upload_SpendingTypeWithPositiveSum_TypeFromFileAndSumAsIs()
+    {
+        // Тип из файла приоритетнее знака суммы; знак суммы при импорте не меняется — его приводит NormalizeSumSign при чтении.
+        SetRows(new ExcelPayment(PaymentDate, 150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentType == PaymentTypeEnum.Spending && p.PaymentSum == 150m));
+        await _paymentService.Received(1).FindDuplicate(150m, PaymentDate);
+    }
+
     private void SetRows(params ExcelPayment[] rows) =>
         _fileFormat.GetFileNodes(Arg.Any<Stream>()).Returns(rows.ToList());
 }
