@@ -18,15 +18,15 @@
 - Тесты: новый проект `tests/FinCtrl.Infrastructure.Tests/` (тесты форматов и фабрики), `PaymentsImportServiceTests` в Application.Tests
 
 ## Шаги
-- [ ] Перенос интерфейсов репозиториев в Application (+ XML-doc, file-scoped namespace)
-- [ ] Разворот ссылок: Application ↛ Infrastructure, Infrastructure → Application; EPPlus — в Infrastructure
-- [ ] Перенос FileFormats в Infrastructure, `IFileFormatFactory` в Application, DI
-- [ ] Тестовый проект `FinCtrl.Infrastructure.Tests` (перенос тестов форматов, тесты фабрики), тесты `PaymentsImportService`
-- [ ] Сборка, тесты
-- [ ] Импорт xlsx/csv через API вручную, смоук страниц и API (preview `backend` + `frontend`)
-- [ ] Документация (`backend-guide.md`, `project-summary.md`, `CLAUDE.md`, `architecture-audit.md`)
-- [ ] Сборка + тесты + ручная проверка (Definition of Done)
-- [ ] PR
+- [x] Перенос интерфейсов репозиториев в Application (+ XML-doc, file-scoped namespace)
+- [x] Разворот ссылок: Application ↛ Infrastructure, Infrastructure → Application; EPPlus — в Infrastructure
+- [x] Перенос FileFormats в Infrastructure, `IFileFormatFactory` в Application, DI
+- [x] Тестовый проект `FinCtrl.Infrastructure.Tests` (перенос тестов форматов, тесты фабрики), тесты `PaymentsImportService`
+- [x] Сборка, тесты
+- [x] Импорт xlsx/csv через API вручную, смоук страниц и API (preview `backend` + `frontend`)
+- [x] Документация (`backend-guide.md`, `project-summary.md`, `CLAUDE.md`, `architecture-audit.md`)
+- [x] Сборка + тесты + ручная проверка (Definition of Done)
+- [x] PR
 
 ## Тесты
 - `FinCtrl.Infrastructure.Tests/PaymentsImport/`: перенесённые `CsvFileFormatTests`, `XlsxFileFormatTests`; новые `FileFormatFactoryTests` (xlsx/csv, регистр расширения, неизвестный формат → исключение).
@@ -51,7 +51,13 @@
 - 2026-10-20: перенесённые интерфейсы репозиториев переведены на file-scoped namespace и получили XML-doc (гайд §7 — файл правится в задаче); сигнатуры не менялись.
 
 ## Вне объёма (найдено попутно)
--
+- `CsvFileFormat`: `decimal.Parse`/`DateTime.Parse` зависят от текущей культуры — на ru-RU сумма с точкой (`-55.5`) даёт `FormatException` и 500 при импорте csv (уже в аудите §2.3 «Н»; предлагается включить в 0017 или отдельной fix-задачей).
+- `GET api/PaymentsApi` без параметра группировки → `NotImplementedException: NotSelected` (500) — объём 0017 (ошибки/валидация).
+- Страницы «Операции»/«Источники» на dev-машине грузятся ~25 с (ожидание memory grant SQL Server, см. грабли 0013) — окружение, не код.
 
 ## Итог
-Заполняется по завершении.
+Сделано: интерфейсы репозиториев перенесены в Application, ссылка Application → Infrastructure удалена, Infrastructure → Application добавлена; форматы импорта (EPPlus, `TextFieldParser`) и фабрика перенесены в `Infrastructure/PaymentsImport/`, в Application — `IFileFormat`/`IFileFormatFactory`. Новый проект `FinCtrl.Infrastructure.Tests` (9 тестов), 5 тестов `PaymentsImportService`; всего 33 теста, зелёные, сборка без предупреждений.
+
+Проверено: смоук всех 7 страниц SPA и GET-API, импорт xlsx (повторная загрузка не создаёт дублей) и csv через `POST api/PaymentsApi/upload`, неизвестный формат → 400; тестовые данные удалены из dev-базы (счётчики Payments/PaymentSources/Accounts вернулись к 6654/1276/1).
+
+Осталось: ничего в рамках задачи; мёрж — после PR #16.

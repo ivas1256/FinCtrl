@@ -40,7 +40,7 @@ npm run test    # Vitest (jsdom), тесты *.spec.js рядом с кодом
 
 `.claude/settings.json` подключает хук `.claude/hooks/pre-pr-check.mjs`: на `git push` / `gh pr create` он выполняет автоматическую часть «Проверки перед PR» (сборка/тесты затронутых частей, гигиена диффа, папка задачи) и блокирует команду при провале — см. регламент, раздел 4.
 
-Backend-тесты — xUnit + NSubstitute в `FinCtrl/tests/FinCtrl.<Проект>.Tests/` (`FinCtrl.Domain.Tests`, `FinCtrl.Application.Tests`); текущее время в Domain/Application — только через `TimeProvider` (в тестах `FakeTimeProvider`). Frontend-тесты — Vitest + `@vue/test-utils` + `jsdom`, файлы `*.spec.js` рядом с тестируемым кодом. Линтера пока нет ни в backend, ни во frontend.
+Backend-тесты — xUnit + NSubstitute в `FinCtrl/tests/FinCtrl.<Проект>.Tests/` (`FinCtrl.Domain.Tests`, `FinCtrl.Application.Tests`, `FinCtrl.Infrastructure.Tests`); текущее время в Domain/Application — только через `TimeProvider` (в тестах `FakeTimeProvider`). Frontend-тесты — Vitest + `@vue/test-utils` + `jsdom`, файлы `*.spec.js` рядом с тестируемым кодом. Линтера пока нет ни в backend, ни во frontend.
 
 ### Миграции БД
 `FinCtrl/db/migrations/000N_описание.sql` — просто SQL-файлы, без раннера и без таблицы учёта применённых миграций. Не править существующие файлы — добавлять новый со следующим номером; накатывать вручную:
@@ -54,18 +54,18 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 
 - `FinCtrl.Website` — единственное исполняемое приложение (ASP.NET Core, `Startup.cs`). REST-контроллеры — `*ApiController` в `Controllers/<Name>Api/`; DTO в `RequestDto/` и рядом с контроллерами. В Website только REST API (`AddControllers` + `MapControllers`, атрибутная маршрутизация): MVC/Razor-фронтенда, `Views/` и `wwwroot/` нет (удалены задачей 0011, UI — Vue SPA), `GET /` → 404.
 - `src/main/FinCtrl.Domain` — сущности (POCO; `Payment` пока `record` — legacy, см. аудит).
-- `src/main/FinCtrl.Application` — сервисы (бизнес-логика), регистрация в `ServiceCollectionExtensions.AddApplication()`.
-- `src/main/FinCtrl.Infrastructure` — репозитории на raw SQL через Dapper (Dommel/FluentMap и классов-маппингов нет); регистрация в `AddInfrastructure()`.
+- `src/main/FinCtrl.Application` — сервисы (бизнес-логика) и интерфейсы репозиториев `Application/<Фича>/I<Entity>Repository.cs`, регистрация в `ServiceCollectionExtensions.AddApplication()`. На Infrastructure не ссылается.
+- `src/main/FinCtrl.Infrastructure` — реализации репозиториев на raw SQL через Dapper (Dommel/FluentMap и классов-маппингов нет) и парсинг файлов импорта (`PaymentsImport/`, EPPlus); ссылается на Application, регистрация в `AddInfrastructure()`. Website ссылается на Infrastructure только ради `AddInfrastructure()`.
 - `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (хелперы `Execute`/`Query`/`FirstOrDefault` над Dapper), `IDbConnectionFactory`, `DateRange`.
 
 Других backend-проектов в репозитории нет (заброшенная попытка переписать бэкенд на EF Core удалена задачей 0010); тесты — в `tests/` (см. «Команды»).
 
-Новая фича обычно проходит цепочку: SQL-миграция → сущность Domain → репозиторий Infrastructure (+ DI) → сервис Application (+ DI) → `*ApiController` → Vue-страница + роут в `index.js` + пункт меню в `src/App.vue`. Образцы полного CRUD — `Accounts` и `Tags`.
+Новая фича обычно проходит цепочку: SQL-миграция → сущность Domain → интерфейс репозитория в Application → реализация в Infrastructure (+ DI) → сервис Application (+ DI) → `*ApiController` → Vue-страница + роут в `index.js` + пункт меню в `src/App.vue`. Образцы полного CRUD — `Accounts` и `Tags`.
 
 ### Доменные правила и грабли
 - Итоговая категория: собственная категория платежа приоритетнее категории его источника (`PaymentCategory ?? PaymentSource?.PaymentSourceCategory`).
 - `PaymentSource` — метка контрагента из банковского файла (создаётся автоматически при импорте, только чтение/правка); `Account` — реальный банковский счёт (полный CRUD). Импорт для обоих использует паттерн get-or-create по имени — повторять его для будущих lookup-сущностей, создаваемых при импорте.
-- Импорт (`POST api/PaymentsApi/upload` → `PaymentsImportService`, `FileFormatFactory` выбирает `XlsxFileFormat`/`CsvFileFormat`) ищет дубли по сумме + дате и у найденных платежей дозаполняет пустой `Account` вместо создания дубля. Маппинг колонок Excel — в `XlsxFileFormat.cs`.
+- Импорт (`POST api/PaymentsApi/upload` → `PaymentsImportService`, `IFileFormatFactory` → `FileFormatFactory` в `Infrastructure/PaymentsImport/` выбирает `XlsxFileFormat`/`CsvFileFormat`) ищет дубли по сумме + дате и у найденных платежей дозаполняет пустой `Account` вместо создания дубля. Маппинг колонок Excel — в `XlsxFileFormat.cs`.
 - В `PaymentRepository` **два независимых SELECT'а платежей**: `_selectPaymentInfo` (Get/GetByDateRange/GetBySource/FindDuplicate) и inline `dataSql` в `GetListPaged`. Новое поле Payment нужно добавлять в оба, а также в `PaymentDto` (Infrastructure и Website), `MainStatisticPayment` и в оба пути маппинга в `PaymentsApiController` (`GetList` и `BuildTree`). Теги подгружаются отдельно через `GetTagsForPayments`/`AttachTags`.
 - Семантика null в `PaymentEditDto` неоднородна: `CategoryId == null` → не трогать (очистить нельзя; legacy, не менять); `AccountId` → null = не трогать, `0` = очистить; `TagIds` → null = не трогать, список = заменить целиком. Для новых полей использовать конвенцию `AccountId`/`TagIds`.
 - `EditPayment` биндит всё тело через `[FromBody]`, поэтому клиент обязан передавать `paymentId` в теле PUT (значение из роута игнорируется).

@@ -17,9 +17,9 @@
 - Изменение реализации репозиториев (0015/0016).
 
 ## Критерии приемки
-- [ ] `FinCtrl.Application.csproj` не ссылается на Infrastructure; в Application нет `using FinCtrl.Infrastructure`
-- [ ] Infrastructure ссылается на Application
-- [ ] Website ссылается на Infrastructure только ради `AddInfrastructure()`
-- [ ] Тесты сервисов мокают интерфейсы из Application; импорт файла работает (ручная проверка)
-- [ ] Сборка затронутых частей проходит без ошибок, нет новых предупреждений в изменённых файлах
-- [ ] Все тесты зелёные
+- [x] `FinCtrl.Application.csproj` не ссылается на Infrastructure; в Application нет `using FinCtrl.Infrastructure`
+- [x] Infrastructure ссылается на Application
+- [x] Website ссылается на Infrastructure только ради `AddInfrastructure()`
+- [x] Тесты сервисов мокают интерфейсы из Application; импорт файла работает (ручная проверка)
+- [x] Сборка затронутых частей проходит без ошибок, нет новых предупреждений в изменённых файлах
+- [x] Все тесты зелёные

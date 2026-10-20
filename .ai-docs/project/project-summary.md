@@ -27,8 +27,8 @@
   CORS разрешает Vue dev-серверы из `appsettings.json` → `Cors:AllowedOrigins`
   (`localhost:3000/5173/5174/8080`).
 - `src/main/FinCtrl.Domain` — сущности (без EF, POCO; `Payment` пока `record`, что нарушает гайд, — см. `architecture-audit.md`).
-- `src/main/FinCtrl.Application` — сервисы (бизнес-логика).
-- `src/main/FinCtrl.Infrastructure` — репозитории (Dapper, raw SQL).
+- `src/main/FinCtrl.Application` — сервисы (бизнес-логика), интерфейсы репозиториев и форматов импорта; на Infrastructure не ссылается.
+- `src/main/FinCtrl.Infrastructure` — реализации репозиториев (Dapper, raw SQL) и парсинг файлов импорта; ссылается на Application.
 - `src/common/FinCtrl.Common`, `FinCtrl.Common.Infrastructure` —
   общий `RepositoryBase`, `IDbConnectionFactory`, `DateRange`.
 
@@ -99,7 +99,7 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 
 Точка входа: `POST api/PaymentsApi/upload` →
 `PaymentsApiController.UploadFile` → `IPaymentsImportService.Upload`.
-`FileFormatFactory` выбирает `XlsxFileFormat` (EPPlus) или
+`IFileFormatFactory` (реализация `FileFormatFactory`, `Infrastructure/PaymentsImport/`) выбирает `XlsxFileFormat` (EPPlus) или
 `CsvFileFormat` (`TextFieldParser`, разделитель `;`) по расширению файла.
 
 **Маппинг колонок Excel** (1-индексация, т.е. номер = буква столбца,
@@ -205,7 +205,7 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 (только `NO ACTION`) — `TagRepository.Delete` сначала вручную чистит
 строки `PaymentTags`, затем сам тег.
 
-- Backend: `FinCtrl.Domain.Tag`, `ITagRepository`/`TagRepository`
+- Backend: `FinCtrl.Domain.Tag`, `ITagRepository` (`src/main/FinCtrl.Application/Tags`)/`TagRepository`
   (`src/main/FinCtrl.Infrastructure/Tags`), `ITagService`/`TagService`
   (`src/main/FinCtrl.Application/Tags`), `TagsApiController` (полный CRUD,
   по образцу `AccountsApiController`).
@@ -306,7 +306,7 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 - Папка/namespace `Controllers/PaymentSourceesApi` → `PaymentSourcesApi` (URL `api/PaymentSourcesApi` не изменился); у `PaymentsApiController` убран `partial`; лишние `using` удалены во всех проектах (`dotnet format style --diagnostics IDE0005`).
 - Удалены пакеты CsvHelper (Website, Application), `Microsoft.AspNetCore.OpenApi`, явный `System.Text.Json`, `System.Linq.Async` и локальный инструмент `dotnet-ef` (`FinCtrl.Website/.config/dotnet-tools.json`).
 - `Startup`: CORS-origins читаются из `Cors:AllowedOrigins` (`appsettings.json`), Swagger называется «FinCtrl API», логирование — только NLog (без `AddConsole`/`AddDebug` перед `ClearProviders`).
-- Тесты парсеров импорта: `FinCtrl/tests/FinCtrl.Application.Tests/PaymentsImport/FileFormats/`.
+- Тесты парсеров импорта: `FinCtrl/tests/FinCtrl.Application.Tests/PaymentsImport/FileFormats/` (с задачи 0014 — `FinCtrl/tests/FinCtrl.Infrastructure.Tests/PaymentsImport/`).
 - **Грабля:** `CsvFileFormat` пропускает заголовок по `parser.LineNumber == 2`; у файла из одной строки-заголовка без перевода строки заголовок не пропускается и импорт падает на парсинге даты.
 
 ## net9 и Microsoft.Data.SqlClient (задача 0013, 2026-10-20)
@@ -318,3 +318,11 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - Поведение: PUT api/PaymentsApi/{id} для несуществующего платежа отдаёт 404 (раньше NRE → 500); у платежа без источника правка категории больше не падает с NRE.
 - **Грабля:** Microsoft.Data.SqlClient по умолчанию шифрует соединение (Encrypt=True) — строке подключения к локальному серверу нужен TrustServerCertificate=True (в dev-строке есть).
 - **Грабля (окружение):** на dev-машине при нехватке памяти SQL Server параллельные запросы SPA ждут memory grant (RESOURCE_SEMAPHORE) до ~25 с и браузер их обрывает (499) — страницы висят на «Загрузка...». Это не код и не драйвер (воспроизводится с MARS и без); помогает освободить память или задать SQL Server min server memory.
+
+## Направление зависимостей между слоями (задача 0014, 2026-10-20)
+
+- `FinCtrl.Application` больше не ссылается на `FinCtrl.Infrastructure`; наоборот, Infrastructure ссылается на Application. Website ссылается на Infrastructure только ради `AddInfrastructure()` в `Startup`.
+- Интерфейсы репозиториев (`IAccountRepository`, `ICategoryRepository`, `IPaymentRepository`, `IPaymentSourceRepository`, `ITagRepository`) перенесены в `Application/<Фича>/` (namespace `FinCtrl.Application.<Фича>`), получили XML-doc; сигнатуры не менялись. `PaymentDto`/`PaymentSourceRow` в контракт не входят и остались `internal` в Infrastructure.
+- Импорт: `XlsxFileFormat`, `CsvFileFormat`, `FileFormatFactory` (теперь `internal`) — в `Infrastructure/PaymentsImport/`, пакет EPPlus — в Infrastructure. В Application — `IFileFormat` и новый `IFileFormatFactory` (`PaymentsImportService` зависит от интерфейса, регистрация — в `AddInfrastructure()`).
+- Новый тестовый проект `FinCtrl/tests/FinCtrl.Infrastructure.Tests` (тесты парсеров и фабрики форматов, `InternalsVisibleTo` в Infrastructure); тесты `PaymentsImportService` с моками — `FinCtrl/tests/FinCtrl.Application.Tests/PaymentsImport/`.
+- **Грабля (не исправлена):** `CsvFileFormat` парсит сумму через `decimal.Parse` в текущей культуре — на машине с ru-RU сумма с точкой (`-55.5`) падает с `FormatException` (500), нужна запятая.
