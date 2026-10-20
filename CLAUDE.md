@@ -50,7 +50,7 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 
 ## Архитектура backend
 
-Рабочие только проекты из `FinCtrl.Backend.sln`:
+Проекты `FinCtrl.Backend.sln`:
 
 - `FinCtrl.Website` — единственное исполняемое приложение (ASP.NET Core, `Startup.cs`). REST-контроллеры — `*ApiController` в `Controllers/<Name>Api/`; DTO в `RequestDto/` и рядом с контроллерами. MVC-контроллеры и Razor `Views/` — legacy, не используются (их заменило Vue SPA), не расширять; удаляются задачей 0011 — в Website остаётся только REST API.
 - `src/main/FinCtrl.Domain` — сущности (POCO; `Payment` пока `record` — legacy, см. аудит).
@@ -58,7 +58,7 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 - `src/main/FinCtrl.Infrastructure` — репозитории на raw SQL через Dapper (Dommel/FluentMap и классов-маппингов нет); регистрация в `AddInfrastructure()`.
 - `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (хелперы `Execute`/`Query`/`FirstOrDefault` над Dapper), `IDbConnectionFactory`, `Pagination`, `DateRange`.
 
-**Мёртвый код — не трогать и не путать с рабочим стеком:** `FinCtrl.Backend.Core.RestAPI`, `FinCtrl.DAL`, `src/Payments/*`, `src/FinCtrl.CoreLib` (заброшенная попытка переписать на EF Core, в .sln не входит); удаляется задачей 0010.
+Других backend-проектов в репозитории нет (заброшенная попытка переписать бэкенд на EF Core удалена задачей 0010); тесты — в `tests/` (см. «Команды»).
 
 Новая фича обычно проходит цепочку: SQL-миграция → сущность Domain → репозиторий Infrastructure (+ DI) → сервис Application (+ DI) → `*ApiController` → Vue-страница + роут в `index.js` + пункт меню в `src/App.vue`. Образцы полного CRUD — `Accounts` и `Tags`.
 

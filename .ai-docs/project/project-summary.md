@@ -16,11 +16,9 @@
 - `FinCtrl/` — backend, .NET 9 + MS SQL Server.
 - `FinCtrl.Frontend/FinCtrl.Frontend/` — фронтенд, Vue 3 + Vite.
 
-### Backend: что активно, а что мёртвый код
+### Backend: проекты
 
-Внутри `FinCtrl/` несколько параллельных структур — важно не путать:
-
-**Активный стек** (используется, работает, здесь вносить изменения):
+Все backend-проекты `FinCtrl/` входят в `FinCtrl.Backend.sln`:
 - `FinCtrl.Website` — единственное исполняемое приложение в решении
   (`FinCtrl.Backend.sln`). ASP.NET Core, там же REST API
   контроллеры и остатки старых MVC-контроллеров/Razor-views (например
@@ -34,11 +32,9 @@
 - `src/common/FinCtrl.Common`, `FinCtrl.Common.Infrastructure` —
   общий `RepositoryBase`, `IDbConnectionFactory`, `Pagination`, `DateRange`.
 
-**Мёртвый код — не трогать, не путать с активным:**
-`FinCtrl.Backend.Core.RestAPI`, `FinCtrl.DAL`, `src/Payments/*`,
-`src/FinCtrl.CoreLib`. Это заброшенная попытка переписать всё на EF Core
-("clean architecture" rewrite), не входит в `.sln`, последний коммит —
-2024-05-27, вытеснена текущим Dapper-стеком.
+Других backend-проектов в репозитории нет: заброшенная попытка
+переписать бэкенд на EF Core ("clean architecture" rewrite вне `.sln`)
+удалена задачей 0010.
 
 **Доступ к данным:** без ORM, чистый Dapper. Все запросы — raw SQL
 внутри репозиториев. `RepositoryBase` даёт только хелперы
@@ -293,3 +289,8 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 - `PaymentSourceService` больше не догружает категории источников через `ICategoryService` (`MapCategories` удалён, вместе с N+1 и тихой подменой: при ненайденной категории источник отдавался с «пустой» категорией с одним id). Зависимость `ICategoryService` из сервиса убрана; `Edit` собирает `new Category(categoryId)` — для UPDATE нужен только id.
 - `PaymentSourceRepository`: общий `SelectPaymentSource` с `LEFT JOIN Categories` для `GetAll`/`GetById`/`GetByName`/`GetListPaged`, маппинг через плоскую строку `PaymentSourceRow` (алиасы `Category_*`) → `MapToPaymentSource()`; методы чтения переведены на `QueryAsync`.
 - Поведение: `PUT api/PaymentSourcesApi[/{id}]` с несуществующим `categoryId` раньше молча снимал категорию, теперь падает на FK `FK_PaymentSources_Categories_CategoryId` (500); нормальный 400/404 — задача 0017.
+
+## Удаление мёртвых backend-проектов (задача 0010, 2026-10-20)
+
+- Удалены заброшенные проекты EF Core-переписывания (net6, вне `FinCtrl.Backend.sln`): `FinCtrl/FinCtrl.Backend.Core.RestAPI/`, `FinCtrl/FinCtrl.DAL/`, `FinCtrl/src/Payments/*` (4 проекта), `FinCtrl/src/FinCtrl.CoreLib/`. Рабочий код на них не ссылался, поведение приложения не изменилось.
+- Весь backend теперь — проекты `.sln`: `FinCtrl.Website`, `src/main/*`, `src/common/*`, `tests/*`.
