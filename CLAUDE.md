@@ -73,6 +73,6 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 - Все проекты — `net9.0` с `Nullable`/`ImplicitUsings`; доступ к БД — `Microsoft.Data.SqlClient` (нужен `TrustServerCertificate=True` для локального сервера). В Website отключён неявный `[Required]` для non-nullable полей (`SuppressImplicitRequiredAttributeForNonNullableReferenceTypes`) — обязательные поля входных DTO помечать `[Required]` явно.
 
 ## Архитектура frontend
-- Vue 3 Composition API (`<script setup>`), Bootstrap 5, axios с прямыми вызовами `APP_CONFIG.apiBaseUrl + '/api/...'` (отдельного API-слоя нет), Chart.js через vue-chartjs, `vue-multiselect` для тегов.
+- Vue 3 Composition API (`<script setup>`), Bootstrap 5.3 из npm (CSS импортируется в `src/main.js`, модалки — `import { Modal } from 'bootstrap'`, без CDN и глобального `bootstrap`), axios с прямыми вызовами `APP_CONFIG.apiBaseUrl + '/api/...'` (отдельного API-слоя нет), Chart.js через vue-chartjs, `vue-multiselect` для тегов.
 - Роуты описаны в корневом `index.js` (вне `src/`); страницы — в `src/pages/<фича>/`.
 - `src/pages/paymentsTable/PaymentsTable.vue` — главная страница (тепловая карта категория × период, модалка правки платежа); `src/pages/payments/Payments.vue` — «Операции» (пагинация/сортировка/фильтры, инлайн и массовая правка, загрузка файла).
