@@ -161,21 +161,27 @@ lookup-сущности, создаваемой автоматически пр�
 
 ## Backend API (ключевые контроллеры, `FinCtrl.Website/Controllers`)
 
-- **PaymentsApi** — `GET` (дерево статистики для главной страницы, с
+- **PaymentsApi** — `GET` (таблица главной: дерево категорий × периоды, с
   датами и группировкой), `PUT {id}` (правка платежа: категория / счёт /
-  описание / `excludeFromStats`), `GET list` (пагинация/сортировка/
-  фильтры — используется страницей "Операции"), `GET by-source/{id}`,
-  `POST upload`.
-  - **Важный нюанс редактирования**: `CategoryId == null` в запросе —
-    категория не трогается (её нельзя явно очистить этим способом,
-    старое ограничение). Для `AccountId` сделано иначе и корректнее:
-    `null` — не трогать, конкретный id — установить, `0` — явно
-    очистить. Если будете добавлять новые редактируемые поля — учитывайте
-    это несоответствие в поведении.
+  описание / `excludeFromStats` / теги, одной транзакцией, ответ 204), `GET list`
+  (пагинация/сортировка/фильтры — страница "Операции"), `GET by-source/{id}`,
+  `POST bulk-tags`, `POST upload`. Все платежи в ответах — один `PaymentDto`
+  (`category` — своя категория, `effectiveCategory` — итоговая, `categorySource`).
+  - **Семантика PUT (`EditPaymentRequest` → `PaymentService.Edit`, с задачи 0018)**:
+    id — из роута (`paymentId` в теле игнорируется); поле `null`/отсутствует —
+    не трогать. `categoryId`: категория, совпадающая с категорией источника, в
+    платёж не пишется, очистить свою категорию нельзя (старое ограничение);
+    `accountId`: `0` — очистить; `description`: пустая строка — очистить;
+    `excludeFromStats`: `bool`; `tagIds`: список (в т.ч. пустой) — заменить
+    целиком. Новые поля — по этой же конвенции (null = не трогать).
+  - Даты `from`/`to` в запросах (`GET`, `GET list`, `bulk-tags`, `DashboardApi/chart`) —
+    дни «с … по …» включительно; внутри — `DateRange` с исключающей `To`.
 - **PaymentSourcesApi** — `GET`, `GET list`, `PUT {id}` (правка одного источника, id из роута; с задачи 0006), `PUT` (legacy: id в теле, используется массовым сохранением); только правка,
   create/delete нет.
 - **AccountsApi** — полный CRUD: `GET`, `POST`, `PUT {id}`, `DELETE {id}`.
-- **CategoriesApi** — дерево категорий и т.п.
+- **CategoriesApi** — `GET getAll`, `GET getTree` (`CategoryDto` с `children`), `POST` (`{ categoryId }`), `PUT {id}`, `DELETE {id}`.
+- **DashboardApi** — `GET summary` (траты, доли категорий, топ-3), `GET chart` (`mode`, `from`, `to`).
+- PUT/DELETE во всех API отвечают **204** без тела (с задачи 0018); списки с пагинацией — `PagedResponse<T>` (`items`, `totalCount`).
 - **Коды ошибок (с задачи 0017):** PUT/DELETE несуществующего id во всех API → 404; дубликат имени
   счёта/тега (создание и переименование) → 409; удаление счёта с операциями и категории с дочерними
   категориями/источниками/операциями → 409 с количеством связей (учитываются и удалённые операции —
@@ -190,8 +196,9 @@ lookup-сущности, создаваемой автоматически пр�
 SELECT один — `PaymentRepository.SelectPayment`, его алиасы обязаны совпадать
 со свойствами `PaymentDto` (проверяет `PaymentRepositoryTests`). **При
 добавлении нового поля к Payment** — колонка в `SelectPayment`, свойство в
-`PaymentDto` (Infrastructure) + `MapToPayment`, а также Website-DTO,
-`MainStatisticPayment` и оба пути маппинга в `PaymentsApiController`.
+`PaymentDto` (Infrastructure) + `MapToPayment`, а также Website-`PaymentDto` и
+его `FromModel` (с задачи 0018 — единственный маппинг платежа наружу;
+`MainStatisticPayment` удалён, таблица главной хранит `Payment`).
 
 ## Frontend (`FinCtrl.Frontend/FinCtrl.Frontend`, Vue 3 + Vite)
 
@@ -233,8 +240,7 @@ SELECT один — `PaymentRepository.SelectPayment`, его алиасы об�
 - `db/migrations/` на момент 2026-09-08 не был закоммичен в git — стоит
   проверить/закоммитить.
 - При добавлении новых полей к `Payment` — не забывать `PaymentDto`
-  (Infrastructure и Website), `MainStatisticPayment` (используется
-  деревом статистики на главной) и все SQL-выборки в `PaymentRepository`.
+  (Infrastructure и Website, `FromModel`) и `SelectPayment` в `PaymentRepository`.
 
 ## Фича "Теги" (добавлено 2026-09-17)
 
@@ -254,15 +260,13 @@ SELECT один — `PaymentRepository.SelectPayment`, его алиасы об�
   "Операции"). Фильтр по тегам — SQL `EXISTS`-подзапрос в `GetListPaged`
   (там пагинация), и обычный LINQ-фильтр в памяти в `GetByDateRange` (там
   весь период грузится целиком для дерева).
-  Оба пути дальше независимо мапятся в один и тот же Website-слойный
-  `PaymentDto` (`Controllers/PaymentsApi/PaymentDto.cs`) — при доработке
-  тегов/новых agregate-полей у платежа проверять оба места мэппинга внутри
-  `PaymentsApiController` (`GetList` и `BuildTree`).
+  Оба пути мапятся в Website-`PaymentDto` одним `PaymentDto.FromModel`
+  (до задачи 0018 — двумя разными маппингами в `GetList` и `BuildTree`).
 - Массовое назначение тегов — `POST api/PaymentsApi/bulk-tags`
   (`PaymentService.BulkAssignTags`): фильтр за период + список категорий
   (без учёта потомков), назначение **аддитивное** (не стирает уже
   проставленные теги).
-- `PaymentEditDto.TagIds`: `null` — не трогать теги, список (в т.ч. пустой)
+- `TagIds` в правке платежа (с задачи 0018 — `EditPaymentRequest`): `null` — не трогать теги, список (в т.ч. пустой)
   — заменить набор целиком. Такая же по духу конвенция, как у `AccountId`
   (в отличие от более старого и однозначно кривого поведения `CategoryId`,
   который трогать нельзя).
@@ -282,7 +286,8 @@ SELECT один — `PaymentRepository.SelectPayment`, его алиасы об�
   падал в `NullReferenceException` (500). Показывалось это только сейчас,
   т.к. раньше сохранение категории/описания на этой странице, видимо, никто
   не тестировал сквозным ручным прогоном. Фикс — добавить `paymentId` в
-  тело запроса (как уже делает главная страница).
+  тело запроса (как уже делает главная страница). С задачи 0018 id берётся
+  из роута, `paymentId` в теле не нужен.
 
 ## Тестовая инфраструктура backend (задача 0003, 2026-10-20)
 
@@ -393,4 +398,15 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - DataAnnotations: `AccountDto`, `TagDto` (`[Required]`, `[StringLength(255)]`), `CategoryCrudDto` (`[Required]`), `BulkAssignTagsDto` (`[MinLength(1)]`), `UploadFile` (`[Required] file`).
 - Лог: `ExceptionHandlerMiddleware` заглушён в `nlog.config` (писал ERROR со стеком на каждую 400/404/409); ожидаемые ошибки `ApiExceptionHandler` пишет как INFO без стека, непредвиденные — ERROR со стеком.
 - **Грабля:** NLog (`AddNLog`) убирает фильтры `Logging:LogLevel` из appsettings/`AddFilter` — уровни логирования задаются только правилами `nlog.config`.
-- **Грабля (не исправлена, задача 0018):** `EditPayment` — `Update` и `SetPaymentTags` в разных транзакциях: при несуществующем теге платёж уже сохранён (`LastUpdatedAt`, описание), а ответ — 400.
+- **Грабля (исправлена задачей 0018):** `EditPayment` — `Update` и `SetPaymentTags` в разных транзакциях: при несуществующем теге платёж уже сохранён (`LastUpdatedAt`, описание), а ответ — 400.
+
+## Тонкие API-контроллеры и DTO-контракт (задача 0018, 2026-10-20)
+
+- Логика из контроллеров перенесена в Application: таблица главной — `IMainStatisticService.GetPaymentsTable` (read-модель `Domain/Statistic/PaymentsTable`: дерево, ключи периодов, «Без категории»/«ВСЕГО», период по умолчанию через `TimeProvider`); доли категорий, топ-траты (по модулю) и периоды графика по умолчанию — `DashboardService`; правка платежа — `PaymentService.Edit(PaymentEdit)`: проверки категории/счёта/тегов до записи, `Update` + `SetPaymentTags` в одной транзакции `IUnitOfWork`.
+- Website: DTO лежат в `Controllers/<Feature>Api/` (папка `RequestDto/` удалена), один маппинг на пару типов (`FromModel`/`ToModel`), наружу только DTO (`CategoriesApi`, `by-source` больше не отдают сущности), `*Response` вместо анонимных типов (`PagedResponse<T>`, `BulkAssignTagsResponse`, `CreateCategoryResponse`), PUT/DELETE → 204.
+- Контракт: `excludeFromStats: bool?` вместо `excludeFromStatsStr: "on"`; `description`/`excludeFromStats` = `null` — не трогать (раньше PUT без них затирал описание и сбрасывал флаг; модалка главной не отправляла флаг); id правки платежа — из роута.
+- Исправлено попутно: в `GET list` `paymentSource.createdAt` был `0001-01-01` (ручной маппинг) — теперь общий `PaymentSourceDto.FromModel`; в модалке «Показать платежи» источника категория всегда была «Без категории» (`payment.paymentCategory?.Id`) — теперь `effectiveCategory`.
+- Даты: `DateRange.To` везде исключающая. `GET api/PaymentsApi` раньше трактовал `to` как исключающую — день `to` (сегодня) не попадал в таблицу главной; теперь включительно, как в остальных API. Период группировки «День» — `[d, d+1)` (раньше `To == From`). `GET list` без дат — без условия по дате в SQL (вместо 1753/9999).
+- Domain: `CategoryIds` (`Savings`, `FakeEmpty`, `FakeTotal`) вместо `33`/`int.MaxValue`, `Category.IsFake`, `Category.ColorOrDefault`; `Payment` — `class` вместо `record`.
+- Главная: категория в списке платежей ячейки и в модалке правки — `effectiveCategory` (поле `category` теперь своя категория платежа, как в «Операциях»); у источника в списке показывается его описание (раньше не маппилось).
+- Новый тестовый проект `FinCtrl.Website.Tests` — маппинг DTO (`PaymentDto`, `CategoryDto`, таблица главной, `EditPaymentRequest`).
