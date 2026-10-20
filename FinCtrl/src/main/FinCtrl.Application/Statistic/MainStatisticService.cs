@@ -69,6 +69,9 @@ namespace FinCtrl.Application.Statistic
             {
                 case GroupingType.Month:
                     return new DateTime(paymentDate.Year, paymentDate.Month, 1);
+                case GroupingType.Quartal:
+                    int quarterStartMonth = (paymentDate.Month - 1) / 3 * 3 + 1;
+                    return new DateTime(paymentDate.Year, quarterStartMonth, 1);
                 case GroupingType.Week:
                     int diff = (7 + (paymentDate.DayOfWeek - DayOfWeek.Monday)) % 7;
                     return paymentDate.AddDays(-diff).Date;
@@ -86,6 +89,7 @@ namespace FinCtrl.Application.Statistic
             return groupingType switch
             {
                 GroupingType.Month => periodStartDate.AddMonths(1),
+                GroupingType.Quartal => periodStartDate.AddMonths(3),
                 GroupingType.Week => periodStartDate.AddDays(7).Date,
                 GroupingType.Day => periodStartDate.Date,
                 GroupingType.Year => new DateTime(periodStartDate.Year + 1, 1, 1),
