@@ -455,45 +455,9 @@ await axios.put(`${APP_CONFIG.apiBaseUrl}/api/EntityApi/${id}`, { field: value }
 
 ---
 
-## 7. Backend-паттерны (C# / Clean Architecture)
+## 7. Backend-паттерны
 
-### Слои
-
-```
-Domain      — сущности, перечисления, доменные модели (нет зависимостей)
-Application — интерфейсы сервисов + реализации (зависят от Domain)
-Infrastructure — репозитории, Dapper, SQL (зависят от Domain + Application)
-Website     — контроллеры, DTO (зависят от Application)
-```
-
-### Контроллер
-
-```csharp
-[Route("api/[controller]")]
-[ApiController]
-public class EntityApiController : ControllerBase
-{
-    // Инжектировать только через конструктор
-    // Возвращать DTO, не доменные объекты
-    // Ok() / BadRequest() — не throw
-
-    [HttpGet("list")]
-    [ProducesResponseType(typeof(List<EntityDto>), 200)]
-    public async Task<IActionResult> GetList([FromQuery] DateTime? from, [FromQuery] DateTime? to)
-    {
-        var data = await _service.GetSomething(...);
-        return Ok(data.Select(MapToDto).ToList());
-    }
-}
-```
-
-### Регистрация сервисов
-
-Добавлять в `FinCtrl.Application/ServiceCollectionExtensions.cs`:
-
-```csharp
-services.AddScoped<INewService, NewService>();
-```
+Слои, контроллеры, сервисы, репозитории и код-стайл C# — в [`backend-guide.md`](backend-guide.md). Ниже — доменные соглашения, которые затрагивают и UI.
 
 ### Фильтрация расходов
 
