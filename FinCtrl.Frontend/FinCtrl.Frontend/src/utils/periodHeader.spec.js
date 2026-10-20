@@ -17,6 +17,14 @@ describe('formatPeriodHeader', () => {
     expect(formatPeriodHeader(period('2025-12-29', '2026-01-05'), GroupingType.Week)).toBe('29.12.2025 – 04.01.2026')
   })
 
+  it('квартал — «I кв. 2026»', () => {
+    expect(formatPeriodHeader(period('2026-01-01', '2026-04-01'), GroupingType.Quarter)).toBe('I кв. 2026')
+  })
+
+  it('IV квартал — «IV кв. 2025»', () => {
+    expect(formatPeriodHeader(period('2025-10-01', '2026-01-01'), GroupingType.Quarter)).toBe('IV кв. 2025')
+  })
+
   it('год — «2025»', () => {
     expect(formatPeriodHeader(period('2025-01-01', '2026-01-01'), GroupingType.Year)).toBe('2025')
   })
