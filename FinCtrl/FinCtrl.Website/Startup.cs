@@ -1,5 +1,6 @@
 using FinCtrl.Application;
 using FinCtrl.Infrastructure;
+using FinCtrl.Website.ErrorHandling;
 using Microsoft.OpenApi.Models;
 using NLog.Extensions.Logging;
 
@@ -25,6 +26,10 @@ namespace FinCtrl.Website
                 // атрибутами ([Required]), а не неявно по non-nullable ссылочным типам
                 options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
             });
+            // Ошибки API — в формате ProblemDetails (RFC 7807): исключения приложения → 400/404/409, прочие → 500
+            services.AddProblemDetails();
+            services.AddExceptionHandler<ApiExceptionHandler>();
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "FinCtrl API", Version = "v1" });
@@ -55,9 +60,13 @@ namespace FinCtrl.Website
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // Вместо страницы исключения — ProblemDetails и в Development (фронтенд показывает detail пользователю).
+            app.UseExceptionHandler();
+            // Пустые 4xx/5xx (неизвестный маршрут, 405) — тоже ProblemDetails.
+            app.UseStatusCodePages();
+
             if (env.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {

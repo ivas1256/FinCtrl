@@ -18,6 +18,9 @@ public interface ICategoryRepository
     /// <summary>Сохраняет изменения категорий.</summary>
     Task Update(params Category[] categories);
 
+    /// <summary>Связи категории (дочерние категории, источники, операции) — для проверки перед удалением.</summary>
+    Task<CategoryUsage> GetUsage(int categoryId);
+
     /// <summary>Удаляет категории.</summary>
     Task Delete(params Category[] categories);
 }

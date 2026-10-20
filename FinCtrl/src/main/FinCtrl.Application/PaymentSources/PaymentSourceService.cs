@@ -1,15 +1,19 @@
-﻿using FinCtrl.Domain;
+﻿using FinCtrl.Application.Categories;
+using FinCtrl.Common.Application;
+using FinCtrl.Domain;
 
 namespace FinCtrl.Application.PaymentSources
 {
     internal class PaymentSourceService : IPaymentSourceService
     {
         private readonly IPaymentSourceRepository _repository;
+        private readonly ICategoryRepository _categoryRepository;
         private readonly TimeProvider _timeProvider;
 
-        public PaymentSourceService(IPaymentSourceRepository repository, TimeProvider timeProvider)
+        public PaymentSourceService(IPaymentSourceRepository repository, ICategoryRepository categoryRepository, TimeProvider timeProvider)
         {
             _repository = repository;
+            _categoryRepository = categoryRepository;
             _timeProvider = timeProvider;
         }
 
@@ -21,9 +25,10 @@ namespace FinCtrl.Application.PaymentSources
                 .ToList();
         }
 
-        public async Task<PaymentSource?> GetById(int paymentSourceId)
+        public async Task<PaymentSource> GetById(int paymentSourceId)
         {
-            return await _repository.GetById(paymentSourceId);
+            return await _repository.GetById(paymentSourceId)
+                ?? throw new NotFoundException($"Источник платежа {paymentSourceId} не найден");
         }
 
         public async Task<PaymentSource?> GetByName(string paymentSourceName)
@@ -33,6 +38,14 @@ namespace FinCtrl.Application.PaymentSources
 
         public async Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description)
         {
+            if (string.IsNullOrWhiteSpace(paymentSourceName))
+                throw new ValidationException("Название источника обязательно");
+
+            await GetById(paymentSourceId);
+
+            if (categoryId is int id && await _categoryRepository.GetById(id) is null)
+                throw new ValidationException($"Категория {id} не найдена");
+
             // Для UPDATE репозиторию нужен только id категории — загружать её целиком незачем.
             var category = categoryId.HasValue ? new Category(categoryId.Value) : null;
             var toUpdate = PaymentSource.CreateFromExisting(paymentSourceId, paymentSourceName, category, description);
@@ -40,11 +53,6 @@ namespace FinCtrl.Application.PaymentSources
             toUpdate.Updated(_timeProvider.GetLocalNow().DateTime);
 
             await _repository.Update(toUpdate);
-        }
-
-        public async Task<bool> Exists(string paymentSourceName)
-        {
-            return await _repository.Exists(paymentSourceName);
         }
 
         public async Task<int> Create(PaymentSource paymentSource)
@@ -55,6 +63,8 @@ namespace FinCtrl.Application.PaymentSources
         public async Task<(List<PaymentSource> Items, int TotalCount)> GetListPaged(
             string? search, bool noCategoryOnly, int page, int? pageSize)
         {
+            Paging.Validate(page, pageSize);
+
             return await _repository.GetListPaged(search, noCategoryOnly, page, pageSize);
         }
     }

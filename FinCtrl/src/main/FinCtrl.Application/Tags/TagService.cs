@@ -1,9 +1,13 @@
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
 
 namespace FinCtrl.Application.Tags
 {
     internal class TagService : ITagService
     {
+        // Длина колонки TagName в БД (NVARCHAR(255))
+        internal const int MaxNameLength = 255;
+
         private readonly ITagRepository _repository;
         private readonly TimeProvider _timeProvider;
 
@@ -18,35 +22,49 @@ namespace FinCtrl.Application.Tags
             return await _repository.GetAll();
         }
 
-        public async Task<Tag?> GetById(int tagId)
+        public async Task<Tag> GetById(int tagId)
         {
-            return await _repository.GetById(tagId);
+            return await _repository.GetById(tagId)
+                ?? throw new NotFoundException($"Тег {tagId} не найден");
         }
 
         public async Task<int> Create(Tag tag)
         {
+            ValidateName(tag);
+
+            if (await _repository.Exists(tag.TagName))
+                throw new ConflictException($"Тег «{tag.TagName}» уже существует");
+
             return await _repository.Create(tag);
         }
 
-        public async Task Update(params Tag[] tags)
+        public async Task Update(Tag tag)
         {
-            var now = _timeProvider.GetLocalNow().DateTime;
-            foreach (var tag in tags)
-            {
-                tag.Updated(now);
-            }
+            ValidateName(tag);
+            await GetById(tag.TagId);
 
-            await _repository.Update(tags);
+            var sameName = await _repository.GetByName(tag.TagName);
+            if (sameName is not null && sameName.TagId != tag.TagId)
+                throw new ConflictException($"Тег «{tag.TagName}» уже существует");
+
+            tag.Updated(_timeProvider.GetLocalNow().DateTime);
+            await _repository.Update(tag);
         }
 
-        public async Task Delete(params Tag[] tags)
+        public async Task Delete(int tagId)
         {
-            await _repository.Delete(tags);
+            var tag = await GetById(tagId);
+
+            await _repository.Delete(tag);
         }
 
-        public async Task<bool> Exists(string tagName)
+        private static void ValidateName(Tag tag)
         {
-            return await _repository.Exists(tagName);
+            if (string.IsNullOrWhiteSpace(tag.TagName))
+                throw new ValidationException("Название тега обязательно");
+
+            if (tag.TagName.Length > MaxNameLength)
+                throw new ValidationException($"Название тега должно быть не длиннее {MaxNameLength} символов");
         }
     }
 }

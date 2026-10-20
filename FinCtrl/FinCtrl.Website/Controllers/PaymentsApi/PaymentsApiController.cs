@@ -7,6 +7,7 @@ using FinCtrl.Domain;
 using FinCtrl.Domain.Statistic;
 using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 
 namespace FinCtrl.Website.Controllers.PaymentsApi
@@ -72,8 +73,6 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
         public async Task<IActionResult> EditPayment([FromBody] PaymentEditDto dto)
         {
             var payment = await _paymentService.Get(dto.PaymentId);
-            if (payment is null)
-                return NotFound();
 
             payment.PaymentDescription = dto.Description;
             payment.ExcludeFromStats = dto.ExcludeFromStatsStr?.Equals("on") ?? false;
@@ -115,22 +114,15 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
             return Ok(await _paymentService.GetBySource(PaymentSourceId));
         }
 
-        /// <summary>Импорт банковской выгрузки (xlsx/csv) одной транзакцией; отмена запроса откатывает импорт.</summary>
+        /// <summary>
+        /// Импорт банковской выгрузки (xlsx/csv) одной транзакцией; отмена запроса откатывает импорт.
+        /// 400 — файл не выбран, формат не поддерживается, файл не читается или в нём нет операций.
+        /// </summary>
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadFile(IFormFile file, CancellationToken cancellationToken)
+        public async Task<IActionResult> UploadFile([Required(ErrorMessage = "Файл не выбран")] IFormFile file, CancellationToken cancellationToken)
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("Файл не выбран");
-
-            try
-            {
-                using var stream = file.OpenReadStream();
-                await _paymentsImportService.Upload(file.FileName, stream, cancellationToken);
-            }
-            catch (NotImplementedException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            using var stream = file.OpenReadStream();
+            await _paymentsImportService.Upload(file.FileName, stream, cancellationToken);
 
             return Ok();
         }
@@ -290,7 +282,7 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
                 case GroupingType.Day:
                     return dateRange.From.ToString("dd.MM.yyyy");
                 default:
-                    throw new NotImplementedException();
+                    throw new ArgumentOutOfRangeException(nameof(dateRange), _groupingType, null);
             }
         }
 

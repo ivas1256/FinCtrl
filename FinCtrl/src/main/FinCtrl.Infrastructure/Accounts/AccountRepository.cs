@@ -38,6 +38,12 @@ namespace FinCtrl.Infrastructure.Accounts
             return await GetByExcelName(excelAccountName) is not null;
         }
 
+        public async Task<int> CountPayments(int accountId)
+        {
+            // Без фильтра IsDeleted: удалённые операции тоже держат внешний ключ FK_Payments_Accounts_AccountId
+            return await ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.Payments WHERE AccountId = @accountId", new { accountId });
+        }
+
         public async Task<int> Create(Account account)
         {
             var sql = @"INSERT INTO dbo.Accounts (ExcelAccountName, DisplayName, CreatedAt, LastUpdatedAt)

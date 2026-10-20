@@ -3,6 +3,7 @@ using FinCtrl.Application.Payments;
 using FinCtrl.Application.PaymentsImport.FileFormats;
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Common;
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
 using FinCtrl.Domain.PaymentsImport;
 using Microsoft.Extensions.Logging;
@@ -48,6 +49,10 @@ namespace FinCtrl.Application.PaymentsImport
             {
                 fileStream.Close();
             }
+
+            // Пустой файл или файл только с заголовком — скорее всего, выбран не тот файл; молча «успешно» не отвечаем.
+            if (rows.Count == 0)
+                throw new ValidationException($"В файле «{fileName}» нет операций для импорта");
 
             var summary = new ImportSummary();
             var context = new ImportContext();
@@ -118,8 +123,7 @@ namespace FinCtrl.Application.PaymentsImport
             if (source is null)
             {
                 var id = await _paymentSourceService.Create(PaymentSource.CreateNew(name, _timeProvider.GetLocalNow().DateTime));
-                source = await _paymentSourceService.GetById(id)
-                    ?? throw new InvalidOperationException($"Источник платежа {id} не найден после создания");
+                source = await _paymentSourceService.GetById(id);
             }
 
             context.Sources[name] = source;
@@ -137,8 +141,7 @@ namespace FinCtrl.Application.PaymentsImport
             if (account is null)
             {
                 var id = await _accountService.Create(Account.CreateNew(excelAccountName, _timeProvider.GetLocalNow().DateTime));
-                account = await _accountService.GetById(id)
-                    ?? throw new InvalidOperationException($"Счёт {id} не найден после создания");
+                account = await _accountService.GetById(id);
             }
 
             context.Accounts[excelAccountName] = account;

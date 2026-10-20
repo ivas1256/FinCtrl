@@ -1,4 +1,6 @@
+using FinCtrl.Application.Categories;
 using FinCtrl.Application.PaymentSources;
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
@@ -10,6 +12,7 @@ public class PaymentSourceServiceTests
     private static readonly DateTime Now = new(2025, 10, 15, 14, 30, 0);
 
     private readonly IPaymentSourceRepository _repository = Substitute.For<IPaymentSourceRepository>();
+    private readonly ICategoryRepository _categoryRepository = Substitute.For<ICategoryRepository>();
     private readonly PaymentSourceService _service;
 
     public PaymentSourceServiceTests()
@@ -18,7 +21,10 @@ public class PaymentSourceServiceTests
         timeProvider.SetLocalTimeZone(TimeZoneInfo.Utc);
         timeProvider.SetUtcNow(new DateTimeOffset(Now, TimeSpan.Zero));
 
-        _service = new PaymentSourceService(_repository, timeProvider);
+        _repository.GetById(42).Returns(new PaymentSource(42, "Старое имя", null, null, Now, null));
+        _categoryRepository.GetById(7).Returns(new Category(7) { CategoryName = "Еда" });
+
+        _service = new PaymentSourceService(_repository, _categoryRepository, timeProvider);
     }
 
     [Fact]
@@ -64,11 +70,62 @@ public class PaymentSourceServiceTests
     }
 
     [Fact]
-    public async Task GetById_UnknownSource_ReturnsNull()
+    public async Task GetById_UnknownSource_ThrowsNotFoundException()
     {
         _repository.GetById(1).Returns((PaymentSource?)null);
 
-        Assert.Null(await _service.GetById(1));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetById(1));
+    }
+
+    [Fact]
+    public async Task Edit_UnknownSource_ThrowsNotFoundExceptionWithoutUpdate()
+    {
+        _repository.GetById(99).Returns((PaymentSource?)null);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.Edit(99, "Магазин", null, null));
+
+        await _repository.DidNotReceiveWithAnyArgs().Update();
+    }
+
+    [Fact]
+    public async Task Edit_UnknownCategory_ThrowsValidationExceptionWithoutUpdate()
+    {
+        _categoryRepository.GetById(100).Returns((Category?)null);
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(() => _service.Edit(42, "Магазин", 100, null));
+
+        Assert.Contains("100", ex.Message);
+        await _repository.DidNotReceiveWithAnyArgs().Update();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Edit_EmptyName_ThrowsValidationException(string name)
+    {
+        await Assert.ThrowsAsync<ValidationException>(() => _service.Edit(42, name, null, null));
+
+        await _repository.DidNotReceiveWithAnyArgs().Update();
+    }
+
+    [Theory]
+    [InlineData(0, null)]
+    [InlineData(1, 0)]
+    [InlineData(1, -5)]
+    public async Task GetListPaged_InvalidPaging_ThrowsValidationException(int page, int? pageSize)
+    {
+        await Assert.ThrowsAsync<ValidationException>(() => _service.GetListPaged(null, false, page, pageSize));
+    }
+
+    [Fact]
+    public async Task GetListPaged_PageSizeNull_ReturnsAllFromRepository()
+    {
+        _repository.GetListPaged(null, false, 1, null).Returns((new List<PaymentSource>(), 0));
+
+        var (items, total) = await _service.GetListPaged(null, false, 1, null);
+
+        Assert.Empty(items);
+        Assert.Equal(0, total);
     }
 
     [Fact]
