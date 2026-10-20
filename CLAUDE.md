@@ -52,11 +52,11 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 
 Проекты `FinCtrl.Backend.sln`:
 
-- `FinCtrl.Website` — единственное исполняемое приложение (ASP.NET Core, `Startup.cs`). REST-контроллеры — `*ApiController` в `Controllers/<Name>Api/`; DTO в `RequestDto/` и рядом с контроллерами. MVC-контроллеры и Razor `Views/` — legacy, не используются (их заменило Vue SPA), не расширять; удаляются задачей 0011 — в Website остаётся только REST API.
+- `FinCtrl.Website` — единственное исполняемое приложение (ASP.NET Core, `Startup.cs`). REST-контроллеры — `*ApiController` в `Controllers/<Name>Api/`; DTO в `RequestDto/` и рядом с контроллерами. В Website только REST API (`AddControllers` + `MapControllers`, атрибутная маршрутизация): MVC/Razor-фронтенда, `Views/` и `wwwroot/` нет (удалены задачей 0011, UI — Vue SPA), `GET /` → 404.
 - `src/main/FinCtrl.Domain` — сущности (POCO; `Payment` пока `record` — legacy, см. аудит).
 - `src/main/FinCtrl.Application` — сервисы (бизнес-логика), регистрация в `ServiceCollectionExtensions.AddApplication()`.
 - `src/main/FinCtrl.Infrastructure` — репозитории на raw SQL через Dapper (Dommel/FluentMap и классов-маппингов нет); регистрация в `AddInfrastructure()`.
-- `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (хелперы `Execute`/`Query`/`FirstOrDefault` над Dapper), `IDbConnectionFactory`, `Pagination`, `DateRange`.
+- `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (хелперы `Execute`/`Query`/`FirstOrDefault` над Dapper), `IDbConnectionFactory`, `DateRange`.
 
 Других backend-проектов в репозитории нет (заброшенная попытка переписать бэкенд на EF Core удалена задачей 0010); тесты — в `tests/` (см. «Команды»).
 
