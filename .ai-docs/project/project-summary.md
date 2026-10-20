@@ -28,10 +28,9 @@
   это legacy, реально не используется, вместо него работает Vue SPA.
   Program/Startup регистрирует `AddApplication()` + `AddInfrastructure()`,
   CORS настроен на Vue dev-сервер (`localhost:3000/5173/8080/5174`).
-- `src/main/FinCtrl.Domain` — сущности (без EF, чистые POCO/record).
+- `src/main/FinCtrl.Domain` — сущности (без EF, POCO; `Payment` пока `record`, что нарушает гайд, — см. `architecture-audit.md`).
 - `src/main/FinCtrl.Application` — сервисы (бизнес-логика).
-- `src/main/FinCtrl.Infrastructure` — репозитории (Dapper, raw SQL) +
-  Dommel-маппинги.
+- `src/main/FinCtrl.Infrastructure` — репозитории (Dapper, raw SQL).
 - `src/common/FinCtrl.Common`, `FinCtrl.Common.Infrastructure` —
   общий `RepositoryBase`, `IDbConnectionFactory`, `Pagination`, `DateRange`.
 
@@ -41,12 +40,10 @@
 ("clean architecture" rewrite), не входит в `.sln`, последний коммит —
 2024-05-27, вытеснена текущим Dapper-стеком.
 
-**Доступ к данным:** без ORM. Dapper + `Dapper.FluentMap.Dommel` — под
-каждую таблицу свой `*Map : DommelEntityMap<T>` (задаёт таблицу/ключ),
-основные запросы — raw SQL внутри репозиториев, `RepositoryBase` даёт
-`Execute/Query/FirstOrDefault` (Dapper) + generic `Update/Delete` через
-Dommel-конвенции (используется, когда у репозитория нет своего явного
-UPDATE/DELETE SQL).
+**Доступ к данным:** без ORM, чистый Dapper. Все запросы — raw SQL
+внутри репозиториев. `RepositoryBase` даёт только хелперы
+`Execute/Query/FirstOrDefault`. Dommel/FluentMap в коде нет, раньше
+документация упоминала их по ошибке.
 
 **БД:** MS SQL Server, дев-строка подключения в
 `FinCtrl.Website/appsettings.Development.json`:
@@ -154,7 +151,7 @@ lookup-сущности, создаваемой автоматически пр�
 - **CategoriesApi** — дерево категорий и т.п.
 
 **Грабля, на которую уже наступали:** в `PaymentRepository` информация о
-платеже собирается THREE отдельными раздельно написанными SQL-блоками:
+платеже собирается двумя раздельно написанными SQL-блоками:
 `_selectPaymentInfo` (общий, используется в `Get/GetByDateRange/
 GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 `GetListPaged`. Это два разных места, которые надо синхронно обновлять —

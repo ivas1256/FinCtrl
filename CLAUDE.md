@@ -9,7 +9,7 @@ FinCtrl — личное приложение для учёта финансов
 
 Подробный контекст проекта — в `.ai-docs/`, сгруппирован по двум папкам:
 
-- `.ai-docs/project/` — описание проекта и документация: `project-summary.md` (домен, API, известные грабли, история доработок), `general architecture.md` (исходное описание идеи и домена), `payments-table-heatmap.md` (спецификация тепловой карты на главной). При существенных изменениях актуализировать `project-summary.md`.
+- `.ai-docs/project/` — описание проекта и документация: `project-summary.md` (домен, API, известные грабли, история доработок), `architecture-audit.md` (аудит соответствия регламенту, бэклог задач 0003–0022 и порядок их выполнения), `general architecture.md` (исходное описание идеи и домена), `payments-table-heatmap.md` (спецификация тепловой карты на главной). При существенных изменениях актуализировать `project-summary.md`.
 - `.ai-docs/workflow/` — регламенты работы: `task-workflow.md` (регламент работы над задачей, см. ниже), `styleguide.md` (UI-конвенции — следовать при создании новых страниц/компонентов), `backend-guide.md` (код-стайл и архитектура backend — следовать при любых правках в `FinCtrl/`).
 
 ## Регламент работы над задачей
@@ -50,13 +50,13 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 
 Рабочие только проекты из `FinCtrl.Backend.sln`:
 
-- `FinCtrl.Website` — единственное исполняемое приложение (ASP.NET Core, `Startup.cs`). REST-контроллеры — `*ApiController` в `Controllers/<Name>Api/`; DTO в `RequestDto/` и рядом с контроллерами. MVC-контроллеры и Razor `Views/` — legacy, не используются (их заменило Vue SPA), не расширять.
-- `src/main/FinCtrl.Domain` — сущности (POCO/record).
+- `FinCtrl.Website` — единственное исполняемое приложение (ASP.NET Core, `Startup.cs`). REST-контроллеры — `*ApiController` в `Controllers/<Name>Api/`; DTO в `RequestDto/` и рядом с контроллерами. MVC-контроллеры и Razor `Views/` — legacy, не используются (их заменило Vue SPA), не расширять; удаляются задачей 0011 — в Website остаётся только REST API.
+- `src/main/FinCtrl.Domain` — сущности (POCO; `Payment` пока `record` — legacy, см. аудит).
 - `src/main/FinCtrl.Application` — сервисы (бизнес-логика), регистрация в `ServiceCollectionExtensions.AddApplication()`.
-- `src/main/FinCtrl.Infrastructure` — репозитории на raw SQL через Dapper + `Dapper.FluentMap.Dommel`-маппинги на каждую таблицу; регистрация в `AddInfrastructure()`.
-- `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (хелперы запросов Dapper + generic Update/Delete через Dommel), `IDbConnectionFactory`, `Pagination`, `DateRange`.
+- `src/main/FinCtrl.Infrastructure` — репозитории на raw SQL через Dapper (Dommel/FluentMap и классов-маппингов нет); регистрация в `AddInfrastructure()`.
+- `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (хелперы `Execute`/`Query`/`FirstOrDefault` над Dapper), `IDbConnectionFactory`, `Pagination`, `DateRange`.
 
-**Мёртвый код — не трогать и не путать с рабочим стеком:** `FinCtrl.Backend.Core.RestAPI`, `FinCtrl.DAL`, `src/Payments/*`, `src/FinCtrl.CoreLib` (заброшенная попытка переписать на EF Core, в .sln не входит).
+**Мёртвый код — не трогать и не путать с рабочим стеком:** `FinCtrl.Backend.Core.RestAPI`, `FinCtrl.DAL`, `src/Payments/*`, `src/FinCtrl.CoreLib` (заброшенная попытка переписать на EF Core, в .sln не входит); удаляется задачей 0010.
 
 Новая фича обычно проходит цепочку: SQL-миграция → сущность Domain → репозиторий Infrastructure (+ DI) → сервис Application (+ DI) → `*ApiController` → Vue-страница + роут в `index.js` + пункт меню в `src/App.vue`. Образцы полного CRUD — `Accounts` и `Tags`.
 
