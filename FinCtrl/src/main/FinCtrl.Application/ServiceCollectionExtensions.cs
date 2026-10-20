@@ -20,6 +20,8 @@ namespace FinCtrl.Application
     {
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
+            services.AddSingleton(TimeProvider.System);
+
             services.AddScoped<IPaymentSourceService, PaymentSourceService>();
             services.AddScoped<ICategoryService, CategoryService>();
             services.AddScoped<IPaymentService, PaymentService>();

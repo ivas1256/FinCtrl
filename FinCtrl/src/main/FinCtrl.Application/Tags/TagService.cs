@@ -8,10 +8,12 @@ namespace FinCtrl.Application.Tags
     internal class TagService : ITagService
     {
         private readonly ITagRepository _repository;
+        private readonly TimeProvider _timeProvider;
 
-        public TagService(ITagRepository repository)
+        public TagService(ITagRepository repository, TimeProvider timeProvider)
         {
             _repository = repository;
+            _timeProvider = timeProvider;
         }
 
         public async Task<List<Tag>> GetAll()
@@ -36,9 +38,10 @@ namespace FinCtrl.Application.Tags
 
         public async Task Update(params Tag[] tags)
         {
+            var now = _timeProvider.GetLocalNow().DateTime;
             foreach (var tag in tags)
             {
-                tag.Updated();
+                tag.Updated(now);
             }
 
             await _repository.Update(tags);

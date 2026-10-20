@@ -140,7 +140,6 @@ namespace FinCtrl.Infrastructure.Categories
                         OUTPUT INSERTED.CategoryId
                         VALUES (@CategoryName, @ParentCategoryId, @IsOnlyIncome, @OrderIndex, @Color, @CreatedAt);";
 
-            category.CreatedAt = DateTime.Now;
             if (string.IsNullOrWhiteSpace(category.Color))
             {
                 category.Color = Category.DefaultColor;
