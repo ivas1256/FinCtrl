@@ -1,7 +1,15 @@
 ﻿namespace FinCtrl.Common
 {
+    /// <summary>Диапазон дат <c>[From, To)</c>: <see cref="To"/> — исключающая граница.</summary>
     public class DateRange : IComparable<DateRange>
     {
+        /// <summary>
+        /// Диапазон по датам «с … по …» включительно (как их выбирают в UI): время отбрасывается,
+        /// <see cref="To"/> = день после <paramref name="lastDay"/>.
+        /// </summary>
+        public static DateRange FromInclusiveDates(DateTime firstDay, DateTime lastDay)
+            => new(firstDay.Date, lastDay.Date.AddDays(1));
+
         public DateRange(DateTime from, DateTime to)
         {
             From = from;

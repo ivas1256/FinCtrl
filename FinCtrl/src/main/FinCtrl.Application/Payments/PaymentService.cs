@@ -13,19 +13,70 @@ namespace FinCtrl.Application.Payments
         private readonly ICategoryRepository _categoryRepository;
         private readonly IAccountRepository _accountRepository;
         private readonly ITagRepository _tagRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly TimeProvider _timeProvider;
 
         public PaymentService(IPaymentRepository paymentRepository,
                               ICategoryRepository categoryRepository,
                               IAccountRepository accountRepository,
                               ITagRepository tagRepository,
+                              IUnitOfWork unitOfWork,
                               TimeProvider timeProvider)
         {
             _paymentRepository = paymentRepository;
             _categoryRepository = categoryRepository;
             _accountRepository = accountRepository;
             _tagRepository = tagRepository;
+            _unitOfWork = unitOfWork;
             _timeProvider = timeProvider;
+        }
+
+        public async Task Edit(PaymentEdit edit)
+        {
+            var payment = await Get(edit.PaymentId);
+            Apply(payment, edit);
+
+            // Все проверки — до записи: иначе платёж сохранился бы, а теги — нет (и ответ был бы ошибкой).
+            await EnsureReferencesExist([payment]);
+            if (edit.TagIds is not null)
+            {
+                await EnsureTagsExist(edit.TagIds);
+            }
+
+            payment.Updated(_timeProvider.GetLocalNow().DateTime);
+
+            await using var transaction = await _unitOfWork.BeginTransaction();
+            await _paymentRepository.Update(payment);
+            if (edit.TagIds is not null)
+            {
+                await _paymentRepository.SetPaymentTags(payment.PaymentId, edit.TagIds);
+            }
+            await transaction.Commit();
+        }
+
+        private static void Apply(Payment payment, PaymentEdit edit)
+        {
+            if (edit.Description is not null)
+            {
+                payment.PaymentDescription = string.IsNullOrWhiteSpace(edit.Description) ? null : edit.Description;
+            }
+
+            if (edit.ExcludeFromStats is bool excludeFromStats)
+            {
+                payment.ExcludeFromStats = excludeFromStats;
+            }
+
+            // Категория источника в платёж не пишется: итоговая категория и так возьмётся из источника.
+            if (edit.CategoryId is int categoryId
+                && categoryId != payment.PaymentSource?.PaymentSourceCategory?.CategoryId)
+            {
+                payment.PaymentCategory = new Category(categoryId);
+            }
+
+            if (edit.AccountId is int accountId)
+            {
+                payment.Account = accountId == 0 ? null : new Account { AccountId = accountId };
+            }
         }
 
         public async Task<Payment> Get(int id)
@@ -68,12 +119,12 @@ namespace FinCtrl.Application.Payments
         }
 
         public async Task<(List<Payment> Items, int TotalCount)> GetListPaged(
-            DateRange dateRange, int? sourceId, bool noCategoryOnly,
+            DateTime? from, DateTime? to, int? sourceId, bool noCategoryOnly,
             string sortBy, string sortDir, int page, int? pageSize, int[]? tagIds = null)
         {
             Paging.Validate(page, pageSize);
 
-            return await _paymentRepository.GetListPaged(dateRange, sourceId, noCategoryOnly, sortBy, sortDir, page, pageSize, tagIds);
+            return await _paymentRepository.GetListPaged(from, to, sourceId, noCategoryOnly, sortBy, sortDir, page, pageSize, tagIds);
         }
 
         public async Task SetPaymentTags(int paymentId, IReadOnlyCollection<int> tagIds)

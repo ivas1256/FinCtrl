@@ -1,6 +1,7 @@
 using FinCtrl.Application.Categories;
 using FinCtrl.Application.Payments;
 using FinCtrl.Common;
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
 using FinCtrl.Domain.Dashboard;
 using System.Globalization;
@@ -33,7 +34,8 @@ namespace FinCtrl.Application.Dashboard
 
             var spendings = FilterSpendings(payments);
 
-            var allCategories = await BuildAllCategoriesWithSpending(spendings);
+            var monthSpending = SumWhere(spendings, p => p.PaymentDate.Date >= monthStart);
+            var allCategories = await BuildAllCategoriesWithSpending(spendings, monthSpending);
 
             return new DashboardSummary
             {
@@ -46,19 +48,35 @@ namespace FinCtrl.Application.Dashboard
                 WeekSpending = SumWhere(spendings, p => p.PaymentDate.Date >= weekStart),
                 MonthFrom = monthStart,
                 MonthTo = today,
-                MonthSpending = SumWhere(spendings, p => p.PaymentDate.Date >= monthStart),
+                MonthSpending = monthSpending,
                 AllCategories = allCategories,
                 TopPayments = spendings
                     .OrderByDescending(p => Math.Abs(p.PaymentSum))
                     .Take(3)
+                    .Select(p => new TopPayment
+                    {
+                        PaymentId = p.PaymentId,
+                        PaymentSum = Math.Abs(p.PaymentSum),
+                        PaymentDate = p.PaymentDate,
+                        PaymentDescription = p.PaymentDescription,
+                        CategoryName = p.CalculatedCategory?.CategoryName,
+                        PaymentSourceName = p.PaymentSource?.PaymentSourceName
+                    })
                     .ToList()
             };
         }
 
-        public async Task<List<ChartPoint>> GetChartData(ChartMode mode, DateRange range)
+        public async Task<List<ChartPoint>> GetChartData(ChartMode mode, DateTime? from = null, DateTime? to = null)
         {
-            var payments = await _paymentService.GetByDateRange(
-                new DateRange(range.From, range.To.AddDays(1)));
+            if (!Enum.IsDefined(mode))
+                throw new ValidationException($"Неизвестный режим графика «{mode}»");
+
+            var today = _timeProvider.GetLocalNow().Date;
+            var range = new DateRange(from?.Date ?? GetDefaultChartFrom(mode, today), to?.Date ?? today.AddDays(1));
+            if (range.From >= range.To)
+                throw new ValidationException("Начало периода должно быть раньше его конца");
+
+            var payments = await _paymentService.GetByDateRange(range);
 
             var spendings = FilterSpendings(payments);
 
@@ -67,14 +85,25 @@ namespace FinCtrl.Application.Dashboard
                 ChartMode.Day   => GroupByDay(spendings, range),
                 ChartMode.Week  => GroupByWeek(spendings, range),
                 ChartMode.Month => GroupByMonth(spendings, range),
-                _ => throw new NotImplementedException(mode.ToString())
+                _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
             };
         }
 
+        private static DateTime GetDefaultChartFrom(ChartMode mode, DateTime today) => mode switch
+        {
+            ChartMode.Day   => today.AddDays(-29),
+            ChartMode.Week  => GetWeekStart(today).AddDays(-21),
+            ChartMode.Month => new DateTime(today.Year, 1, 1),
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+        };
+
         // ── Category tree ──────────────────────────────────────────────────
 
-        private async Task<List<CategorySpendingItem>> BuildAllCategoriesWithSpending(List<Payment> spendings)
+        private async Task<List<CategorySpendingItem>> BuildAllCategoriesWithSpending(List<Payment> spendings, decimal monthSpending)
         {
+            // Без трат за месяц делим на 1, чтобы не делить на ноль (доли — 0 %).
+            var percentBase = monthSpending > 0 ? monthSpending : 1;
+
             var tree = await _categoryService.GetCategoriesTree();
 
             var spendingById = spendings
@@ -85,12 +114,17 @@ namespace FinCtrl.Application.Dashboard
             var flat = FlattenTree(tree, "");
 
             return flat
-                .Select(item => new CategorySpendingItem
+                .Select(item =>
                 {
-                    CategoryId = item.Cat.CategoryId,
-                    CategoryName = item.Cat.CategoryName,
-                    FullCategoryName = item.FullName,
-                    TotalSum = spendingById.GetValueOrDefault(item.Cat.CategoryId, 0)
+                    var totalSum = spendingById.GetValueOrDefault(item.Cat.CategoryId, 0);
+                    return new CategorySpendingItem
+                    {
+                        CategoryId = item.Cat.CategoryId,
+                        CategoryName = item.Cat.CategoryName,
+                        FullCategoryName = item.FullName,
+                        TotalSum = totalSum,
+                        Percentage = Math.Round(totalSum / percentBase * 100, 1)
+                    };
                 })
                 .OrderByDescending(x => x.TotalSum)
                 .ThenBy(x => x.FullCategoryName)
@@ -103,7 +137,7 @@ namespace FinCtrl.Application.Dashboard
             var result = new List<(Category, string)>();
             foreach (var cat in categories)
             {
-                if (cat.CategoryId == int.MaxValue || cat.CategoryId == int.MaxValue - 1)
+                if (cat.IsFake)
                     continue;
 
                 var fullName = string.IsNullOrEmpty(parentPath)
@@ -126,7 +160,7 @@ namespace FinCtrl.Application.Dashboard
                 .GroupBy(p => p.PaymentDate.Date)
                 .ToDictionary(g => g.Key, g => g.Sum(p => Math.Abs(p.PaymentSum)));
 
-            var days = (range.To - range.From).Days + 1;
+            var days = (range.To - range.From).Days;
             return Enumerable.Range(0, days)
                 .Select(d =>
                 {
@@ -138,14 +172,15 @@ namespace FinCtrl.Application.Dashboard
 
         private static List<ChartPoint> GroupByWeek(List<Payment> spendings, DateRange range)
         {
+            var lastDay = range.To.AddDays(-1);
             var weeks = new List<DateTime>();
             var cur = GetWeekStart(range.From);
-            while (cur <= range.To) { weeks.Add(cur); cur = cur.AddDays(7); }
+            while (cur < range.To) { weeks.Add(cur); cur = cur.AddDays(7); }
 
             return weeks.Select(ws =>
             {
                 var we = ws.AddDays(6);
-                var displayEnd = we > range.To ? range.To : we;
+                var displayEnd = we > lastDay ? lastDay : we;
                 var sum = spendings
                     .Where(p => p.PaymentDate.Date >= ws && p.PaymentDate.Date <= we)
                     .Sum(p => Math.Abs(p.PaymentSum));
@@ -157,7 +192,7 @@ namespace FinCtrl.Application.Dashboard
         {
             var months = new List<DateTime>();
             var cur = new DateTime(range.From.Year, range.From.Month, 1);
-            while (cur <= range.To) { months.Add(cur); cur = cur.AddMonths(1); }
+            while (cur < range.To) { months.Add(cur); cur = cur.AddMonths(1); }
 
             return months.Select(m =>
             {

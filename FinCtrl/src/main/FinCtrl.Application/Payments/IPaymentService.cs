@@ -22,6 +22,14 @@ namespace FinCtrl.Application.Payments
         /// <exception cref="FinCtrl.Common.Application.ValidationException">Указанная категория или счёт не найдены.</exception>
         Task Update(params Payment[] payments);
 
+        /// <summary>
+        /// Правит платёж (поля и теги) одной транзакцией; поля с <c>null</c> не меняются (см. <see cref="PaymentEdit"/>).
+        /// Связанные категория, счёт и теги проверяются до записи.
+        /// </summary>
+        /// <exception cref="FinCtrl.Common.Application.NotFoundException">Платёж не найден.</exception>
+        /// <exception cref="FinCtrl.Common.Application.ValidationException">Категория, счёт или какой-то из тегов не найдены.</exception>
+        Task Edit(PaymentEdit edit);
+
         /// <summary>Платёж с такой же суммой и датой (поиск дубля при импорте) или <c>null</c>.</summary>
         Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate);
 
@@ -30,7 +38,7 @@ namespace FinCtrl.Application.Payments
 
         /// <summary>Страница платежей для списка операций, с тегами (параметры — как у <see cref="IPaymentRepository.GetListPaged"/>).</summary>
         /// <exception cref="FinCtrl.Common.Application.ValidationException"><paramref name="page"/> или <paramref name="pageSize"/> меньше 1.</exception>
-        Task<(List<Payment> Items, int TotalCount)> GetListPaged(DateRange dateRange, int? sourceId, bool noCategoryOnly, string sortBy, string sortDir, int page, int? pageSize, int[]? tagIds = null);
+        Task<(List<Payment> Items, int TotalCount)> GetListPaged(DateTime? from, DateTime? to, int? sourceId, bool noCategoryOnly, string sortBy, string sortDir, int page, int? pageSize, int[]? tagIds = null);
 
         /// <summary>Заменяет теги платежа целиком (пустой список — снять все).</summary>
         /// <exception cref="FinCtrl.Common.Application.ValidationException">Какой-то из тегов не найден.</exception>

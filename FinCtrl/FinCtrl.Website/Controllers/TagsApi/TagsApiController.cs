@@ -1,6 +1,5 @@
 using FinCtrl.Application.Tags;
 using FinCtrl.Domain;
-using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinCtrl.Website.Controllers.TagsApi
@@ -43,7 +42,7 @@ namespace FinCtrl.Website.Controllers.TagsApi
             var toUpdate = Tag.CreateFromExisting(tagId, dto.TagName);
             await _tagService.Update(toUpdate);
 
-            return Ok();
+            return NoContent();
         }
 
         /// <summary>Удаляет тег вместе со связями с операциями; 404 — тег не найден.</summary>
@@ -52,7 +51,7 @@ namespace FinCtrl.Website.Controllers.TagsApi
         {
             await _tagService.Delete(tagId);
 
-            return Ok();
+            return NoContent();
         }
     }
 }

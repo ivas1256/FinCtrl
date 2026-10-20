@@ -1,5 +1,4 @@
 ﻿using FinCtrl.Application.PaymentSources;
-using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinCtrl.Website.Controllers.PaymentSourcesApi
@@ -15,14 +14,19 @@ namespace FinCtrl.Website.Controllers.PaymentSourcesApi
             _paymentSourceService = paymentSourceService;
         }
 
+        /// <summary>Все источники платежей.</summary>
         [HttpGet]
+        [ProducesResponseType(typeof(List<PaymentSourceDto>), 200)]
         public async Task<IActionResult> GetAll()
         {
             return Ok((await _paymentSourceService.GetAll())
-                .Select(x => PaymentSourceDto.FromModel(x)));
+                .Select(PaymentSourceDto.FromModel)
+                .ToList());
         }
 
+        /// <summary>Страница источников с поиском по имени; 400 — некорректные номер или размер страницы.</summary>
         [HttpGet("list")]
+        [ProducesResponseType(typeof(PagedResponse<PaymentSourceDto>), 200)]
         public async Task<IActionResult> GetList(
             [FromQuery] string? search = null,
             [FromQuery] bool noCategoryOnly = false,
@@ -30,8 +34,8 @@ namespace FinCtrl.Website.Controllers.PaymentSourcesApi
             [FromQuery] int? pageSize = null)
         {
             var (sources, totalCount) = await _paymentSourceService.GetListPaged(search, noCategoryOnly, page, pageSize);
-            var items = sources.Select(x => PaymentSourceDto.FromModel(x)).ToList();
-            return Ok(new { Items = items, TotalCount = totalCount });
+            var items = sources.Select(PaymentSourceDto.FromModel).ToList();
+            return Ok(new PagedResponse<PaymentSourceDto>(items, totalCount));
         }
 
         /// <summary>
@@ -42,7 +46,7 @@ namespace FinCtrl.Website.Controllers.PaymentSourcesApi
         {
             await _paymentSourceService.Edit(editDto.PaymentSourceId, editDto.PaymentSourceName, editDto.CategoryId, editDto.Description);
 
-            return Ok();
+            return NoContent();
         }
 
         /// <summary>
