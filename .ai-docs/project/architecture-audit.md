@@ -196,6 +196,7 @@
 | 0020 | `refactor/0020-frontend-single-bootstrap` | 0019 |
 | 0021 | `refactor/0021-frontend-shared-utils` | 0004, 0019 |
 | 0022 | `refactor/0022-frontend-styleguide` | 0020, 0021 |
+| 0023 | `chore/0023-unit-tests-current-features` | 0003, 0004; желательно до 0014–0018 и 0021 |
 
 Порядок:
 1. Сначала тестовая инфраструктура (0003, 0004), затем баги.

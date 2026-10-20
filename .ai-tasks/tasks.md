@@ -27,3 +27,4 @@
 | 0020 | `refactor/0020-frontend-single-bootstrap` | `.ai-tasks/refactor/0020-frontend-single-bootstrap/` | запланирована | — |
 | 0021 | `refactor/0021-frontend-shared-utils` | `.ai-tasks/refactor/0021-frontend-shared-utils/` | запланирована | — |
 | 0022 | `refactor/0022-frontend-styleguide` | `.ai-tasks/refactor/0022-frontend-styleguide/` | запланирована | — |
+| 0023 | `chore/0023-unit-tests-current-features` | `.ai-tasks/chore/0023-unit-tests-current-features/` | запланирована | — |
