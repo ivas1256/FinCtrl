@@ -268,5 +268,11 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 
 ## Заголовки периодов на главной (задача 0007, 2026-10-20)
 
-- `src/utils/periodHeader.js`: `formatPeriodHeader(period, groupingType)` строит заголовок по `{ from, to }` периода (`to` — исключающая граница): Месяц «Окт 2025», Неделя «13.10 – 19.10.2025», Год «2025», День «15.10.2025». Константы `GroupingType` совпадают с enum backend.
+- `src/utils/periodHeader.js`: `formatPeriodHeader(period, groupingType)` строит заголовок по `{ from, to }` периода (`to` — исключающая граница): Месяц «Окт 2025», Неделя «13.10 – 19.10.2025», Квартал «IV кв. 2025» (с задачи 0005), Год «2025», День «15.10.2025». Константы `GroupingType` совпадают с enum backend.
 - `PaymentsTable.vue` фиксирует тип группировки на момент запроса и хранит готовый заголовок в `periodHeaders[].label`.
+
+## Группировка «Квартал» на главной (задача 0005, 2026-10-20)
+
+- Раньше `GroupingType.Quartal` (= 3) не обрабатывался на backend → `NotImplementedException` и 500. Теперь `MainStatisticService` группирует по началу квартала (1-е число месяцев 1/4/7/10), конец периода — исключающая граница `+3 месяца` (как у месяца/года); `PaymentsApiController.ToPeriodKey` даёт ключ `Q<N><yyyy>` (например `Q42025`).
+- Тесты: `FinCtrl/tests/FinCtrl.Application.Tests/Statistic/MainStatisticServiceTests.cs`, `periodHeader.spec.js`.
+- **Грабля (не исправлена, вне объёма 0005):** `PaymentRepository.GetTagsForPayments` передаёт все id платежей одним `IN @Ids` — при периоде больше ~2100 платежей SQL Server отвечает «too many parameters», и `GET api/PaymentsApi` падает с 500 при любой группировке (на dev-базе — период с 01.01.2025).
