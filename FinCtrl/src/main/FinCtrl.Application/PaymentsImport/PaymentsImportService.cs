@@ -11,13 +11,13 @@ namespace FinCtrl.Application.PaymentsImport
         private readonly IPaymentSourceService _paymentSourceService;
         private readonly IAccountService _accountService;
         private readonly IPaymentService _paymentService;
-        private readonly FileFormatFactory _fileFormatFactory;
+        private readonly IFileFormatFactory _fileFormatFactory;
         private readonly TimeProvider _timeProvider;
 
         public PaymentsImportService(IPaymentSourceService paymentSourceService,
                                      IAccountService accountService,
                                      IPaymentService paymentService,
-                                     FileFormatFactory fileFormatFactory,
+                                     IFileFormatFactory fileFormatFactory,
                                      TimeProvider timeProvider)
         {
             _paymentSourceService = paymentSourceService;

@@ -1,7 +1,7 @@
-using FinCtrl.Application.PaymentsImport.FileFormats;
+using FinCtrl.Infrastructure.PaymentsImport;
 using OfficeOpenXml;
 
-namespace FinCtrl.Application.Tests.PaymentsImport.FileFormats;
+namespace FinCtrl.Infrastructure.Tests.PaymentsImport;
 
 public class XlsxFileFormatTests
 {

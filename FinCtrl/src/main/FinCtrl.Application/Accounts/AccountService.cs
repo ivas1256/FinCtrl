@@ -1,5 +1,4 @@
 using FinCtrl.Domain;
-using FinCtrl.Infrastructure.Accounts;
 
 namespace FinCtrl.Application.Accounts
 {

@@ -7,13 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="EPPlus" Version="6.0.5" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.4" />
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="FinCtrl.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\common\FinCtrl.Common.Infrastructure\FinCtrl.Common.Infrastructure.csproj" />
     <ProjectReference Include="..\..\common\FinCtrl.Common\FinCtrl.Common.csproj" />
+    <ProjectReference Include="..\FinCtrl.Application\FinCtrl.Application.csproj" />
     <ProjectReference Include="..\FinCtrl.Domain\FinCtrl.Domain.csproj" />
   </ItemGroup>
 

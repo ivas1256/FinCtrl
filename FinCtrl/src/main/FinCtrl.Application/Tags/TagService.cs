@@ -1,5 +1,4 @@
 using FinCtrl.Domain;
-using FinCtrl.Infrastructure.Tags;
 
 namespace FinCtrl.Application.Tags
 {

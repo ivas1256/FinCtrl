@@ -1,4 +1,5 @@
 using Dapper;
+using FinCtrl.Application.Tags;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
 

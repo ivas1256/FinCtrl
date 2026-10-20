@@ -1,5 +1,4 @@
 ﻿using FinCtrl.Domain;
-using FinCtrl.Infrastructure.Categories;
 
 namespace FinCtrl.Application.Categories
 {

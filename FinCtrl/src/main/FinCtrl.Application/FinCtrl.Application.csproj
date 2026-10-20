@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="EPPlus" Version="6.0.5" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.4" />
   </ItemGroup>
 
@@ -18,7 +17,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\common\FinCtrl.Common\FinCtrl.Common.csproj" />
     <ProjectReference Include="..\FinCtrl.Domain\FinCtrl.Domain.csproj" />
-    <ProjectReference Include="..\FinCtrl.Infrastructure\FinCtrl.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
