@@ -178,5 +178,5 @@ FinCtrl/
 - Дублирование списков колонок (`CategoryRepository`, `PaymentSourceRepository`, два SELECT'а в `PaymentRepository`), три способа получить identity, нет транзакций (`SetPaymentTags`, `TagRepository.Delete`).
 - Пагинация/фильтрация в памяти (`PaymentRepository.GetAll`, фильтр тегов в `GetByDateRange`), N+1 при построении дерева категорий.
 - Магические значения: категория `33`, `int.MaxValue`/`int.MaxValue - 1` для фейковых категорий, `"Списание"`/`"Пополнение"`, `"on"`, даты 1753/9999.
-- Nullable выключен в `FinCtrl.Website`; разные TargetFramework (net6/7/9); legacy `System.Data.SqlClient`; `ILogger` подключён (NLog), но нигде не используется.
+- `ILogger` подключён (NLog), но нигде не используется.
 - Баги: алиас `PaymentSourceCategory_ParentCategoryCategoryId` в `PaymentRepository` не совпадает со свойством `PaymentDto` (поле всегда null); `EditPayment` падает с NRE при пустом описании/источнике.
