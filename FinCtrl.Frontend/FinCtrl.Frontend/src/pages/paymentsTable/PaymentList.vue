@@ -15,7 +15,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-1" :data-id="payment.paymentId">
                     <div class="payment-source fw-medium">
                         {{ payment.paymentSource?.paymentSourceName || 'Не указан' }}
-                        {{ payment.paymentSource.description }}
+                        {{ payment.paymentSource?.description }}
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <span :class="['payment-amount', payment.paymentType === 1 ? 'text-danger' : 'text-success']">
@@ -54,46 +54,39 @@
     </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
 import { formatCurrency, formatLongDate } from '../../utils/format'
 
-export default {
-    name: 'PaymentList',
-    props: {
-        payments: {
-            type: Array,
-            required: true
-        },
-        categories: {
-            type: Array,
-            default: () => []
-        }
+const props = defineProps({
+    payments: {
+        type: Array,
+        required: true
     },
-    emits: ['edit-payment'],
-    computed: {
-        groupedPayments() {
-            const grouped = {}
-            this.payments.forEach(payment => {
-                const date = payment.paymentDate.split('T')[0]
-                if (!grouped[date]) {
-                    grouped[date] = []
-                }
-                grouped[date].push(payment)
-            })
-            return grouped
-        }
-    },
-    methods: {
-        formatLongDate,
-        formatCurrency,
-        getCategoryName(category) {
-            return category?.categoryName || 'Без категории'
-        },
-        getDateTotal(payments) {
-            return payments.reduce((sum, payment) => sum + payment.paymentSum, 0)
-        }
+    categories: {
+        type: Array,
+        default: () => []
     }
-}
+})
+
+defineEmits(['edit-payment'])
+
+// Платежи по дням (YYYY-MM-DD) в порядке поступления
+const groupedPayments = computed(() => {
+    const grouped = {}
+    props.payments.forEach(payment => {
+        const date = payment.paymentDate.split('T')[0]
+        if (!grouped[date]) {
+            grouped[date] = []
+        }
+        grouped[date].push(payment)
+    })
+    return grouped
+})
+
+const getCategoryName = (category) => category?.categoryName || 'Без категории'
+
+const getDateTotal = (payments) => payments.reduce((sum, payment) => sum + payment.paymentSum, 0)
 </script>
 
 <style scoped>
