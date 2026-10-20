@@ -1,6 +1,6 @@
 # План: [0004] Тестовая инфраструктура frontend
 
-> Статус: `в работе`.
+> Статус: `на ревью` (PR #7).
 
 ## Затрагиваемые части
 - `package.json`, `package-lock.json`
@@ -13,7 +13,7 @@
 - [x] Тесты на heatmap.js
 - [x] Обновить CLAUDE.md
 - [x] Сборка + тесты + ручная проверка (Definition of Done)
-- [ ] PR
+- [x] PR — https://github.com/ivas1256/FinCtrl/pull/7
 
 ## Тесты
 `src/utils/heatmap.spec.js` — 15 тестов: `catColor`, `categoryColor`, `heatAlpha` (ноль/поступление/границы шкалы), `heatStyle`, `heatClass` (порог 52%), `computeMaxValue` (вложенные строки, пустое дерево), `formatHeatCurrency` (знак, ноль).
@@ -32,4 +32,4 @@ UI не менялся — достаточно `npm run build` и `npm run test
 -
 
 ## Итог
-Заполняется по завершении.
+Сделано всё из постановки. Тесты компонентов и вынос форматтеров — задачи 0021/0023.
