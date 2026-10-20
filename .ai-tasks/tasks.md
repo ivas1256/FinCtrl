@@ -19,7 +19,7 @@
 | 0012 | `chore/0012-backend-code-cleanup` | `.ai-tasks/chore/0012-backend-code-cleanup/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/15 (стек поверх #14) |
 | 0013 | `chore/0013-backend-net9-packages` | `.ai-tasks/chore/0013-backend-net9-packages/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/16 (стек поверх #15) |
 | 0014 | `refactor/0014-layer-dependencies` | `.ai-tasks/refactor/0014-layer-dependencies/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/17 (стек поверх #16) |
-| 0015 | `refactor/0015-async-repositories` | `.ai-tasks/refactor/0015-async-repositories/` | запланирована | — |
+| 0015 | `refactor/0015-async-repositories` | `.ai-tasks/refactor/0015-async-repositories/` | в работе | — |
 | 0016 | `refactor/0016-db-transactions` | `.ai-tasks/refactor/0016-db-transactions/` | запланирована | — |
 | 0017 | `refactor/0017-errors-validation` | `.ai-tasks/refactor/0017-errors-validation/` | запланирована | — |
 | 0018 | `refactor/0018-thin-api-controllers` | `.ai-tasks/refactor/0018-thin-api-controllers/` | запланирована | — |
