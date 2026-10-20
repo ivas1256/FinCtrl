@@ -205,6 +205,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue' // Добавлен watch
 import axios from 'axios'
+import { getErrorMessage } from '../../utils/apiError'
 import { APP_CONFIG } from '../../../config'
 import PaymentCategoryRow from './PaymentCategoryRow.vue'
 import PaymentList from './PaymentList.vue'
@@ -506,7 +507,7 @@ const savePayment = async () => {
         }
     } catch (error) {
         console.error('Ошибка при обновлении платежа:', error)
-        alert('Произошла ошибка при обновлении платежа')
+        alert(getErrorMessage(error, 'Произошла ошибка при обновлении платежа'))
     }
 }
 

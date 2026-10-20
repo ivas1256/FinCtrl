@@ -326,6 +326,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { getErrorMessage } from '../../utils/apiError'
 import { APP_CONFIG } from '../../../config'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
@@ -558,7 +559,7 @@ const onFileSelected = async (event) => {
         })
         await loadPayments()
     } catch (error) {
-        alert(error.response?.data || 'Ошибка загрузки файла')
+        alert(getErrorMessage(error, 'Ошибка загрузки файла'))
     } finally {
         uploading.value = false
         event.target.value = ''
@@ -584,7 +585,7 @@ const saveSinglePayment = async (payment) => {
         payment.originalTagIds = [...payment.tagIds]
     } catch (error) {
         console.error('Ошибка сохранения:', error)
-        alert('Ошибка сохранения')
+        alert(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -615,7 +616,7 @@ const saveAllChanges = async () => {
         alert(`Успешно обновлено ${changed.length} операций!`)
     } catch (error) {
         console.error('Ошибка сохранения:', error)
-        alert('Ошибка сохранения некоторых операций')
+        alert(getErrorMessage(error, 'Ошибка сохранения некоторых операций'))
     } finally {
         saving.value = false
     }
@@ -669,7 +670,7 @@ const submitBulkAssign = async () => {
         await loadPayments()
     } catch (error) {
         console.error('Ошибка массового назначения тегов:', error)
-        alert('Ошибка массового назначения тегов')
+        alert(getErrorMessage(error, 'Ошибка массового назначения тегов'))
     } finally {
         bulkSubmitting.value = false
     }

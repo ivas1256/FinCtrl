@@ -102,6 +102,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { getErrorMessage } from '../../utils/apiError'
 import { APP_CONFIG } from '../../../config'
 
 const accounts = ref([])
@@ -162,7 +163,7 @@ const createAccount = async () => {
         await loadAccounts()
     } catch (error) {
         console.error('Ошибка создания счета:', error)
-        alert(error?.response?.data || 'Ошибка создания счета')
+        alert(getErrorMessage(error, 'Ошибка создания счета'))
     } finally {
         saving.value = false
     }
@@ -179,7 +180,7 @@ const saveAccount = async (account) => {
         account.originalDisplayName = account.displayName
     } catch (error) {
         console.error('Ошибка сохранения счета:', error)
-        alert(error?.response?.data || 'Ошибка сохранения')
+        alert(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -193,7 +194,7 @@ const deleteAccount = async (account) => {
         await loadAccounts()
     } catch (error) {
         console.error('Ошибка удаления счета:', error)
-        alert('Не удалось удалить счет — возможно, он используется в платежах')
+        alert(getErrorMessage(error, 'Не удалось удалить счет'))
     } finally {
         saving.value = false
     }

@@ -151,6 +151,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { getErrorMessage } from '../../utils/apiError'
 import { Modal } from 'bootstrap'
 import { APP_CONFIG } from '../../../config'
 import CategoryNode from './CategoryNode.vue'
@@ -260,7 +261,7 @@ const saveCategory = async () => {
         await loadCategories()
     } catch (e) {
         console.error(e)
-        alert('Ошибка сохранения')
+        alert(getErrorMessage(e, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -275,7 +276,7 @@ const deleteCategory = async () => {
         await loadCategories()
     } catch (e) {
         console.error(e)
-        alert('Ошибка удаления')
+        alert(getErrorMessage(e, 'Ошибка удаления'))
     } finally {
         saving.value = false
     }

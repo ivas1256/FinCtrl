@@ -90,6 +90,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { getErrorMessage } from '../../utils/apiError'
 import { APP_CONFIG } from '../../../config'
 
 const tags = ref([])
@@ -146,7 +147,7 @@ const createTag = async () => {
         await loadTags()
     } catch (error) {
         console.error('Ошибка создания тега:', error)
-        alert(error?.response?.data || 'Ошибка создания тега')
+        alert(getErrorMessage(error, 'Ошибка создания тега'))
     } finally {
         saving.value = false
     }
@@ -161,7 +162,7 @@ const saveTag = async (tag) => {
         tag.originalTagName = tag.tagName
     } catch (error) {
         console.error('Ошибка сохранения тега:', error)
-        alert(error?.response?.data || 'Ошибка сохранения')
+        alert(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -175,7 +176,7 @@ const deleteTag = async (tag) => {
         await loadTags()
     } catch (error) {
         console.error('Ошибка удаления тега:', error)
-        alert('Не удалось удалить тег')
+        alert(getErrorMessage(error, 'Не удалось удалить тег'))
     } finally {
         saving.value = false
     }
