@@ -1,3 +1,4 @@
+using FinCtrl.Common.Application;
 using FinCtrl.Infrastructure.PaymentsImport;
 
 namespace FinCtrl.Infrastructure.Tests.PaymentsImport;
@@ -29,8 +30,8 @@ public class FileFormatFactoryTests
     [Theory]
     [InlineData(".xls")]
     [InlineData("")]
-    public void Create_UnknownExtension_Throws(string extension)
+    public void Create_UnknownExtension_ThrowsValidationException(string extension)
     {
-        Assert.Throws<NotImplementedException>(() => _factory.Create(extension));
+        Assert.Throws<ValidationException>(() => _factory.Create(extension));
     }
 }

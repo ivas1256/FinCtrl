@@ -1,3 +1,4 @@
+using FinCtrl.Common.Application;
 using FinCtrl.Infrastructure.PaymentsImport;
 using OfficeOpenXml;
 
@@ -36,6 +37,34 @@ public class XlsxFileFormatTests
         var rows = format.GetFileNodes(file);
 
         Assert.Empty(rows);
+    }
+
+    [Fact]
+    public void GetFileNodes_NotXlsxContent_ThrowsValidationException()
+    {
+        var format = new XlsxFileFormat();
+        using var file = new MemoryStream("это не xlsx"u8.ToArray());
+
+        Assert.Throws<ValidationException>(() => format.GetFileNodes(file));
+    }
+
+    [Theory]
+    [InlineData(1, "вчера", "дат")]
+    [InlineData(8, "сто рублей", "сумм")]
+    public void GetFileNodes_InvalidCellValue_ThrowsValidationExceptionWithRowNumber(int column, string value, string expectedText)
+    {
+        var format = new XlsxFileFormat();
+        using var package = new ExcelPackage();
+        var ws = package.Workbook.Worksheets.Add("Выписка");
+        ws.Cells[2, 1].Value = new DateTime(2025, 10, 1);
+        ws.Cells[2, 8].Value = -150m;
+        ws.Cells[2, column].Value = value;
+        using var file = new MemoryStream(package.GetAsByteArray());
+
+        var ex = Assert.Throws<ValidationException>(() => format.GetFileNodes(file));
+
+        Assert.Contains("строка 2", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(expectedText, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     // Колонки выписки: 1 — дата, 3 — счёт, 4 — номер документа, 7 — источник, 8 — сумма, 10 — статус, 13 — тип

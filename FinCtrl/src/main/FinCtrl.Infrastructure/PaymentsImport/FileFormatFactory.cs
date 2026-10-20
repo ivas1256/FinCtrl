@@ -1,4 +1,5 @@
 using FinCtrl.Application.PaymentsImport.FileFormats;
+using FinCtrl.Common.Application;
 
 namespace FinCtrl.Infrastructure.PaymentsImport;
 
@@ -13,7 +14,7 @@ internal class FileFormatFactory : IFileFormatFactory
             case ".csv":
                 return new CsvFileFormat();
             default:
-                throw new NotImplementedException($"Неизвестный формат файла {fileExtension}");
+                throw new ValidationException($"Неподдерживаемый формат файла «{fileExtension}»: поддерживаются .xlsx и .csv");
         }
     }
 }
