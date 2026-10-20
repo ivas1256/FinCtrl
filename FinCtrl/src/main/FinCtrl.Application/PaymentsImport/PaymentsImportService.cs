@@ -3,15 +3,6 @@ using FinCtrl.Application.Payments;
 using FinCtrl.Application.PaymentsImport.FileFormats;
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Domain;
-using FinCtrl.Domain.PaymentsImport;
-using OfficeOpenXml;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace FinCtrl.Application.PaymentsImport
 {
@@ -34,8 +25,6 @@ namespace FinCtrl.Application.PaymentsImport
             _paymentService = paymentService;
             _fileFormatFactory = fileFormatFactory;
             _timeProvider = timeProvider;
-
-            ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
         }
 
         public async Task Upload(string fileName, Stream fileStream)
@@ -46,7 +35,6 @@ namespace FinCtrl.Application.PaymentsImport
 
                 var rows = fileFormat
                     .GetFileNodes(fileStream)
-                    //.Where(x => x.Status == "OK")
                     .ToList();
 
                 foreach (var row in rows)

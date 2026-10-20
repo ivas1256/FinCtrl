@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FinCtrl.Domain.Statistic
+﻿namespace FinCtrl.Domain.Statistic
 {
     public class MainStatisticPayment
     {
@@ -15,7 +9,7 @@ namespace FinCtrl.Domain.Statistic
         public PaymentSource? PaymentSource { get; set; }
         public Account? Account { get; set; }
         public Category? Category { get; set; }
-        public string PaymentDescription { get; set; }
+        public string? PaymentDescription { get; set; }
         public bool ExcludeFromStats { get; set; }
         public List<Tag> Tags { get; set; } = new();
 

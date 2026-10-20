@@ -2,12 +2,7 @@
 using FinCtrl.Common;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
-using System;
-using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Infrastructure.Payments
 {
@@ -228,18 +223,6 @@ namespace FinCtrl.Infrastructure.Payments
                     payment.ExcludeFromStats
                 });
             }
-        }
-
-        public async Task<bool> Exists(decimal paymentSum, DateTime paymentDate)
-        {
-            var sql = @"SELECT
-                  1
-                  FROM Payments p
-                  WHERE p.PaymentSum = @paymentSum
-                    AND p.PaymentDate = @paymentDate
-                    AND p.IsDeleted = 0";
-
-            return (await FirstOrDefault<int?>(sql, new { paymentSum, paymentDate })) is not null;
         }
 
         public async Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate)

@@ -1,5 +1,3 @@
-using System;
-
 namespace FinCtrl.Domain
 {
     public class Account

@@ -1,9 +1,4 @@
 ﻿using FinCtrl.Domain;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Application.PaymentSources
 {
@@ -20,7 +15,6 @@ namespace FinCtrl.Application.PaymentSources
         /// </summary>
         /// <param name="categoryId">Категория источника; <c>null</c> — снять категорию.</param>
         Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description);
-        Task Delete(params PaymentSource[] paymentSources);
 
         Task<bool> Exists(string paymentSourceName);
         Task<(List<PaymentSource> Items, int TotalCount)> GetListPaged(string? search, bool noCategoryOnly, int page, int? pageSize);

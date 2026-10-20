@@ -2,12 +2,6 @@
 using FinCtrl.Common;
 using FinCtrl.Domain;
 using FinCtrl.Domain.Statistic;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FinCtrl.Application.Statistic
 {
@@ -38,8 +32,6 @@ namespace FinCtrl.Application.Statistic
                                 .Select(x => MainStatisticPayment.FromPayment(x))
                                 .ToList()
                 });
-
-            var t = payments.Where(x => x.CalculatedCategory != null && x.CalculatedCategory.CategoryId == 0).ToList();
 
             var result = payments
                 .GroupBy(x => new

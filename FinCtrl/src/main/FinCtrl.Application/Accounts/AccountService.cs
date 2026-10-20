@@ -1,7 +1,5 @@
 using FinCtrl.Domain;
 using FinCtrl.Infrastructure.Accounts;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Application.Accounts
 {

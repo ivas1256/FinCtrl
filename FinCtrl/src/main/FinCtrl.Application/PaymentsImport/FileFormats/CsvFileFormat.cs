@@ -1,13 +1,5 @@
-﻿using CsvHelper;
-using CsvHelper.Configuration;
-using FinCtrl.Domain.PaymentsImport;
+﻿using FinCtrl.Domain.PaymentsImport;
 using Microsoft.VisualBasic.FileIO;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
 
 namespace FinCtrl.Application.PaymentsImport.FileFormats
 {
@@ -23,9 +15,9 @@ namespace FinCtrl.Application.PaymentsImport.FileFormats
                 parser.SetDelimiters(";");
                 while (!parser.EndOfData)
                 {
-                    //Process row
-                    string[] fields = parser.ReadFields();
-                    if (parser.LineNumber == 2)
+                    var fields = parser.ReadFields();
+                    // Первая строка файла — заголовок
+                    if (fields is null || parser.LineNumber == 2)
                         continue;
 
                     records.Add(new ExcelPayment
@@ -42,38 +34,4 @@ namespace FinCtrl.Application.PaymentsImport.FileFormats
             return records;
         }
     }
-
-    class CsvMap : ClassMap<ExcelPayment>
-    {
-        public CsvMap()
-        {
-            Map(x => x.Date).Index(1);
-            Map(x => x.Sum).Index(7);
-            Map(x => x.SourceName).Index(12);
-            Map(x => x.InvoiceNumber).Index(3);
-            Map(x => x.Status).Index(4);
-        }
-    }
-
-    struct Test : IDisposable
-    {
-        private bool _flag;
-
-        public void Dispose() { 
-            _flag = true;
-        }
-
-        public bool GetDispose() => _flag;
-
-        static void Main(string[] args) { 
-            var d = new Test();
-            using (d)
-            {
-                Console.WriteLine(d.GetDispose());
-            }
-
-            Console.WriteLine(d.GetDispose());
-        }
-    }
-
 }

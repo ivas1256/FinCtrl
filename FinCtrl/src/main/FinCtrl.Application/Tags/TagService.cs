@@ -1,7 +1,5 @@
 using FinCtrl.Domain;
 using FinCtrl.Infrastructure.Tags;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Application.Tags
 {
@@ -24,11 +22,6 @@ namespace FinCtrl.Application.Tags
         public async Task<Tag?> GetById(int tagId)
         {
             return await _repository.GetById(tagId);
-        }
-
-        public async Task<Tag?> GetByName(string tagName)
-        {
-            return await _repository.GetByName(tagName);
         }
 
         public async Task<int> Create(Tag tag)

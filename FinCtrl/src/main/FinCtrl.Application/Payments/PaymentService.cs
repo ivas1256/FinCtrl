@@ -1,13 +1,6 @@
-﻿using FinCtrl.Application.Categories;
-using FinCtrl.Application.PaymentSources;
-using FinCtrl.Common;
+﻿using FinCtrl.Common;
 using FinCtrl.Domain;
 using FinCtrl.Infrastructure.Payments;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Application.Payments
 {
@@ -41,11 +34,6 @@ namespace FinCtrl.Application.Payments
             }
 
            await _paymentRepository.Update(payments);
-        }
-
-        public async Task<bool> Exists(decimal paymentSum, DateTime paymentDate)
-        {
-            return await _paymentRepository.Exists(paymentSum, paymentDate);
         }
 
         public async Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate)

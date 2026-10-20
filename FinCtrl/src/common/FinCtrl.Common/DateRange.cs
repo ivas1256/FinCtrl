@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FinCtrl.Common
+﻿namespace FinCtrl.Common
 {
     public class DateRange : IComparable<DateRange>
     {
@@ -16,11 +10,6 @@ namespace FinCtrl.Common
         public DateTime From { get; private set; }
         public DateTime To { get; private set; }
 
-
-        public bool Intersect(DateRange other)
-        {
-            throw new NotImplementedException();
-        }
 
         public override string ToString()
         {

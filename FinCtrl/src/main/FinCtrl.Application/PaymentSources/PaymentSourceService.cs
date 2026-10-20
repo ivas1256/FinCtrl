@@ -1,10 +1,5 @@
 ﻿using FinCtrl.Domain;
 using FinCtrl.Infrastructure.PaymentSources;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Application.PaymentSources
 {
@@ -35,11 +30,6 @@ namespace FinCtrl.Application.PaymentSources
         public async Task<PaymentSource?> GetByName(string paymentSourceName)
         {
             return await _repository.GetByName(paymentSourceName);
-        }
-
-        public async Task Delete(params PaymentSource[] id)
-        {
-            await _repository.Delete(id);
         }
 
         public async Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description)
