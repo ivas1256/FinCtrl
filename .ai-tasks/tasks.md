@@ -11,7 +11,7 @@
 | 0004 | `chore/0004-frontend-test-infra` | `.ai-tasks/chore/0004-frontend-test-infra/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/7 |
 | 0005 | `fix/0005-quarter-grouping` | `.ai-tasks/fix/0005-quarter-grouping/` | запланирована | — |
 | 0006 | `fix/0006-payment-source-single-save` | `.ai-tasks/fix/0006-payment-source-single-save/` | запланирована | — |
-| 0007 | `fix/0007-period-header-format` | `.ai-tasks/fix/0007-period-header-format/` | запланирована | — |
+| 0007 | `fix/0007-period-header-format` | `.ai-tasks/fix/0007-period-header-format/` | в работе | — |
 | 0008 | `fix/0008-source-payments-deleted` | `.ai-tasks/fix/0008-source-payments-deleted/` | запланирована | — |
 | 0009 | `fix/0009-payment-source-category-map` | `.ai-tasks/fix/0009-payment-source-category-map/` | запланирована | — |
 | 0010 | `refactor/0010-remove-dead-projects` | `.ai-tasks/refactor/0010-remove-dead-projects/` | запланирована | — |

@@ -265,3 +265,8 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 
 - Vitest 3 + `@vue/test-utils` + `jsdom`; конфиг `test` в `vite.config.js` (`defineConfig` из `vitest/config`), скрипт `npm run test` (`vitest run`).
 - Тесты — `*.spec.js` рядом с кодом; первые — `src/utils/heatmap.spec.js` (палитра, прозрачность и классы тепловой карты, максимум по дереву, формат суммы со знаком).
+
+## Заголовки периодов на главной (задача 0007, 2026-10-20)
+
+- `src/utils/periodHeader.js`: `formatPeriodHeader(period, groupingType)` строит заголовок по `{ from, to }` периода (`to` — исключающая граница): Месяц «Окт 2025», Неделя «13.10 – 19.10.2025», Год «2025», День «15.10.2025». Константы `GroupingType` совпадают с enum backend.
+- `PaymentsTable.vue` фиксирует тип группировки на момент запроса и хранит готовый заголовок в `periodHeaders[].label`.
