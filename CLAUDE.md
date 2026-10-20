@@ -40,7 +40,7 @@ npm run test    # Vitest (jsdom), тесты *.spec.js рядом с кодом
 
 `.claude/settings.json` подключает хук `.claude/hooks/pre-pr-check.mjs`: на `git push` / `gh pr create` он выполняет автоматическую часть «Проверки перед PR» (сборка/тесты затронутых частей, гигиена диффа, папка задачи) и блокирует команду при провале — см. регламент, раздел 4.
 
-Backend-тесты — xUnit + NSubstitute в `FinCtrl/tests/FinCtrl.<Проект>.Tests/` (`FinCtrl.Domain.Tests`, `FinCtrl.Application.Tests`, `FinCtrl.Infrastructure.Tests`, `FinCtrl.Website.Tests`); текущее время в Domain/Application — только через `TimeProvider` (в тестах `FakeTimeProvider`). Frontend-тесты — Vitest + `@vue/test-utils` + `jsdom`, файлы `*.spec.js` рядом с тестируемым кодом. Линтера пока нет ни в backend, ни во frontend.
+Backend-тесты — xUnit + NSubstitute в `FinCtrl/tests/FinCtrl.<Проект>.Tests/` (`FinCtrl.Domain.Tests`, `FinCtrl.Common.Tests`, `FinCtrl.Application.Tests`, `FinCtrl.Infrastructure.Tests`, `FinCtrl.Website.Tests`); текущее время в Domain/Application — только через `TimeProvider` (в тестах `FakeTimeProvider`). Frontend-тесты — Vitest + `@vue/test-utils` + `jsdom`, файлы `*.spec.js` рядом с тестируемым кодом. Линтера пока нет ни в backend, ни во frontend.
 
 ### Миграции БД
 `FinCtrl/db/migrations/000N_описание.sql` — просто SQL-файлы, без раннера и без таблицы учёта применённых миграций. Не править существующие файлы — добавлять новый со следующим номером; накатывать вручную:

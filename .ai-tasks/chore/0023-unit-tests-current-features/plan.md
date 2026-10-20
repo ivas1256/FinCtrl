@@ -21,15 +21,15 @@
 
 ## Шаги
 - [x] 1. Инвентаризация существующих тестов, актуализация `about.md`/`plan.md`
-- [ ] 2. Domain: фабрики, `Updated()`, `FromExcelPayment`, конструктор `Payment`, `Category.Equals`/fake-категории
-- [ ] 3. `FinCtrl.Common.Tests`: `DateRange`, `DateTimeExtensions`
-- [ ] 4. Application: `CategoryService.GetAllChildCategories`, `MainStatisticService.Calculate`, `DashboardService`,
+- [x] 2. Domain: фабрики, `Updated()`, `FromExcelPayment`, конструктор `Payment`, `Category.Equals`/fake-категории
+- [x] 3. `FinCtrl.Common.Tests`: `DateRange`, `DateTimeExtensions`
+- [x] 4. Application: `CategoryService.GetAllChildCategories`, `MainStatisticService.Calculate`, `DashboardService`,
   `PaymentService.BulkAssignTags`, `PaymentsImportService.Upload`
-- [ ] 5. Infrastructure: маппинги строк выборки, дополнительные сценарии `CsvFileFormat`/`XlsxFileFormat`
-- [ ] 6. Website: `ApiExceptionHandler`, контроллеры, DTO ответов
-- [ ] 7. Frontend: `CategoryTreeSelect`, `CategoryNode`, `heatmap.js`, `periodHeader.js`
-- [ ] 8. Документация: `CLAUDE.md`, `backend-guide.md`, `project-summary.md`
-- [ ] Сборка + тесты (Definition of Done)
+- [x] 5. Infrastructure: маппинги строк выборки, дополнительные сценарии `CsvFileFormat`/`XlsxFileFormat`
+- [x] 6. Website: `ApiExceptionHandler`, контроллеры, DTO ответов
+- [x] 7. Frontend: `CategoryTreeSelect`, `CategoryNode`, `heatmap.js`, `periodHeader.js`
+- [x] 8. Документация: `CLAUDE.md`, `backend-guide.md`, `project-summary.md`
+- [x] Сборка + тесты (Definition of Done)
 - [ ] PR
 
 ## Тесты
@@ -80,8 +80,39 @@
 - 2026-10-20: `ExcludeFromStats` учитывается только в SQL (`PaymentRepository`), поэтому юнит-тестами не покрывается
   (проверка SQL — вручную по регламенту).
 
+- 2026-10-20: в таблице тестов парсеров «XLSX: книга без листов» заменено на «строки после пустой даты, пустые ячейки, несколько
+  листов»: EPPlus не сохраняет книгу без листов (`GetAsByteArray` бросает), собрать такую фикстуру без бинарного файла нельзя,
+  а ветка `?? throw` тривиальна.
+- 2026-10-20: найденные баги (см. «Вне объёма») не исправляются — по постановке тесты фиксируют текущее поведение
+  (`Upload_RowWithoutSourceName_ThrowsArgumentNullExceptionWithoutCommit`, `Upload_RowWithEmptySourceName_CreatesSourceWithEmptyName`,
+  `heatClass` при `maxV = 0`) с комментарием-ссылкой на этот план; задача на исправление перевернёт эти тесты.
+- 2026-10-20: в `FinCtrl.Website.Tests` добавлены пакеты `NSubstitute` и `Microsoft.Extensions.TimeProvider.Testing` (те же версии,
+  что в `FinCtrl.Application.Tests`) — для моков сервисов в тестах контроллеров и `IProblemDetailsService`.
+- 2026-10-20: production-код не менялся — для тестируемости ничего не понадобилось (`internal`-классы Infrastructure доступны
+  через существующий `InternalsVisibleTo`, контроллеры создаются напрямую с моками).
+
 ## Вне объёма (найдено попутно)
--
+- **Баг: пустая ячейка источника в XLSX роняет импорт с 500.** `XlsxFileFormat` отдаёт `SourceName = null` для пустой ячейки
+  колонки 7, `PaymentsImportService.GetOrCreatePaymentSource` кладёт имя ключом в `Dictionary` → `ArgumentNullException`
+  (необработанное → 500 «Внутренняя ошибка сервера»), а не `ValidationException` с номером строки. Транзакция откатывается,
+  данные не портятся. Предлагается отдельная `fix/`-задача: проверять имя источника в парсерах (или в импорте) и бросать
+  `ValidationException` «Строка N: не указан источник».
+- **Пустое имя источника создаётся молча.** Строка CSV с пустой колонкой источника (или ячейка XLSX из пробелов) создаёт
+  `PaymentSource` с пустым именем — `PaymentSourceService.Create` не валидирует имя (в отличие от `Edit`). Решать вместе с багом выше.
+- `heatClass(value, 0)` для расхода возвращает `hm-hi` (деление на 0 → `Infinity`). На практике недостижимо (`maxV` — максимум
+  `|totalSum|`, при расходе он > 0), исправление не требуется; зафиксировано тестом.
+- Техдолг `CategoryTreeSelect.vue`: пропсы `indentChar`, `indentSymbol`, `emptyOptionText` объявлены, но не используются (пустой
+  вариант выводится без текста, отступ — всегда `-`), `category.disabled` нигде не задаётся, ошибка загрузки пишется в `console.error`
+  без сообщения пользователю. Кандидат в задачу по стайлгайду/чистке компонентов.
+- При импорте «Списание» с положительной суммой сохраняется с положительной суммой (знак выравнивает только `NormalizeSumSign` при
+  чтении); поиск дублей идёт по сумме из файла. Поведение зафиксировано тестом; если банк начнёт так выгружать — стоит нормализовать
+  знак уже при импорте.
+- Логика страниц `src/pages/*/<Страница>.vue` (фильтры, пагинация, расчёт периодов «сегодня/неделя» через `new Date()`) юнит-тестами
+  не покрыта — нужен вынос в утилиты/composables отдельной задачей.
 
 ## Итог
-Заполняется по завершении.
+- Backend: 169 → 304 теста (+135): Domain 17 → 40, новый `FinCtrl.Common.Tests` — 16, Application 119 → 160, Infrastructure 24 → 41,
+  Website 9 → 47. Frontend: 88 → 110 (+22), 14 → 16 файлов.
+- Проверка: `dotnet build FinCtrl.Backend.sln` — 0 ошибок, 0 предупреждений; `dotnet test FinCtrl.Backend.sln` — 304/304;
+  `npm run build` — успешно; `npm run test` — 110/110.
+- Код приложения не менялся; найдены и зафиксированы тестами 2 дефекта импорта (см. «Вне объёма») — предложена отдельная fix-задача.
