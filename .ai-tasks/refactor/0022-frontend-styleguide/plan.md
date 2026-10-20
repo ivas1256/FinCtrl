@@ -1,6 +1,6 @@
 # План: [0022] Привести frontend к стайлгайду
 
-> Статус: `в работе`.
+> Статус: `на ревью` (PR https://github.com/ivas1256/FinCtrl/pull/25).
 
 ## Затрагиваемые части
 Только frontend (`FinCtrl.Frontend/FinCtrl.Frontend/`):
@@ -21,7 +21,7 @@
 - [x] Документация (`styleguide.md`, `project-summary.md`, `payments-table-heatmap.md`, `CLAUDE.md`)
 - [x] Ручная проверка
 - [x] Сборка + тесты + ручная проверка (Definition of Done)
-- [ ] PR
+- [x] PR
 
 ## Тесты
 - `src/styleguide.spec.js` — статические проверки по исходникам: нет `export default {`/`<script>` без `setup` в `.vue`, нет `alert(`, нет `prefers-color-scheme`, нет `base.css`; у модалок правки на главной и в «Операциях» — `modal-lg`; спиннер на главной.
