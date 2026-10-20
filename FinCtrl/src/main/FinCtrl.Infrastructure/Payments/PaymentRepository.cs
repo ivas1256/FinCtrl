@@ -275,7 +275,7 @@ namespace FinCtrl.Infrastructure.Payments
         public async Task<List<Payment>> GetBySource(int PaymentSourceId)
         {
             var sql = @$"{_selectPaymentInfo}
-                WHERE p.PaymentSourceId = @PaymentSourceId";
+                WHERE p.PaymentSourceId = @PaymentSourceId AND p.IsDeleted = 0";
 
             return (await Query<PaymentDto>(sql, new { PaymentSourceId }))
                 .Select(x => x.MapToPayment())
