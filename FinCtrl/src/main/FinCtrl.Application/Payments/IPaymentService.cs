@@ -10,13 +10,11 @@ namespace FinCtrl.Application.Payments
 {
     public interface IPaymentService
     {
-        Task<List<Payment>> GetAll(Pagination pagination);
         Task<List<Payment>> GetByDateRange(DateRange dateRange, int[]? tagIds = null);
         Task<Payment?> Get(int id);
 
         Task<int> Create(Payment payment);
         Task Update(params Payment[] payments);
-        Task Delete(params int[] payments);
 
         Task<bool> Exists(decimal paymentSum, DateTime paymentDate);
         Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate);

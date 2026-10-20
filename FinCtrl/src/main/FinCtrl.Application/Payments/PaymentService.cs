@@ -22,19 +22,9 @@ namespace FinCtrl.Application.Payments
             _timeProvider = timeProvider;
         }
 
-        public async Task Delete(params int[] payments)
-        {
-            await _paymentRepository.Delete(payments);
-        }
-
         public async Task<Payment?> Get(int id)
         {
             return await _paymentRepository.Get(id);
-        }
-
-        public async Task<List<Payment>> GetAll(Pagination pagination)
-        {
-            return await _paymentRepository.GetAll(pagination);
         }
 
         public async Task<int> Create(Payment payment)

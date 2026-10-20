@@ -14,7 +14,6 @@ namespace FinCtrl.Application.PaymentSources
         Task<PaymentSource?> GetByName(string paymentSourceName);
 
         Task<int> Create(PaymentSource paymentSource);
-        Task Update(params PaymentSource[] paymentSources);
 
         /// <summary>
         /// Правит источник платежа: имя, категорию и описание.

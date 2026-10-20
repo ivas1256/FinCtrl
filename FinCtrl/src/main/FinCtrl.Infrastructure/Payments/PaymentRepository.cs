@@ -77,16 +77,6 @@ namespace FinCtrl.Infrastructure.Payments
         }
 
 
-        public async Task<List<Payment>> GetAll(Pagination pagination)
-        {
-            return (await Query<PaymentDto>(_selectPaymentInfo))
-                .Select(x => x.MapToPayment())
-                .OrderByDescending(x => x.PaymentDate)
-                .Skip(pagination.ToSkipAmount)
-                .Take(pagination.PageSize)
-                .ToList();
-        }
-
         public async Task<List<Payment>> GetByDateRange(DateRange dateRange, int[]? tagIds = null)
         {
             var sql = @$"{_selectPaymentInfo}
@@ -167,16 +157,6 @@ namespace FinCtrl.Infrastructure.Payments
             var conn = await _connectionFactory.GetConnectionAsync();
             var pairs = ids.SelectMany(paymentId => tags.Select(tagId => new { PaymentId = paymentId, TagId = tagId }));
             await conn.ExecuteAsync(sql, pairs);
-        }
-
-        public async Task Delete(params int[] payments)
-        {
-            var sql = @"UPDATE dbo.Payments SET IsDeleted = 1 WHERE PaymentId = @PaymentId";
-
-            foreach (var paymentId in payments)
-            {
-                await Execute(sql, new { paymentId });
-            }
         }
 
         public async Task<int> Create(Payment payment)
