@@ -1,4 +1,3 @@
-using Dapper;
 using FinCtrl.Application.Tags;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
@@ -20,29 +19,17 @@ namespace FinCtrl.Infrastructure.Tags
 
         public async Task<List<Tag>> GetAll()
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync(_select + " ORDER BY t.TagName"))
-                .Select(x => new Tag(x.TagId, x.TagName, x.CreatedAt, x.LastUpdatedAt))
-                .ToList();
+            return (await Query<Tag>(_select + " ORDER BY t.TagName")).ToList();
         }
 
         public async Task<Tag?> GetById(int tagId)
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync(_select + " WHERE t.TagId = @tagId", new { tagId }))
-                .Select(x => new Tag(x.TagId, x.TagName, x.CreatedAt, x.LastUpdatedAt))
-                .SingleOrDefault();
+            return await FirstOrDefault<Tag>(_select + " WHERE t.TagId = @tagId", new { tagId });
         }
 
         public async Task<Tag?> GetByName(string tagName)
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync(_select + " WHERE t.TagName = @tagName", new { tagName }))
-                .Select(x => new Tag(x.TagId, x.TagName, x.CreatedAt, x.LastUpdatedAt))
-                .FirstOrDefault();
+            return await FirstOrDefault<Tag>(_select + " WHERE t.TagName = @tagName", new { tagName });
         }
 
         public async Task<bool> Exists(string tagName)
@@ -52,19 +39,11 @@ namespace FinCtrl.Infrastructure.Tags
 
         public async Task<int> Create(Tag tag)
         {
-            var sql = @"DECLARE @generated_keys table([Id] int)
+            var sql = @"INSERT INTO dbo.Tags (TagName, CreatedAt, LastUpdatedAt)
+                        OUTPUT INSERTED.TagId
+                        VALUES (@TagName, @CreatedAt, @LastUpdatedAt);";
 
-INSERT INTO dbo.Tags (TagName
-                  , CreatedAt
-                  , LastUpdatedAt)
-  OUTPUT INSERTED.TagId INTO @generated_keys
-                  VALUES (@TagName, @CreatedAt, @LastUpdatedAt);
-
-SELECT * FROM @generated_keys";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return conn.ExecuteScalar<int>(sql, new
+            return await ExecuteScalar<int>(sql, new
             {
                 tag.TagName,
                 tag.CreatedAt,

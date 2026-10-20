@@ -1,8 +1,6 @@
 ﻿using FinCtrl.Application.Categories;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
-using System.Data;
-using Dapper;
 
 namespace FinCtrl.Infrastructure.Categories
 {
@@ -12,47 +10,25 @@ namespace FinCtrl.Infrastructure.Categories
         {
         }
 
+        private const string _select = @"SELECT
+                  c.CategoryId
+                 ,c.CategoryName
+                 ,c.CreatedAt
+                 ,c.LastUpdatedAt
+                 ,c.ParentCategoryCategoryId ParentCategoryId
+                 ,c.IsOnlyIncome
+                 ,c.OrderIndex
+                 ,c.Color
+                FROM dbo.Categories c";
+
         public async Task<IEnumerable<Category>> GetAll()
         {
-            var sql = @"SELECT
-                  CategoryId
-                 ,CategoryName
-                 ,CreatedAt
-                 ,LastUpdatedAt
-                 ,ParentCategoryCategoryId ParentCategoryId
-                 ,IsOnlyIncome
-                 ,OrderIndex
-                 ,Color
-                FROM dbo.Categories;";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync(sql))
-                .Select(MapCategory)
-                .ToList();
+            return await QueryCategories(_select);
         }
 
         public async Task<List<Category>> GetCategoriesTree()
         {
-            var sql = @"
-                SELECT
-                  CategoryId
-                 ,CategoryName
-                 ,CreatedAt
-                 ,LastUpdatedAt
-                 ,ParentCategoryCategoryId ParentCategoryId
-                 ,IsOnlyIncome
-                 ,OrderIndex
-                 ,Color
-                FROM Categories
-                WHERE ParentCategoryCategoryId IS NULL
-                Order By OrderIndex;";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            var rootCategories = (await conn.QueryAsync(sql))
-                .Select(MapCategory)
-                .ToList();
+            var rootCategories = await QueryCategories(_select + " WHERE c.ParentCategoryCategoryId IS NULL ORDER BY c.OrderIndex");
             foreach (var category in rootCategories)
             {
                 category.Children = await GetChildCategories(category.CategoryId);
@@ -63,31 +39,20 @@ namespace FinCtrl.Infrastructure.Categories
 
         private async Task<List<Category>> GetChildCategories(int categoryId)
         {
-            var sql = @"
-                    SELECT
-                      CategoryId
-                     ,CategoryName
-                     ,CreatedAt
-                     ,LastUpdatedAt
-                     ,ParentCategoryCategoryId ParentCategoryId
-                     ,IsOnlyIncome
-                     ,OrderIndex
-                     ,Color
-                    FROM Categories
-                    WHERE ParentCategoryCategoryId = @ParentId
-                    Order By OrderIndex;";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            var children = (await conn.QueryAsync(sql, new { ParentId = categoryId }))
-                .Select(MapCategory)
-                .ToList();
+            var children = await QueryCategories(
+                _select + " WHERE c.ParentCategoryCategoryId = @ParentId ORDER BY c.OrderIndex",
+                new { ParentId = categoryId });
             foreach (var childCategory in children)
             {
                 childCategory.Children = await GetChildCategories(childCategory.CategoryId);
             }
 
             return children;
+        }
+
+        public async Task<Category?> GetById(int id)
+        {
+            return (await QueryCategories(_select + " WHERE c.CategoryId = @id", new { id })).FirstOrDefault();
         }
 
         public async Task Delete(params Category[] categories)
@@ -102,7 +67,6 @@ namespace FinCtrl.Infrastructure.Categories
 
         public async Task Update(params Category[] categories)
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
             var sql = @"UPDATE dbo.Categories
                 SET
                     CategoryName = @CategoryName,
@@ -116,7 +80,7 @@ namespace FinCtrl.Infrastructure.Categories
 
             foreach (var category in categories)
             {
-                await conn.ExecuteAsync(sql, new
+                await Execute(sql, new
                 {
                     category.CategoryId,
                     category.CategoryName,
@@ -140,8 +104,7 @@ namespace FinCtrl.Infrastructure.Categories
                 category.Color = Category.DefaultColor;
             }
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-            return await conn.ExecuteScalarAsync<int>(sql, new
+            return await ExecuteScalar<int>(sql, new
             {
                 category.CategoryName,
                 category.ParentCategoryId,
@@ -152,37 +115,16 @@ namespace FinCtrl.Infrastructure.Categories
             });
         }
 
-        public async Task<Category?> GetById(int id)
+        // Dapper пишет NULL из колонки Color поверх инициализатора свойства — подставляем цвет по умолчанию.
+        private async Task<List<Category>> QueryCategories(string sql, object? param = null)
         {
-            var sql = @"SELECT
-                  CategoryId
-                 ,CategoryName
-                 ,CreatedAt
-                 ,LastUpdatedAt
-                 ,ParentCategoryCategoryId ParentCategoryId
-                 ,IsOnlyIncome
-                 ,OrderIndex
-                 ,Color
-                FROM dbo.Categories
-                WHERE CategoryId = @id;";
+            var categories = (await Query<Category>(sql, param)).ToList();
+            foreach (var category in categories)
+            {
+                category.Color ??= Category.DefaultColor;
+            }
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync(sql, new { id }))
-                .Select(MapCategory)
-                .FirstOrDefault();
+            return categories;
         }
-
-        private static Category MapCategory(dynamic x) => new Category
-        {
-            CategoryId = x.CategoryId,
-            CategoryName = x.CategoryName,
-            CreatedAt = x.CreatedAt,
-            LastUpdatedAt = x.LastUpdatedAt,
-            ParentCategoryId = x.ParentCategoryId,
-            IsOnlyIncome = x.IsOnlyIncome,
-            OrderIndex = x.OrderIndex,
-            Color = x.Color ?? Category.DefaultColor
-        };
     }
 }
