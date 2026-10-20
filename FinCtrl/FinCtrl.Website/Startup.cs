@@ -23,7 +23,7 @@ namespace FinCtrl.Website
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllersWithViews();
+            services.AddControllers();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
@@ -72,7 +72,6 @@ namespace FinCtrl.Website
             }
 
             //app.UseHttpsRedirection();
-            app.UseStaticFiles();
             app.UseRouting();
             //app.UseAuthorization();
 
@@ -81,9 +80,7 @@ namespace FinCtrl.Website
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllerRoute(
-                    name: "default",
-                    pattern: "{controller=Home}/{action=Index}/{id?}");
+                endpoints.MapControllers();
             });
         }
     }
