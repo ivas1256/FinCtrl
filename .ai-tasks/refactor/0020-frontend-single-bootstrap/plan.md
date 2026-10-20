@@ -1,6 +1,6 @@
 # План: [0020] Один Bootstrap 5.3 из npm
 
-> Статус: `в работе`. План сверен с кодом 2026-10-20 (после задач 0005, 0017–0019): CDN 5.0.2 (CSS + bundle JS) в `index.html`; глобальный `bootstrap.Modal` — `Payments.vue` (модалка массового назначения тегов) и `PaymentsTable.vue` (модалка правки платежа); `Categories.vue`/`PaymentSources.vue` уже на `import { Modal } from 'bootstrap'`. На страницах «Счета» и «Теги» модалок нет (правка инлайн), других data-API Bootstrap (`data-bs-toggle`, dropdown/collapse/tooltip) в `src/` нет — используется только `data-bs-dismiss="modal"`.
+> Статус: `на ревью` (PR https://github.com/ivas1256/FinCtrl/pull/23, стек поверх #22). План сверен с кодом 2026-10-20 (после задач 0005, 0017–0019): CDN 5.0.2 (CSS + bundle JS) в `index.html`; глобальный `bootstrap.Modal` — `Payments.vue` (модалка массового назначения тегов) и `PaymentsTable.vue` (модалка правки платежа); `Categories.vue`/`PaymentSources.vue` уже на `import { Modal } from 'bootstrap'`. На страницах «Счета» и «Теги» модалок нет (правка инлайн), других data-API Bootstrap (`data-bs-toggle`, dropdown/collapse/tooltip) в `src/` нет — используется только `data-bs-dismiss="modal"`.
 
 ## Затрагиваемые части
 - `index.html` — убрать CDN CSS/JS

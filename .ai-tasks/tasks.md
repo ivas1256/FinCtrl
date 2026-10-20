@@ -24,7 +24,7 @@
 | 0017 | `refactor/0017-errors-validation` | `.ai-tasks/refactor/0017-errors-validation/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/20 (стек поверх #19) |
 | 0018 | `refactor/0018-thin-api-controllers` | `.ai-tasks/refactor/0018-thin-api-controllers/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/21 (стек поверх #20) |
 | 0019 | `refactor/0019-frontend-template-cleanup` | `.ai-tasks/refactor/0019-frontend-template-cleanup/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/22 (стек поверх #21) |
-| 0020 | `refactor/0020-frontend-single-bootstrap` | `.ai-tasks/refactor/0020-frontend-single-bootstrap/` | в работе | — |
+| 0020 | `refactor/0020-frontend-single-bootstrap` | `.ai-tasks/refactor/0020-frontend-single-bootstrap/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/23 (стек поверх #22) |
 | 0021 | `refactor/0021-frontend-shared-utils` | `.ai-tasks/refactor/0021-frontend-shared-utils/` | запланирована | — |
 | 0022 | `refactor/0022-frontend-styleguide` | `.ai-tasks/refactor/0022-frontend-styleguide/` | запланирована | — |
 | 0023 | `chore/0023-unit-tests-current-features` | `.ai-tasks/chore/0023-unit-tests-current-features/` | запланирована | — |
