@@ -1,3 +1,4 @@
+using System.Globalization;
 using FinCtrl.Application.Categories;
 using FinCtrl.Application.Dashboard;
 using FinCtrl.Application.Payments;
@@ -152,5 +153,184 @@ public class DashboardServiceTests
         await Assert.ThrowsAsync<ValidationException>(() => _service.GetChartData((ChartMode)42));
         await Assert.ThrowsAsync<ValidationException>(() =>
             _service.GetChartData(ChartMode.Day, Today, Today));
+    }
+
+    [Fact]
+    public async Task GetChartData_Month_MonthsFromFirstDayWithEmptyMonths()
+    {
+        var food = new Category(1);
+        _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>
+        {
+            Spending(-10, new DateTime(2025, 8, 31, 23, 0, 0), food),
+            Spending(-30, new DateTime(2025, 10, 1), food),
+            Spending(-5, Today, food)
+        });
+
+        var points = await _service.GetChartData(ChartMode.Month, new DateTime(2025, 8, 15), Today.AddDays(1));
+
+        var ru = new CultureInfo("ru-RU");
+        Assert.Equal(
+            new[]
+            {
+                (new DateTime(2025, 8, 1).ToString("MMM yy", ru), 10m),
+                (new DateTime(2025, 9, 1).ToString("MMM yy", ru), 0m),
+                (new DateTime(2025, 10, 1).ToString("MMM yy", ru), 35m)
+            },
+            points.Select(p => (p.Label, p.Value)));
+    }
+
+    [Theory]
+    [InlineData(ChartMode.Day)]
+    [InlineData(ChartMode.Week)]
+    [InlineData(ChartMode.Month)]
+    public async Task GetChartData_AnyMode_CountsOnlyIncludedSpendings(ChartMode mode)
+    {
+        _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>
+        {
+            Spending(-100, Today, new Category(1)),
+            Spending(500, Today, new Category(1)),                              // доход
+            Spending(-1000, Today, new Category(CategoryIds.Savings)),          // накопления
+            Spending(-50, Today, new Category(3) { IsOnlyIncome = true }),      // доходная категория
+            Spending(-7, Today, category: null)                                 // без категории
+        });
+
+        var points = await _service.GetChartData(mode, Today, Today.AddDays(1));
+
+        Assert.Equal(100m, Assert.Single(points).Value);
+    }
+
+    [Fact]
+    public async Task GetChartData_Week_PaymentsOnWeekBoundariesIncluded()
+    {
+        var food = new Category(1);
+        _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>
+        {
+            Spending(-1, new DateTime(2025, 10, 6), food),               // понедельник
+            Spending(-2, new DateTime(2025, 10, 12, 23, 0, 0), food),    // воскресенье
+            Spending(-4, new DateTime(2025, 10, 13), food)               // понедельник следующей недели
+        });
+
+        var points = await _service.GetChartData(ChartMode.Week, new DateTime(2025, 10, 8), Today.AddDays(1));
+
+        Assert.Equal(new[] { ("06.10–12.10", 3m), ("13.10–15.10", 4m) }, points.Select(p => (p.Label, p.Value)));
+    }
+
+    [Fact]
+    public async Task GetChartData_TimeInBounds_DroppedBeforeQuery()
+    {
+        _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>());
+
+        var points = await _service.GetChartData(ChartMode.Day, new DateTime(2025, 10, 1, 15, 0, 0), new DateTime(2025, 10, 3, 9, 0, 0));
+
+        Assert.Equal(new[] { "01.10", "02.10" }, points.Select(p => p.Label));
+        await _paymentService.Received(1).GetByDateRange(new DateRange(new DateTime(2025, 10, 1), new DateTime(2025, 10, 3)));
+    }
+
+    [Fact]
+    public async Task GetSummary_FirstDayOfMonth_YesterdayAndWeekFromPreviousMonthNotInMonth()
+    {
+        // Среда, 01.10.2025: неделя с понедельника 29.09, вчера — 30.09
+        var service = CreateServiceAt(new DateTime(2025, 10, 1));
+        var food = new Category(1);
+        _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>
+        {
+            Spending(-10, new DateTime(2025, 9, 29), food),
+            Spending(-20, new DateTime(2025, 9, 30), food),
+            Spending(-40, new DateTime(2025, 10, 1), food)
+        });
+
+        var summary = await service.GetSummary();
+
+        await _paymentService.Received(1).GetByDateRange(new DateRange(new DateTime(2025, 9, 29), new DateTime(2025, 10, 2)));
+        Assert.Equal(new DateTime(2025, 9, 29), summary.WeekFrom);
+        Assert.Equal(new DateTime(2025, 10, 1), summary.MonthFrom);
+        Assert.Equal(40, summary.TodaySpending);
+        Assert.Equal(20, summary.YesterdaySpending);
+        Assert.Equal(70, summary.WeekSpending);
+        Assert.Equal(40, summary.MonthSpending);
+    }
+
+    [Fact]
+    public async Task GetSummary_MondayFirstDayOfMonth_FetchesFromYesterday()
+    {
+        // Понедельник, 01.12.2025: неделя и месяц начинаются сегодня, вчера — раньше обоих
+        var service = CreateServiceAt(new DateTime(2025, 12, 1));
+        _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>());
+
+        var summary = await service.GetSummary();
+
+        await _paymentService.Received(1).GetByDateRange(new DateRange(new DateTime(2025, 11, 30), new DateTime(2025, 12, 2)));
+        Assert.Equal(new DateTime(2025, 12, 1), summary.WeekFrom);
+        Assert.Equal(new DateTime(2025, 12, 1), summary.WeekTo);
+    }
+
+    [Fact]
+    public async Task GetSummary_Sunday_WeekFromMondayToToday()
+    {
+        var sunday = new DateTime(2025, 10, 19);
+        var service = CreateServiceAt(sunday);
+        _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>());
+
+        var summary = await service.GetSummary();
+
+        Assert.Equal(new DateTime(2025, 10, 13), summary.WeekFrom);
+        Assert.Equal(sunday, summary.WeekTo);
+    }
+
+    [Fact]
+    public async Task GetSummary_TopPayments_ThreeLargestWithFields()
+    {
+        var cafe = new Category(2) { CategoryName = "Кафе" };
+        var source = new PaymentSource(5, "Кофейня", null, null, Today, null) { PaymentSourceCategory = cafe };
+        _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>
+        {
+            new() { PaymentId = 1, PaymentSum = -10, PaymentDate = Today, PaymentCategory = cafe },
+            new() { PaymentId = 2, PaymentSum = -300, PaymentDate = Today, PaymentSource = source, PaymentDescription = "Капучино" },
+            new() { PaymentId = 3, PaymentSum = -200, PaymentDate = Today.AddDays(-1), PaymentCategory = cafe },
+            new() { PaymentId = 4, PaymentSum = -100, PaymentDate = Today, PaymentCategory = cafe }
+        });
+
+        var summary = await _service.GetSummary();
+
+        Assert.Equal(new[] { 2, 3, 4 }, summary.TopPayments.Select(p => p.PaymentId));
+        var top = summary.TopPayments[0];
+        Assert.Equal(300, top.PaymentSum);
+        Assert.Equal(Today, top.PaymentDate);
+        Assert.Equal("Капучино", top.PaymentDescription);
+        Assert.Equal("Кафе", top.CategoryName);
+        Assert.Equal("Кофейня", top.PaymentSourceName);
+        Assert.Null(summary.TopPayments[1].PaymentSourceName);
+    }
+
+    [Fact]
+    public async Task GetSummary_Categories_SourceCategoryCountedAndSortedBySumThenName()
+    {
+        var food = new Category(3) { CategoryName = "Еда" };
+        _categoryService.GetCategoriesTree().Returns(new List<Category>
+        {
+            new(1) { CategoryName = "Быт" },
+            new(2) { CategoryName = "Авто" },
+            food
+        });
+        var source = new PaymentSource(5, "Магазин", null, null, Today, null) { PaymentSourceCategory = food };
+        _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>
+        {
+            new() { PaymentSum = -100, PaymentDate = Today, PaymentSource = source }
+        });
+
+        var summary = await _service.GetSummary();
+
+        Assert.Equal(
+            new[] { ("Еда", 100m, 100m), ("Авто", 0m, 0m), ("Быт", 0m, 0m) },
+            summary.AllCategories.Select(c => (c.FullCategoryName, c.TotalSum, c.Percentage)));
+        Assert.Equal(3, summary.AllCategories[0].CategoryId);
+    }
+
+    private DashboardService CreateServiceAt(DateTime today)
+    {
+        var timeProvider = new FakeTimeProvider();
+        timeProvider.SetLocalTimeZone(TimeZoneInfo.Utc);
+        timeProvider.SetUtcNow(new DateTimeOffset(today.AddHours(14), TimeSpan.Zero));
+        return new DashboardService(_paymentService, _categoryService, timeProvider);
     }
 }

@@ -182,6 +182,180 @@ public class MainStatisticServiceTests
         Assert.All(table.Tree, n => Assert.Empty(n.Cells));
     }
 
+    [Fact]
+    public async Task Calculate_Week_PeriodStartsOnMondayAndSundayBelongsToPreviousWeek()
+    {
+        GivenPayments(
+            Spending(-10, new DateTime(2026, 1, 4, 23, 0, 0)),  // воскресенье
+            Spending(-20, new DateTime(2026, 1, 5)),            // понедельник
+            Spending(-40, new DateTime(2026, 1, 11, 18, 0, 0))); // воскресенье той же недели
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Week);
+
+        var periods = result
+            .Where(x => x.Category == _food)
+            .OrderBy(x => x.Period.From)
+            .Select(x => (x.Period.From, x.Period.To, x.TotalSum))
+            .ToList();
+        Assert.Equal(new[]
+        {
+            (new DateTime(2025, 12, 29), new DateTime(2026, 1, 5), -10m),
+            (new DateTime(2026, 1, 5), new DateTime(2026, 1, 12), -60m),
+        }, periods);
+    }
+
+    [Fact]
+    public async Task Calculate_Day_PaymentsOfOneDayGroupedIntoOnePeriod()
+    {
+        GivenPayments(
+            Spending(-10, new DateTime(2026, 2, 17, 0, 0, 0)),
+            Spending(-20, new DateTime(2026, 2, 17, 23, 59, 0)),
+            Spending(-40, new DateTime(2026, 2, 18, 0, 0, 0)));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Day);
+
+        var periods = result
+            .Where(x => x.Category == _food)
+            .OrderBy(x => x.Period.From)
+            .Select(x => (x.Period.From, x.Period.To, x.TotalSum))
+            .ToList();
+        Assert.Equal(new[]
+        {
+            (new DateTime(2026, 2, 17), new DateTime(2026, 2, 18), -30m),
+            (new DateTime(2026, 2, 18), new DateTime(2026, 2, 19), -40m),
+        }, periods);
+    }
+
+    [Fact]
+    public async Task Calculate_Year_PeriodIsCalendarYear()
+    {
+        GivenPayments(
+            Spending(-10, new DateTime(2025, 1, 1)),
+            Spending(-20, new DateTime(2025, 12, 31, 23, 59, 0)));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Year);
+
+        var item = Assert.Single(result, x => x.Category == _food);
+        Assert.Equal(new DateRange(new DateTime(2025, 1, 1), new DateTime(2026, 1, 1)), item.Period);
+        Assert.Equal(-30, item.TotalSum);
+    }
+
+    [Fact]
+    public async Task Calculate_NoOwnCategory_GroupsBySourceCategory()
+    {
+        var cafe = new Category(2) { OrderIndex = 2 };
+        GivenPayments(new Payment
+        {
+            PaymentSum = -50,
+            PaymentDate = new DateTime(2026, 1, 10),
+            PaymentSource = new PaymentSource(5, "Кофейня", null, null, default, null) { PaymentSourceCategory = cafe }
+        });
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(-50, Assert.Single(result, x => x.Category.Equals(cafe)).TotalSum);
+        Assert.DoesNotContain(result, x => x.Category.CategoryId == CategoryIds.FakeEmpty);
+    }
+
+    [Fact]
+    public async Task Calculate_OwnAndSourceCategory_OwnCategoryWins()
+    {
+        GivenPayments(new Payment
+        {
+            PaymentSum = -50,
+            PaymentDate = new DateTime(2026, 1, 10),
+            PaymentCategory = _food,
+            PaymentSource = new PaymentSource(5, "Кофейня", null, null, default, null) { PaymentSourceCategory = new Category(2) }
+        });
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(-50, Assert.Single(result, x => x.Category == _food).TotalSum);
+        Assert.DoesNotContain(result, x => x.Category.CategoryId == 2);
+    }
+
+    [Fact]
+    public async Task Calculate_NoCategory_GroupedIntoFakeEmptyCategory()
+    {
+        GivenPayments(Spending(-7, new DateTime(2026, 1, 20), category: null));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        var empty = Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeEmpty);
+        Assert.Equal("Без категории", empty.Category.CategoryName);
+        Assert.Equal(-7, empty.TotalSum);
+    }
+
+    [Fact]
+    public async Task Calculate_Total_IncludesOnlySpendingCategories()
+    {
+        var salary = new Category(3) { IsOnlyIncome = true, OrderIndex = 3 };
+        var savings = new Category(CategoryIds.Savings) { OrderIndex = 4 };
+        GivenPayments(
+            Spending(-100, new DateTime(2026, 1, 5)),
+            Spending(-50, new DateTime(2026, 1, 6), new Category(2) { OrderIndex = 2 }),
+            Spending(500, new DateTime(2026, 1, 7), salary),
+            Spending(-1000, new DateTime(2026, 1, 8), savings),
+            Spending(-7, new DateTime(2026, 1, 9), category: null));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        var total = Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTotal);
+        Assert.Equal(new DateRange(new DateTime(2026, 1, 1), new DateTime(2026, 2, 1)), total.Period);
+        Assert.Equal(-150, total.TotalSum);
+        Assert.Equal(new[] { new DateTime(2026, 1, 6), new DateTime(2026, 1, 5) }, total.Payments.Select(p => p.PaymentDate));
+        Assert.Equal(500, Assert.Single(result, x => x.Category == salary).TotalSum);
+        Assert.Equal(-1000, Assert.Single(result, x => x.Category == savings).TotalSum);
+    }
+
+    [Fact]
+    public async Task Calculate_Result_OrderedByCategoryOrderIndexWithFakeCategoriesLast()
+    {
+        GivenPayments(
+            Spending(-7, new DateTime(2026, 1, 9), category: null),
+            Spending(-10, new DateTime(2026, 1, 5), new Category(10) { OrderIndex = 5 }),
+            Spending(-20, new DateTime(2026, 1, 5), new Category(11) { OrderIndex = 1 }));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(new[] { 11, 10, CategoryIds.FakeEmpty, CategoryIds.FakeTotal }, result.Select(x => x.Category.CategoryId));
+    }
+
+    [Fact]
+    public async Task Calculate_Payments_OrderedByDateDescending()
+    {
+        GivenPayments(
+            Spending(-10, new DateTime(2026, 1, 5)),
+            Spending(-20, new DateTime(2026, 1, 20)),
+            Spending(-30, new DateTime(2026, 1, 10)));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(new[] { -20m, -30m, -10m }, Assert.Single(result, x => x.Category == _food).Payments.Select(p => p.PaymentSum));
+    }
+
+    [Fact]
+    public async Task Calculate_RangeAndTagIds_PassedToPaymentService()
+    {
+        GivenPayments();
+        int[] tagIds = [1, 2];
+
+        await _service.Calculate(AnyRange, GroupingType.Month, tagIds);
+
+        await _paymentService.Received(1).GetByDateRange(AnyRange, tagIds);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_TagIds_PassedToPaymentService()
+    {
+        GivenPayments();
+        int[] tagIds = [3];
+
+        await _service.GetPaymentsTable(AnyRange, GroupingType.Month, tagIds);
+
+        await _paymentService.Received(1).GetByDateRange(AnyRange, tagIds);
+    }
+
     private void GivenPayments(params Payment[] payments)
     {
         _paymentService.GetByDateRange(Arg.Any<DateRange>(), Arg.Any<int[]?>()).Returns(payments.ToList());

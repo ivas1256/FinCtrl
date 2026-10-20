@@ -195,4 +195,61 @@ public class CategoryServiceTests
         ParentCategoryId = parentId,
         OrderIndex = orderIndex
     };
+
+    [Fact]
+    public void GetAllChildCategories_RootWithDeepNesting_ReturnsAllDescendantsLevelByLevel()
+    {
+        var tree = BuildDeepTree();
+
+        var result = _service.GetAllChildCategories(1, tree);
+
+        Assert.Equal([2, 5, 3, 4], result.Select(c => c.CategoryId));
+    }
+
+    [Fact]
+    public void GetAllChildCategories_NestedNode_ReturnsOnlyItsDescendants()
+    {
+        var tree = BuildDeepTree();
+
+        var result = _service.GetAllChildCategories(2, tree);
+
+        Assert.Equal([3, 4], result.Select(c => c.CategoryId));
+    }
+
+    [Fact]
+    public void GetAllChildCategories_Leaf_ReturnsEmptyList()
+    {
+        var tree = BuildDeepTree();
+
+        Assert.Empty(_service.GetAllChildCategories(4, tree));
+        Assert.Empty(_service.GetAllChildCategories(6, tree));
+    }
+
+    [Fact]
+    public void GetAllChildCategories_UnknownIdOrEmptyTree_ReturnsEmptyList()
+    {
+        Assert.Empty(_service.GetAllChildCategories(99, BuildDeepTree()));
+        Assert.Empty(_service.GetAllChildCategories(1, new List<Category>()));
+    }
+
+    [Fact]
+    public void GetAllChildCategories_Result_DoesNotIncludeCategoryItself()
+    {
+        var result = _service.GetAllChildCategories(1, BuildDeepTree());
+
+        Assert.DoesNotContain(result, c => c.CategoryId == 1);
+    }
+
+    // 1 → (2 → (3 → 4), 5); 6 — отдельный корень без детей.
+    private static List<Category> BuildDeepTree()
+    {
+        var level3 = new Category(3) { ParentCategoryId = 2 };
+        level3.Children.Add(new Category(4) { ParentCategoryId = 3 });
+        var level2 = new Category(2) { ParentCategoryId = 1 };
+        level2.Children.Add(level3);
+        var root = new Category(1);
+        root.Children.Add(level2);
+        root.Children.Add(new Category(5) { ParentCategoryId = 1 });
+        return new List<Category> { root, new Category(6) };
+    }
 }
