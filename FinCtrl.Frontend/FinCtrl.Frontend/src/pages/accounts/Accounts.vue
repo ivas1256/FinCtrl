@@ -14,6 +14,8 @@
             </div>
 
             <div class="card-body">
+                <AlertMessage :message="error" @close="clearAlerts" />
+
                 <div v-if="loading" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Загрузка...</span>
@@ -103,6 +105,8 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
+import { useAlerts } from '../../composables/useAlerts'
+import AlertMessage from '../../components/AlertMessage.vue'
 import { formatDate } from '../../utils/format'
 import { APP_CONFIG } from '../../config'
 
@@ -111,6 +115,7 @@ const loading = ref(false)
 const saving = ref(false)
 const creating = ref(false)
 const newAccount = ref({ excelAccountName: '', displayName: '' })
+const { error, showError, clearAlerts } = useAlerts()
 
 const hasChanges = (account) =>
     account.excelAccountName !== account.originalExcelAccountName ||
@@ -118,6 +123,7 @@ const hasChanges = (account) =>
 
 const loadAccounts = async () => {
     loading.value = true
+    clearAlerts()
     try {
         const response = await axios.get(APP_CONFIG.apiBaseUrl + '/api/AccountsApi')
         accounts.value = response.data.map(account => ({
@@ -127,7 +133,7 @@ const loadAccounts = async () => {
         }))
     } catch (error) {
         console.error('Ошибка загрузки счетов:', error)
-        alert('Ошибка загрузки данных')
+        showError('Ошибка загрузки данных')
     } finally {
         loading.value = false
     }
@@ -144,7 +150,7 @@ const cancelCreate = () => {
 
 const createAccount = async () => {
     if (!newAccount.value.excelAccountName.trim() || !newAccount.value.displayName.trim()) {
-        alert('Заполните оба поля')
+        showError('Заполните оба поля')
         return
     }
     saving.value = true
@@ -157,7 +163,7 @@ const createAccount = async () => {
         await loadAccounts()
     } catch (error) {
         console.error('Ошибка создания счета:', error)
-        alert(getErrorMessage(error, 'Ошибка создания счета'))
+        showError(getErrorMessage(error, 'Ошибка создания счета'))
     } finally {
         saving.value = false
     }
@@ -174,7 +180,7 @@ const saveAccount = async (account) => {
         account.originalDisplayName = account.displayName
     } catch (error) {
         console.error('Ошибка сохранения счета:', error)
-        alert(getErrorMessage(error, 'Ошибка сохранения'))
+        showError(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -188,7 +194,7 @@ const deleteAccount = async (account) => {
         await loadAccounts()
     } catch (error) {
         console.error('Ошибка удаления счета:', error)
-        alert(getErrorMessage(error, 'Не удалось удалить счет'))
+        showError(getErrorMessage(error, 'Не удалось удалить счет'))
     } finally {
         saving.value = false
     }

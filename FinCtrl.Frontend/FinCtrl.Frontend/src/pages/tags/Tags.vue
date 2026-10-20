@@ -14,6 +14,8 @@
             </div>
 
             <div class="card-body">
+                <AlertMessage :message="error" @close="clearAlerts" />
+
                 <div v-if="loading" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Загрузка...</span>
@@ -91,6 +93,8 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
+import { useAlerts } from '../../composables/useAlerts'
+import AlertMessage from '../../components/AlertMessage.vue'
 import { formatDate } from '../../utils/format'
 import { APP_CONFIG } from '../../config'
 
@@ -99,11 +103,13 @@ const loading = ref(false)
 const saving = ref(false)
 const creating = ref(false)
 const newTag = ref({ tagName: '' })
+const { error, showError, clearAlerts } = useAlerts()
 
 const hasChanges = (tag) => tag.tagName !== tag.originalTagName
 
 const loadTags = async () => {
     loading.value = true
+    clearAlerts()
     try {
         const response = await axios.get(APP_CONFIG.apiBaseUrl + '/api/TagsApi')
         tags.value = response.data.map(tag => ({
@@ -112,7 +118,7 @@ const loadTags = async () => {
         }))
     } catch (error) {
         console.error('Ошибка загрузки тегов:', error)
-        alert('Ошибка загрузки данных')
+        showError('Ошибка загрузки данных')
     } finally {
         loading.value = false
     }
@@ -129,7 +135,7 @@ const cancelCreate = () => {
 
 const createTag = async () => {
     if (!newTag.value.tagName.trim()) {
-        alert('Заполните название тега')
+        showError('Заполните название тега')
         return
     }
     saving.value = true
@@ -141,7 +147,7 @@ const createTag = async () => {
         await loadTags()
     } catch (error) {
         console.error('Ошибка создания тега:', error)
-        alert(getErrorMessage(error, 'Ошибка создания тега'))
+        showError(getErrorMessage(error, 'Ошибка создания тега'))
     } finally {
         saving.value = false
     }
@@ -156,7 +162,7 @@ const saveTag = async (tag) => {
         tag.originalTagName = tag.tagName
     } catch (error) {
         console.error('Ошибка сохранения тега:', error)
-        alert(getErrorMessage(error, 'Ошибка сохранения'))
+        showError(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -170,7 +176,7 @@ const deleteTag = async (tag) => {
         await loadTags()
     } catch (error) {
         console.error('Ошибка удаления тега:', error)
-        alert(getErrorMessage(error, 'Не удалось удалить тег'))
+        showError(getErrorMessage(error, 'Не удалось удалить тег'))
     } finally {
         saving.value = false
     }
