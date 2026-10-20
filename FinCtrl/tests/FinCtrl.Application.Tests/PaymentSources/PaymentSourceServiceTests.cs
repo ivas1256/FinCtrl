@@ -1,4 +1,3 @@
-using FinCtrl.Application.Categories;
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Domain;
 using FinCtrl.Infrastructure.PaymentSources;
@@ -12,7 +11,6 @@ public class PaymentSourceServiceTests
     private static readonly DateTime Now = new(2025, 10, 15, 14, 30, 0);
 
     private readonly IPaymentSourceRepository _repository = Substitute.For<IPaymentSourceRepository>();
-    private readonly ICategoryService _categoryService = Substitute.For<ICategoryService>();
     private readonly PaymentSourceService _service;
 
     public PaymentSourceServiceTests()
@@ -21,7 +19,7 @@ public class PaymentSourceServiceTests
         timeProvider.SetLocalTimeZone(TimeZoneInfo.Utc);
         timeProvider.SetUtcNow(new DateTimeOffset(Now, TimeSpan.Zero));
 
-        _service = new PaymentSourceService(_repository, _categoryService, timeProvider);
+        _service = new PaymentSourceService(_repository, timeProvider);
     }
 
     [Fact]
@@ -37,7 +35,6 @@ public class PaymentSourceServiceTests
         Assert.Equal(new[] { 2, 1 }, result.Select(x => x.PaymentSourceId));
         Assert.Null(result[0].PaymentSourceCategory);
         Assert.Same(food, result[1].PaymentSourceCategory);
-        await _categoryService.DidNotReceive().GetById(Arg.Any<int>());
     }
 
     [Fact]
@@ -52,7 +49,6 @@ public class PaymentSourceServiceTests
         Assert.NotNull(result);
         Assert.Same(food, result.PaymentSourceCategory);
         Assert.Equal("Еда", result.PaymentSourceCategory!.CategoryName);
-        await _categoryService.DidNotReceive().GetById(Arg.Any<int>());
     }
 
     [Fact]
@@ -66,7 +62,6 @@ public class PaymentSourceServiceTests
 
         Assert.NotNull(result);
         Assert.Same(food, result.PaymentSourceCategory);
-        await _categoryService.DidNotReceive().GetById(Arg.Any<int>());
     }
 
     [Fact]
@@ -78,11 +73,8 @@ public class PaymentSourceServiceTests
     }
 
     [Fact]
-    public async Task Edit_WithCategory_UpdatesSourceWithLoadedCategory()
+    public async Task Edit_WithCategory_UpdatesSourceWithCategoryId()
     {
-        var food = new Category(7) { CategoryName = "Еда" };
-        _categoryService.GetById(7).Returns(food);
-
         await _service.Edit(42, "Магазин", 7, "Продукты");
 
         await _repository.Received(1).Update(Arg.Is<PaymentSource[]>(sources =>
@@ -90,16 +82,15 @@ public class PaymentSourceServiceTests
             && sources[0].PaymentSourceId == 42
             && sources[0].PaymentSourceName == "Магазин"
             && sources[0].Description == "Продукты"
-            && sources[0].PaymentSourceCategory == food
+            && sources[0].PaymentSourceCategory!.CategoryId == 7
             && sources[0].LastUpdatedAt == Now));
     }
 
     [Fact]
-    public async Task Edit_WithoutCategory_ClearsCategoryAndDoesNotLoadIt()
+    public async Task Edit_WithoutCategory_ClearsCategory()
     {
         await _service.Edit(42, "Магазин", categoryId: null, description: null);
 
-        await _categoryService.DidNotReceive().GetById(Arg.Any<int>());
         await _repository.Received(1).Update(Arg.Is<PaymentSource[]>(sources =>
             sources.Length == 1
             && sources[0].PaymentSourceId == 42
