@@ -298,6 +298,35 @@ public class PaymentsImportServiceTests
         await _paymentService.Received(1).FindDuplicate(150m, PaymentDate);
     }
 
+    [Fact]
+    public async Task Upload_RowWithoutSourceName_ThrowsArgumentNullExceptionWithoutCommit()
+    {
+        // Фиксирует текущее поведение: пустая ячейка источника в xlsx даёт SourceName = null, и импорт падает
+        // необработанным исключением (500) вместо ValidationException — см. «Вне объёма» в plan.md задачи 0023.
+        SetRows(new ExcelPayment(PaymentDate, -150m, null!, "INV-1", "OK", "Списание", "Карта"));
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() => _service.Upload("file.xlsx", new MemoryStream()));
+
+        await _paymentService.DidNotReceive().Create(Arg.Any<Payment>());
+        await _transaction.DidNotReceiveWithAnyArgs().Commit();
+    }
+
+    [Fact]
+    public async Task Upload_RowWithEmptySourceName_CreatesSourceWithEmptyName()
+    {
+        // Фиксирует текущее поведение: пустое имя источника (пустая колонка CSV) не отклоняется — создаётся
+        // источник с пустым именем (см. «Вне объёма» в plan.md задачи 0023).
+        var emptySource = new PaymentSource(9, "", null, null, Now, null);
+        _paymentSourceService.Create(Arg.Any<PaymentSource>()).Returns(9);
+        _paymentSourceService.GetById(9).Returns(emptySource);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "", "INV-1", "OK", "", null));
+
+        await _service.Upload("file.csv", new MemoryStream());
+
+        await _paymentSourceService.Received(1).Create(Arg.Is<PaymentSource>(s => s.PaymentSourceName == ""));
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentSource == emptySource));
+    }
+
     private void SetRows(params ExcelPayment[] rows) =>
         _fileFormat.GetFileNodes(Arg.Any<Stream>()).Returns(rows.ToList());
 }
