@@ -1,6 +1,6 @@
 # План: [0016] Транзакции, N+1 и доменные правила вне Infrastructure
 
-> Статус: `в работе`. План сверен с кодом после задач 0005–0015 (интерфейсы репозиториев в Application, все репозитории async, единый `PaymentRepository.SelectPayment`).
+> Статус: `на ревью`. План сверен с кодом после задач 0005–0015 (интерфейсы репозиториев в Application, все репозитории async, единый `PaymentRepository.SelectPayment`).
 
 ## Затрагиваемые части (backend)
 - `Common/` — `IUnitOfWork`, `ITransaction` (абстракция транзакции, без зависимостей от БД).
@@ -15,15 +15,15 @@
 - `Website/Controllers/PaymentsApi/PaymentsApiController.cs` — передать `CancellationToken` в импорт.
 
 ## Шаги
-- [ ] Транзакционная абстракция (`IUnitOfWork`/`ITransaction` в `FinCtrl.Common`, реализация в `DbConnectionFactory`, `RepositoryBase` передаёт транзакцию)
-- [ ] Транзакции в репозиториях (`SetPaymentTags`, `AddTagsToPayments`, `TagRepository.Delete`) и импорте (весь файл)
-- [ ] Дерево категорий: один SELECT + сборка в памяти (`CategoryService`)
-- [ ] Знак суммы в Domain (`Payment.NormalizeSumSign`)
-- [ ] NOLOCK убран
-- [ ] Логи и CancellationToken в импорте; меньше запросов на строку
-- [ ] Тесты и ручная проверка
-- [ ] Сборка + тесты + ручная проверка (Definition of Done)
-- [ ] PR
+- [x] Транзакционная абстракция (`IUnitOfWork`/`ITransaction` в `FinCtrl.Common`, реализация в `DbConnectionFactory`, `RepositoryBase` передаёт транзакцию)
+- [x] Транзакции в репозиториях (`SetPaymentTags`, `AddTagsToPayments`, `TagRepository.Delete`) и импорте (весь файл)
+- [x] Дерево категорий: один SELECT + сборка в памяти (`CategoryService`)
+- [x] Знак суммы в Domain (`Payment.NormalizeSumSign`)
+- [x] NOLOCK убран
+- [x] Логи и CancellationToken в импорте; меньше запросов на строку
+- [x] Тесты и ручная проверка
+- [x] Сборка + тесты + ручная проверка (Definition of Done)
+- [x] PR
 
 ## Тесты
 - Domain: `PaymentTests.NormalizeSumSign_*` — расход с положительной суммой → отрицательная; расход с отрицательной и доход — без изменений.
@@ -54,7 +54,19 @@
 - 2026-10-20: `EditPayment` (Update + SetPaymentTags) в одну транзакцию не объединён: оркестрация живёт в контроллере, перенос в `PaymentService.Edit` — задача 0018 (там и обернуть в `IUnitOfWork`). `SetPaymentTags` сам по себе атомарен.
 
 ## Вне объёма (найдено попутно)
--
+- `EditPayment` не атомарен (Update + SetPaymentTags в контроллере) — оборачивать в `IUnitOfWork` при переносе в `PaymentService.Edit`, задача 0018.
+- `PUT api/PaymentsApi/{id}` без поля `description` затирает описание платежа (`payment.PaymentDescription = dto.Description`, null не значит «не трогать») — относится к семантике null в `PaymentEditDto`, задача 0018.
+- `Update`/`Delete(params T[])` в `AccountRepository`/`CategoryRepository`/`PaymentSourceRepository`/`PaymentRepository` выполняют запрос по разу на элемент без транзакции; сейчас везде вызываются с одной сущностью, поэтому не трогались. Если появится массовая правка — обернуть в `BeginTransaction()`.
+- Ошибки SQL (переполнение суммы в импорте, FK при несуществующем теге) отдаются как 500 со страницей исключения — задача 0017 (ProblemDetails/валидация).
 
 ## Итог
-Заполняется по завершении.
+Сделано:
+- `IUnitOfWork`/`ITransaction` (`FinCtrl.Common`), транзакция соединения scope в `DbConnectionFactory` (вложенная — no-op, освобождение без `Commit` — откат), `RepositoryBase` передаёт транзакцию во все вызовы Dapper; `PaymentSourceRepository` переведён с прямого соединения на хелперы базы.
+- В транзакции: `SetPaymentTags`, `AddTagsToPayments`, `TagRepository.Delete`, импорт файла целиком.
+- Дерево категорий — один SELECT + сборка в `CategoryService` (`getTree` — ~5 мс вместо 1–5 с).
+- `Payment.NormalizeSumSign()` вместо правки знака в маппере; `NOLOCK` убран.
+- Импорт: `ILogger` с итогом, `CancellationToken`, кэш источников/счетов (на строку 2 запроса вместо до 6).
+- Тесты: Domain 13, Application 24, Infrastructure 11 — зелёные (новые: `NormalizeSumSign_*`, `CategoryServiceTests`, транзакция/откат/отмена/кэш/лог в `PaymentsImportServiceTests`).
+- Ручная проверка (preview backend + frontend): 7 страниц открываются, ошибок в консоли нет; `getTree` 4–7 мс, все 25 категорий в дереве; импорт CSV — создаёт 2 платежа и 2 источника, повторная загрузка — 0 созданных, 2 пропущенных дубля, итог в логе; CSV с переполнением суммы в 3-й строке → 500, платежей и источников не прибавилось (атомарность); `SetPaymentTags` с несуществующим тегом → 500, прежний тег платежа остался (откат DELETE); создание/назначение/массовое назначение/удаление тега со связями; расход с положительной суммой в БД отдаётся с минусом. Тестовые данные удалены, identity-сиды Payments/PaymentSources/Tags возвращены (7953/1388/3).
+
+Осталось: см. «Вне объёма».
