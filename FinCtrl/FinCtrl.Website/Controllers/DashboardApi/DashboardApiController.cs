@@ -2,9 +2,6 @@ using FinCtrl.Application.Dashboard;
 using FinCtrl.Common;
 using FinCtrl.Domain.Dashboard;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Website.Controllers.DashboardApi
 {

@@ -70,6 +70,7 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 - Семантика null в `PaymentEditDto` неоднородна: `CategoryId == null` → не трогать (очистить нельзя; legacy, не менять); `AccountId` → null = не трогать, `0` = очистить; `TagIds` → null = не трогать, список = заменить целиком. Для новых полей использовать конвенцию `AccountId`/`TagIds`.
 - `EditPayment` биндит всё тело через `[FromBody]`, поэтому клиент обязан передавать `paymentId` в теле PUT (значение из роута игнорируется).
 - У `PaymentTags` нет каскадного удаления в БД — `TagRepository.Delete` сначала удаляет связи.
+- Все проекты — `net9.0` с `Nullable`/`ImplicitUsings`; доступ к БД — `Microsoft.Data.SqlClient` (нужен `TrustServerCertificate=True` для локального сервера). В Website отключён неявный `[Required]` для non-nullable полей (`SuppressImplicitRequiredAttributeForNonNullableReferenceTypes`) — обязательные поля входных DTO помечать `[Required]` явно.
 
 ## Архитектура frontend
 - Vue 3 Composition API (`<script setup>`), Bootstrap 5, axios с прямыми вызовами `APP_CONFIG.apiBaseUrl + '/api/...'` (отдельного API-слоя нет), Chart.js через vue-chartjs, `vue-multiselect` для тегов.

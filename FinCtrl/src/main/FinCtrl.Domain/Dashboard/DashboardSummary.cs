@@ -19,14 +19,14 @@ namespace FinCtrl.Domain.Dashboard
     public class CategorySpendingItem
     {
         public int CategoryId { get; set; }
-        public string CategoryName { get; set; }
-        public string FullCategoryName { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public string FullCategoryName { get; set; } = string.Empty;
         public decimal TotalSum { get; set; }
     }
 
     public class ChartPoint
     {
-        public string Label { get; set; }
+        public string Label { get; set; } = string.Empty;
         public decimal Value { get; set; }
     }
 

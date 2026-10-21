@@ -1,12 +1,11 @@
 ﻿using FinCtrl.Common;
-using System.Collections.Generic;
 
 namespace FinCtrl.Website.Controllers.PaymentsApi
 {
     public class GetPaymentsTableResponse
     {
-        public List<CategoryTreeDto> PaymentsTree { get; set; }
-        public Dictionary<string, DateRange> Periods { get; set; }
+        public List<CategoryTreeDto> PaymentsTree { get; set; } = new();
+        public Dictionary<string, DateRange> Periods { get; set; } = new();
     }
 
 }

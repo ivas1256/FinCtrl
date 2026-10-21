@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace FinCtrl.Website.RequestDto
 {
     public class BulkAssignTagsDto

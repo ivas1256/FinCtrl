@@ -1,12 +1,5 @@
-using System;
 using FinCtrl.Application;
 using FinCtrl.Infrastructure;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using NLog.Extensions.Logging;
 
@@ -26,7 +19,12 @@ namespace FinCtrl.Website
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
+            services.AddControllers(options =>
+            {
+                // Nullable в Website включён, но контракт API не меняем: обязательность полей задаётся явно
+                // атрибутами ([Required]), а не неявно по non-nullable ссылочным типам
+                options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+            });
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "FinCtrl API", Version = "v1" });

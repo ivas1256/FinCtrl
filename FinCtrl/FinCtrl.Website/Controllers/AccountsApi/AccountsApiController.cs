@@ -2,9 +2,6 @@ using FinCtrl.Application.Accounts;
 using FinCtrl.Domain;
 using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Website.Controllers.AccountsApi
 {
@@ -41,7 +38,7 @@ namespace FinCtrl.Website.Controllers.AccountsApi
             newAccount.DisplayName = dto.DisplayName;
             var id = await _accountService.Create(newAccount);
 
-            return Ok(AccountDto.FromModel(await _accountService.GetById(id)));
+            return Ok(AccountDto.FromModel((await _accountService.GetById(id))!));
         }
 
         [HttpPut("{accountId}")]

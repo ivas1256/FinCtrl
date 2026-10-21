@@ -36,7 +36,7 @@
 переписать бэкенд на EF Core ("clean architecture" rewrite вне `.sln`)
 удалена задачей 0010.
 
-**Доступ к данным:** без ORM, чистый Dapper. Все запросы — raw SQL
+**Доступ к данным:** без ORM, чистый Dapper поверх Microsoft.Data.SqlClient. Все запросы — raw SQL
 внутри репозиториев. `RepositoryBase` даёт только хелперы
 `Execute/Query/FirstOrDefault`. Dommel/FluentMap в коде нет, раньше
 документация упоминала их по ошибке.
@@ -308,3 +308,13 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 - `Startup`: CORS-origins читаются из `Cors:AllowedOrigins` (`appsettings.json`), Swagger называется «FinCtrl API», логирование — только NLog (без `AddConsole`/`AddDebug` перед `ClearProviders`).
 - Тесты парсеров импорта: `FinCtrl/tests/FinCtrl.Application.Tests/PaymentsImport/FileFormats/`.
 - **Грабля:** `CsvFileFormat` пропускает заголовок по `parser.LineNumber == 2`; у файла из одной строки-заголовка без перевода строки заголовок не пропускается и импорт падает на парсинге даты.
+
+## net9 и Microsoft.Data.SqlClient (задача 0013, 2026-10-20)
+
+- Все проекты .sln (включая тестовые) — 
+et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 (IDbConnectionFactory.GetConnectionAsync() возвращает Microsoft.Data.SqlClient.SqlConnection); пакет и Dapper подключены только в FinCtrl.Common.Infrastructure, Infrastructure получает их транзитивно.
+- Версии выровнены: Microsoft.Extensions.* — 9.0.4, Microsoft.Extensions.TimeProvider.Testing — 9.0.0; удалены Microsoft.Bcl.TimeProvider (TimeProvider встроен в BCL) и лишний Microsoft.Extensions.DependencyInjection в Infrastructure.
+- В FinCtrl.Website включены Nullable и ImplicitUsings; сборка backend — без предупреждений. Чтобы не менять контракт API, в AddControllers выставлено SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true: non-nullable поля DTO **не** становятся неявно обязательными, обязательность — только явным [Required].
+- Поведение: PUT api/PaymentsApi/{id} для несуществующего платежа отдаёт 404 (раньше NRE → 500); у платежа без источника правка категории больше не падает с NRE.
+- **Грабля:** Microsoft.Data.SqlClient по умолчанию шифрует соединение (Encrypt=True) — строке подключения к локальному серверу нужен TrustServerCertificate=True (в dev-строке есть).
+- **Грабля (окружение):** на dev-машине при нехватке памяти SQL Server параллельные запросы SPA ждут memory grant (RESOURCE_SEMAPHORE) до ~25 с и браузер их обрывает (499) — страницы висят на «Загрузка...». Это не код и не драйвер (воспроизводится с MARS и без); помогает освободить память или задать SQL Server min server memory.

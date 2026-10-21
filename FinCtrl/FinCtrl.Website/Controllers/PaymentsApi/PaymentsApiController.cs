@@ -6,13 +6,8 @@ using FinCtrl.Common;
 using FinCtrl.Domain;
 using FinCtrl.Domain.Statistic;
 using FinCtrl.Website.RequestDto;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Website.Controllers.PaymentsApi
 {
@@ -24,7 +19,7 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
         private readonly ICategoryService _categoryService;
         private readonly IPaymentService _paymentService;
         private readonly IPaymentsImportService _paymentsImportService;
-        private List<Category> _categoriesTree;
+        private List<Category> _categoriesTree = new();
         private GroupingType _groupingType;
 
         public PaymentsApiController(IMainStatisticService mainStatisticService, ICategoryService categoryService, IPaymentService paymentService, IPaymentsImportService paymentsImportService)
@@ -37,7 +32,7 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
 
         [HttpGet]
         [ProducesResponseType(typeof(GetPaymentsTableResponse), 200)]
-        public async Task<IActionResult> Get(DateTime? from, DateTime? to, GroupingType periodType, [FromQuery] int[] tagIds = null)
+        public async Task<IActionResult> Get(DateTime? from, DateTime? to, GroupingType periodType, [FromQuery] int[]? tagIds = null)
         {
             _groupingType = periodType;
 
@@ -77,12 +72,14 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
         public async Task<IActionResult> EditPayment([FromBody] PaymentEditDto dto)
         {
             var payment = await _paymentService.Get(dto.PaymentId);
+            if (payment is null)
+                return NotFound();
 
             payment.PaymentDescription = dto.Description;
             payment.ExcludeFromStats = dto.ExcludeFromStatsStr?.Equals("on") ?? false;
 
             if (dto.CategoryId is not null
-                && dto.CategoryId != payment.PaymentSource.PaymentSourceCategory?.CategoryId)
+                && dto.CategoryId != payment.PaymentSource?.PaymentSourceCategory?.CategoryId)
             {
                 payment.PaymentCategory = new Category { CategoryId = dto.CategoryId.Value };
             }
@@ -147,7 +144,7 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
             [FromQuery] string sortDir = "desc",
             [FromQuery] int page = 1,
             [FromQuery] int? pageSize = null,
-            [FromQuery] int[] tagIds = null)
+            [FromQuery] int[]? tagIds = null)
         {
             var dateRange = new DateRange(
                 from?.Date ?? new DateTime(1753, 1, 1),
@@ -159,8 +156,8 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
 
             var items = payments.Select(p =>
             {
-                Category effectiveCategory = null;
-                string categorySource = null;
+                Category? effectiveCategory = null;
+                string? categorySource = null;
 
                 if (p.PaymentCategory != null)
                 {
@@ -244,13 +241,7 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
                     periodPayments = periodPayments.Union(groupItem.Payments);
                 }
 
-                string periodKey = ToPeriodKey(period);
-                if (treeNode.Periods.ContainsKey(periodKey) is false)
-                {
-                    treeNode.Periods.Add(periodKey, null);
-                }
-
-                treeNode.Periods[periodKey] = new PeriodDto
+                treeNode.Periods[ToPeriodKey(period)] = new PeriodDto
                 {
                     TotalSum = (groupItem?.TotalSum ?? 0) + groupItems
                                 .Where(_ => childCategories.Contains(_.Category) && _.Period.Equals(period))
