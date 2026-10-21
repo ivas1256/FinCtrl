@@ -1,11 +1,8 @@
-﻿     using FinCtrl.Application.Categories;
+﻿#nullable enable
+
 using FinCtrl.Application.PaymentSources;
-using FinCtrl.Domain;
 using FinCtrl.Website.RequestDto;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,12 +13,10 @@ namespace FinCtrl.Website.Controllers.PaymentSourceesApi
     public class PaymentSourcesApiController : ControllerBase
     {
         private readonly IPaymentSourceService _paymentSourceService;
-        private readonly ICategoryService _categoryService;
 
-        public PaymentSourcesApiController(IPaymentSourceService paymentSourceService, ICategoryService categoryService)
+        public PaymentSourcesApiController(IPaymentSourceService paymentSourceService)
         {
             _paymentSourceService = paymentSourceService;
-            _categoryService = categoryService;
         }
 
         [HttpGet]
@@ -43,15 +38,28 @@ namespace FinCtrl.Website.Controllers.PaymentSourceesApi
             return Ok(new { Items = items, TotalCount = totalCount });
         }
 
+        /// <summary>
+        /// Правит источник платежа, id которого передан в теле (legacy-маршрут, используется массовым сохранением).
+        /// </summary>
         [HttpPut]
         public async Task<IActionResult> EditSources(PaymentSourceDto editDto)
         {
-            var category = editDto.CategoryId.HasValue ? await _categoryService.GetById(editDto.CategoryId.Value) : null;
-
-            var toUpdate = PaymentSource.CreateFromExisting(editDto.PaymentSourceId, editDto.PaymentSourceName, category, editDto.Description);
-            await _paymentSourceService.Update(toUpdate);
+            await _paymentSourceService.Edit(editDto.PaymentSourceId, editDto.PaymentSourceName, editDto.CategoryId, editDto.Description);
 
             return Ok();
+        }
+
+        /// <summary>
+        /// Правит один источник платежа: имя, категорию и описание.
+        /// </summary>
+        /// <param name="paymentSourceId">Id источника (из роута; id в теле не используется).</param>
+        /// <param name="request">Новые значения полей; <c>CategoryId == null</c> — снять категорию.</param>
+        [HttpPut("{paymentSourceId:int}")]
+        public async Task<IActionResult> EditSource(int paymentSourceId, [FromBody] EditPaymentSourceRequest request)
+        {
+            await _paymentSourceService.Edit(paymentSourceId, request.PaymentSourceName, request.CategoryId, request.Description);
+
+            return NoContent();
         }
     }
 }

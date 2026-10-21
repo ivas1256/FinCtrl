@@ -145,8 +145,8 @@ lookup-сущности, создаваемой автоматически пр�
     `null` — не трогать, конкретный id — установить, `0` — явно
     очистить. Если будете добавлять новые редактируемые поля — учитывайте
     это несоответствие в поведении.
-- **PaymentSourcesApi** — `GET`, `GET list`, `PUT` (только правка,
-  create/delete нет).
+- **PaymentSourcesApi** — `GET`, `GET list`, `PUT {id}` (правка одного источника, id из роута; с задачи 0006), `PUT` (legacy: id в теле, используется массовым сохранением); только правка,
+  create/delete нет.
 - **AccountsApi** — полный CRUD: `GET`, `POST`, `PUT {id}`, `DELETE {id}`.
 - **CategoriesApi** — дерево категорий и т.п.
 
@@ -276,3 +276,9 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 - Раньше `GroupingType.Quartal` (= 3) не обрабатывался на backend → `NotImplementedException` и 500. Теперь `MainStatisticService` группирует по началу квартала (1-е число месяцев 1/4/7/10), конец периода — исключающая граница `+3 месяца` (как у месяца/года); `PaymentsApiController.ToPeriodKey` даёт ключ `Q<N><yyyy>` (например `Q42025`).
 - Тесты: `FinCtrl/tests/FinCtrl.Application.Tests/Statistic/MainStatisticServiceTests.cs`, `periodHeader.spec.js`.
 - **Грабля (не исправлена, вне объёма 0005):** `PaymentRepository.GetTagsForPayments` передаёт все id платежей одним `IN @Ids` — при периоде больше ~2100 платежей SQL Server отвечает «too many parameters», и `GET api/PaymentsApi` падает с 500 при любой группировке (на dev-базе — период с 01.01.2025).
+
+## Одиночное сохранение источника платежа (задача 0006, 2026-10-20)
+
+- Кнопка 💾 на странице «Источники» шлёт `PUT api/PaymentSourcesApi/{id}` (без id в теле), а маршрута с id не было → 404. Добавлен action `EditSource` с `[HttpPut("{paymentSourceId:int}")]` и телом `EditPaymentSourceRequest` (`paymentSourceName` обязателен, `categoryId == null` — снять категорию), ответ `204`. Старый `PUT api/PaymentSourcesApi` (id в теле, массовое сохранение) сохранён.
+- Логика правки (поиск категории + `PaymentSource.CreateFromExisting` + `Update`) перенесена из контроллера в `IPaymentSourceService.Edit`; оба PUT используют её. Тесты — `FinCtrl/tests/FinCtrl.Application.Tests/PaymentSources/PaymentSourceServiceTests.cs`.
+- В отличие от `PaymentEditDto`, у источника `categoryId == null` **очищает** категорию (так было и раньше в массовом PUT).
