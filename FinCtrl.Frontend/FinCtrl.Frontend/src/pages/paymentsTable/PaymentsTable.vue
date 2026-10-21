@@ -211,6 +211,7 @@ import PaymentCategoryRow from './PaymentCategoryRow.vue'
 import PaymentList from './PaymentList.vue'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
+import { Modal } from 'bootstrap'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
 import { computeMaxValue, formatHeatCurrency } from '../../utils/heatmap'
 import { formatPeriodHeader, GroupingType } from '../../utils/periodHeader'
@@ -458,8 +459,7 @@ const openEditModal = (payment) => {
         tagIds: (payment.tags || []).map(t => t.tagId)
     }
 
-    const modal = new bootstrap.Modal(document.getElementById('editPaymentModal'))
-    modal.show()
+    Modal.getOrCreateInstance(document.getElementById('editPaymentModal')).show()
 }
 
 const savePayment = async () => {
@@ -480,8 +480,7 @@ const savePayment = async () => {
             }
         )
 
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editPaymentModal'))
-        modal.hide()
+        Modal.getOrCreateInstance(document.getElementById('editPaymentModal')).hide()
 
         // Перезагружаем данные
         await submitForm()

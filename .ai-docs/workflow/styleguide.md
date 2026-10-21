@@ -342,10 +342,12 @@ const chartOptions = {
 
 ```js
 import { Modal } from 'bootstrap'
-const modal = ref(null)
-modal.value = new Modal(document.getElementById('myModal'))
-modal.value.show()
+Modal.getOrCreateInstance(document.getElementById('myModal')).show()
+// ...
+Modal.getOrCreateInstance(document.getElementById('myModal')).hide()
 ```
+
+Bootstrap подключается одной копией из npm: CSS — в `src/main.js`, JS — только `import { Modal } from 'bootstrap'`. Глобальный `bootstrap.Modal` и CDN-подключения в `index.html` не использовать.
 
 Стандартный размер: `modal-lg`. Кнопка закрытия: `data-bs-dismiss="modal"`.
 

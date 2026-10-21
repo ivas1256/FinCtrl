@@ -1,3 +1,6 @@
+// Bootstrap — единственная копия из npm; CSS подключается первым,
+// чтобы собственные стили (main.css) переопределяли его, как раньше с CDN
+import 'bootstrap/dist/css/bootstrap.min.css'
 import './assets/main.css'
 import 'vue-multiselect/dist/vue-multiselect.min.css'
 

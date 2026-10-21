@@ -418,3 +418,11 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - `PaymentsTable.vue`: убраны отладочные `console.log` и debug-`watch(formData)`. В `src/` не осталось `console.log` (только `console.error` в обработчиках ошибок).
 - `README.md` frontend — краткое описание и команды со ссылкой на `CLAUDE.md`; `index.html` — `lang="ru"`.
 - Шаблонный `src/assets/base.css` (тёмная тема через `prefers-color-scheme`) пока оставлен — решение в задаче 0022.
+
+## Один Bootstrap 5.3 из npm (задача 0020, 2026-10-20)
+
+- Из `index.html` убраны CDN-подключения Bootstrap 5.0.2 (CSS и `bootstrap.bundle.min.js`); Bootstrap — только npm-пакет `bootstrap@^5.3.8`. CSS импортируется в `src/main.js` первым (`import 'bootstrap/dist/css/bootstrap.min.css'`), до `assets/main.css` и стилей `vue-multiselect` — собственные стили по-прежнему переопределяют Bootstrap.
+- JS Bootstrap — только через `import { Modal } from 'bootstrap'` (модуль ESM регистрирует и data-API, в т.ч. `data-bs-dismiss="modal"`); глобального `window.bootstrap` больше нет. `Payments.vue`/`PaymentsTable.vue` переведены с `new bootstrap.Modal(...)`/`getInstance` на `Modal.getOrCreateInstance(el)`.
+- Страж от регрессии — `src/bootstrapSetup.spec.js` (нет Bootstrap в `index.html`, порядок импорта CSS, нет `bootstrap.*` в `.vue`).
+- Визуальные отличия 5.0 → 5.3 (сверено поэлементно на всех 7 страницах): геометрия (положение/размеры элементов) не изменилась; изменились только токены оформления — скругления (4px → 6px, `-sm` 3.2px → 4px), цвет рамок (`rgba(0,0,0,.125)`/`#ced4da` → `#dee2e6`), `text-muted` (`#6c757d` → `rgba(33,37,41,.75)`), текст внутри `.card`/`.table` теперь `--bs-body-color` (`#212529`) вместо унаследованного из `base.css` `#2c3e50` (в тёмной схеме `base.css` заголовки карточек стали читаемыми).
+- **Грабля:** в dev-режиме CSS инжектится скриптом после первой отрисовки, а `base.css` задаёт `transition` цвета/фона у `body` — в фоновой (скрытой) вкладке вычисленный цвет `body` может временно быть чёрным/прозрачным. Это не регрессия; в production CSS подключается `<link>`.
