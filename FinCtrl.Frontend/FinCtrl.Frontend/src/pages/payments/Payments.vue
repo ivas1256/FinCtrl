@@ -574,10 +574,9 @@ const saveSinglePayment = async (payment) => {
             categoryIdToSave = null
         }
         await axios.put(`${APP_CONFIG.apiBaseUrl}/api/PaymentsApi/${payment.paymentId}`, {
-            paymentId: payment.paymentId,
             categoryId: categoryIdToSave,
             description: payment.paymentDescription,
-            excludeFromStatsStr: payment.excludeFromStats ? 'on' : null,
+            excludeFromStats: payment.excludeFromStats,
             tagIds: payment.tagIds,
         })
         payment.originalCategoryId = payment.categoryId
@@ -601,10 +600,9 @@ const saveAllChanges = async () => {
                 categoryIdToSave = null
             }
             return axios.put(`${APP_CONFIG.apiBaseUrl}/api/PaymentsApi/${payment.paymentId}`, {
-                paymentId: payment.paymentId,
                 categoryId: categoryIdToSave,
                 description: payment.paymentDescription,
-                excludeFromStatsStr: payment.excludeFromStats ? 'on' : null,
+                excludeFromStats: payment.excludeFromStats,
                 tagIds: payment.tagIds,
             })
         }))

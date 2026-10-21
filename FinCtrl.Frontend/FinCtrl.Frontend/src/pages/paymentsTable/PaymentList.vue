@@ -34,7 +34,7 @@
                 <!-- Вторая строка: категория и описание -->
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="payment-category small text-muted">
-                        Категория: <strong>{{ getCategoryName(payment.category) }}</strong>
+                        Категория: <strong>{{ getCategoryName(payment.effectiveCategory) }}</strong>
                     </div>
                     <div class="payment-description small text-muted flex-grow-1 ms-3 text-end">
                         {{ payment.paymentDescription || 'Нет описания' }}

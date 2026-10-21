@@ -246,7 +246,8 @@ namespace FinCtrl.Infrastructure.Payments
         }
 
         public async Task<(List<Payment> Items, int TotalCount)> GetListPaged(
-            DateRange dateRange,
+            DateTime? from,
+            DateTime? to,
             int? sourceId,
             bool noCategoryOnly,
             string sortBy,
@@ -263,8 +264,11 @@ namespace FinCtrl.Infrastructure.Payments
             };
             var orderDir = sortDir == "asc" ? "ASC" : "DESC";
 
-            var whereClause = new StringBuilder(
-                " WHERE p.IsDeleted = 0 AND p.PaymentDate >= @From AND p.PaymentDate < @To");
+            var whereClause = new StringBuilder(" WHERE p.IsDeleted = 0");
+            if (from.HasValue)
+                whereClause.Append(" AND p.PaymentDate >= @From");
+            if (to.HasValue)
+                whereClause.Append(" AND p.PaymentDate < @To");
             if (sourceId.HasValue)
                 whereClause.Append(" AND p.PaymentSourceId = @SourceId");
             if (noCategoryOnly)
@@ -274,8 +278,8 @@ namespace FinCtrl.Infrastructure.Payments
 
             var queryParams = new
             {
-                dateRange.From,
-                dateRange.To,
+                From = from,
+                To = to,
                 SourceId = sourceId,
                 TagIds = tagIds,
                 Skip = (page - 1) * (pageSize ?? 0),

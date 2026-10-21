@@ -454,7 +454,7 @@ const loadTags = async () => {
 const openEditModal = (payment) => {
     editingPayment.value = {
         ...payment,
-        categoryId: payment.category?.categoryId || '',
+        categoryId: payment.effectiveCategory?.categoryId || '',
         accountId: payment.account?.accountId || '',
         tagIds: (payment.tags || []).map(t => t.tagId)
     }
@@ -470,10 +470,10 @@ const savePayment = async () => {
         const reselectCategoryId = selectedCategoryId.value
         const reselectPeriodKey = selectedPeriodKey.value
 
-        const response = await axios.put(
+        // PUT отвечает 204 без тела; ошибка (4xx/5xx) уходит в catch
+        await axios.put(
             `${APP_CONFIG.apiBaseUrl}/api/PaymentsApi/${editingPayment.value.paymentId}`,
             {
-                PaymentId: editingPayment.value.paymentId,
                 CategoryId: editingPayment.value.categoryId || null,
                 AccountId: editingPayment.value.accountId === '' ? 0 : editingPayment.value.accountId,
                 Description: editingPayment.value.paymentDescription,
@@ -481,28 +481,26 @@ const savePayment = async () => {
             }
         )
 
-        if (response.status === 200) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editPaymentModal'))
-            modal.hide()
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editPaymentModal'))
+        modal.hide()
 
-            // Перезагружаем данные
-            await submitForm()
+        // Перезагружаем данные
+        await submitForm()
 
-            // Повторно выбираем ту же ячейку по id категории и ключу периода
-            if (reselectCategoryId && reselectPeriodKey) {
-                const category = findCategoryById(paymentsTree.value, reselectCategoryId)
-                const periodData = category?.periods?.[reselectPeriodKey]
-                const period = periodHeaders.value.find(p => p.key === reselectPeriodKey)
-                if (category && periodData && period) {
-                    handleCellClick(
-                        periodData.payments || [],
-                        category.categoryName,
-                        period.name,
-                        periodData.totalSum || 0,
-                        category.categoryId,
-                        reselectPeriodKey
-                    )
-                }
+        // Повторно выбираем ту же ячейку по id категории и ключу периода
+        if (reselectCategoryId && reselectPeriodKey) {
+            const category = findCategoryById(paymentsTree.value, reselectCategoryId)
+            const periodData = category?.periods?.[reselectPeriodKey]
+            const period = periodHeaders.value.find(p => p.key === reselectPeriodKey)
+            if (category && periodData && period) {
+                handleCellClick(
+                    periodData.payments || [],
+                    category.categoryName,
+                    period.name,
+                    periodData.totalSum || 0,
+                    category.categoryId,
+                    reselectPeriodKey
+                )
             }
         }
     } catch (error) {

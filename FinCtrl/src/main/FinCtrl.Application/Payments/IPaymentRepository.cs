@@ -28,7 +28,8 @@ public interface IPaymentRepository
     Task<List<Payment>> GetBySource(int PaymentSourceId);
 
     /// <summary>Страница платежей для списка операций, с тегами.</summary>
-    /// <param name="dateRange">Период; <c>To</c> — исключающая граница.</param>
+    /// <param name="from">Начало периода (включительно); <c>null</c> — без нижней границы.</param>
+    /// <param name="to">Конец периода — исключающая граница; <c>null</c> — без верхней границы.</param>
     /// <param name="sourceId">Фильтр по источнику; <c>null</c> — все.</param>
     /// <param name="noCategoryOnly">Только платежи без категории (ни своей, ни у источника).</param>
     /// <param name="sortBy"><c>source</c>, <c>category</c>, иначе — по дате.</param>
@@ -37,7 +38,7 @@ public interface IPaymentRepository
     /// <param name="pageSize">Размер страницы; <c>null</c> — все записи.</param>
     /// <param name="tagIds">Если задан — только платежи хотя бы с одним из тегов.</param>
     /// <returns>Записи страницы и общее число записей по фильтру.</returns>
-    Task<(List<Payment> Items, int TotalCount)> GetListPaged(DateRange dateRange, int? sourceId, bool noCategoryOnly, string sortBy, string sortDir, int page, int? pageSize, int[]? tagIds = null);
+    Task<(List<Payment> Items, int TotalCount)> GetListPaged(DateTime? from, DateTime? to, int? sourceId, bool noCategoryOnly, string sortBy, string sortDir, int page, int? pageSize, int[]? tagIds = null);
 
     /// <summary>Заменяет теги платежа целиком (пустой список — снять все).</summary>
     Task SetPaymentTags(int paymentId, IReadOnlyCollection<int> tagIds);

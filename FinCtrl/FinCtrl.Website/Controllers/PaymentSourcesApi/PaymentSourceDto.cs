@@ -1,6 +1,6 @@
 ﻿using FinCtrl.Domain;
 
-namespace FinCtrl.Website.RequestDto
+namespace FinCtrl.Website.Controllers.PaymentSourcesApi
 {
     public class PaymentSourceDto
     {

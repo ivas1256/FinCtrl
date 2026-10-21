@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using FinCtrl.Domain;
 
-namespace FinCtrl.Website.RequestDto
+namespace FinCtrl.Website.Controllers.TagsApi
 {
     public class TagDto
     {

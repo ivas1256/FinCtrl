@@ -225,12 +225,12 @@
                                     <tbody>
                                         <tr v-for="payment in sourcePayments" :key="payment.paymentId">
                                             <td>{{ formatDate(payment.paymentDate) }}</td>
-                                            <td :class="payment.amount >= 0 ? 'text-success' : 'text-danger'">
+                                            <td :class="payment.paymentSum >= 0 ? 'text-success' : 'text-danger'">
                                                 <strong>{{ payment.paymentSum?.toLocaleString('ru-RU') }} ₽</strong>
                                             </td>
                                             <td>
                                                 <span class="badge bg-secondary">
-                                                    {{ getCategoryName(payment.paymentCategory?.Id) }}
+                                                    {{ payment.effectiveCategory?.categoryName || 'Без категории' }}
                                                 </span>
                                             </td>
                                             <td>{{ payment.paymentDescription || '-' }}</td>
@@ -300,21 +300,6 @@ const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
         day: '2-digit', month: '2-digit', year: 'numeric'
     })
-}
-
-const getCategoryName = (categoryId) => {
-    if (!categoryId) return 'Без категории'
-    function findCategory(list, id) {
-        if (!Array.isArray(list)) return null
-        for (const cat of list) {
-            if (cat?.categoryId === id) return cat
-            const found = findCategory(cat?.children, id)
-            if (found) return found
-        }
-        return null
-    }
-    const cat = findCategory(categories.value, categoryId)
-    return cat ? cat.categoryName : 'Неизвестно'
 }
 
 const loadPaymentSources = async () => {

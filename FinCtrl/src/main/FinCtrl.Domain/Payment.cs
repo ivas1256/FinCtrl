@@ -2,7 +2,7 @@
 
 namespace FinCtrl.Domain
 {
-    public record Payment
+    public class Payment
     {
         public Payment()
         {
@@ -44,7 +44,7 @@ namespace FinCtrl.Domain
 
 
         /// <summary>
-        /// Категория платежа, заданная пользователем
+        /// Итоговая категория: своя категория платежа приоритетнее категории его источника.
         /// </summary>
         public Category? CalculatedCategory
         {

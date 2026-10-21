@@ -1,6 +1,5 @@
 using FinCtrl.Application.Accounts;
 using FinCtrl.Domain;
-using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinCtrl.Website.Controllers.AccountsApi
@@ -44,7 +43,7 @@ namespace FinCtrl.Website.Controllers.AccountsApi
             var toUpdate = Account.CreateFromExisting(accountId, dto.ExcelAccountName, dto.DisplayName);
             await _accountService.Update(toUpdate);
 
-            return Ok();
+            return NoContent();
         }
 
         /// <summary>Удаляет счёт; 404 — счёт не найден, 409 — счёт указан в операциях.</summary>
@@ -53,7 +52,7 @@ namespace FinCtrl.Website.Controllers.AccountsApi
         {
             await _accountService.Delete(accountId);
 
-            return Ok();
+            return NoContent();
         }
     }
 }
