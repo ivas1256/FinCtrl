@@ -156,7 +156,7 @@ FinCtrl/
 
 Требования к покрытию — в `task-workflow.md`, раздел 3.
 
-- Тесты лежат в `FinCtrl/tests/`, отдельный xUnit-проект на каждый тестируемый проект: `FinCtrl.<Проект>.Tests` (`FinCtrl.Application.Tests` тестирует `FinCtrl.Application`, `FinCtrl.Infrastructure.Tests` — `FinCtrl.Infrastructure`: парсеры импорта и прочая логика без БД, `FinCtrl.Website.Tests` — маппинг DTO контроллеров). Все тестовые проекты входят в `FinCtrl.Backend.sln`.
+- Тесты лежат в `FinCtrl/tests/`, отдельный xUnit-проект на каждый тестируемый проект: `FinCtrl.<Проект>.Tests` (`FinCtrl.Application.Tests` тестирует `FinCtrl.Application`, `FinCtrl.Infrastructure.Tests` — `FinCtrl.Infrastructure`: парсеры импорта и прочая логика без БД, `FinCtrl.Website.Tests` — маппинг DTO, логика контроллеров (даты, id из роута) и `ApiExceptionHandler`, `FinCtrl.Common.Tests` — `DateRange` и хелперы `FinCtrl.Common`). Все тестовые проекты входят в `FinCtrl.Backend.sln`.
 - **Namespace и путь теста повторяют тестируемый класс** с вставкой `.Tests` после имени проекта: `FinCtrl.Application.Tags.TagService` → `tests/FinCtrl.Application.Tests/Tags/TagServiceTests.cs`, namespace `FinCtrl.Application.Tests.Tags`.
 - Один тестовый класс `<Класс>Tests` на тестируемый класс; имя теста — `<Метод>_<Условие>_<ОжидаемыйРезультат>`; структура Arrange / Act / Assert.
 - Для доступа к `internal`-реализациям — `InternalsVisibleTo` на тестовый проект.

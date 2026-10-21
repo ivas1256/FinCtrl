@@ -222,6 +222,111 @@ public class PaymentsImportServiceTests
             record.Message);
     }
 
+    [Fact]
+    public async Task Upload_Parsed_ClosesStream()
+    {
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        var stream = new MemoryStream();
+
+        await _service.Upload("file.xlsx", stream);
+
+        Assert.False(stream.CanRead);
+    }
+
+    [Fact]
+    public async Task Upload_ParseError_ClosesStreamAndPropagatesException()
+    {
+        _fileFormat.GetFileNodes(Arg.Any<Stream>()).Throws(new ValidationException("Строка 2: некорректная сумма"));
+        var stream = new MemoryStream();
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.Upload("file.csv", stream));
+
+        Assert.False(stream.CanRead);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().BeginTransaction();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task Upload_RowWithoutAccountName_CreatesPaymentWithoutAccount(string? accountName)
+    {
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", accountName));
+
+        await _service.Upload("file.csv", new MemoryStream());
+
+        await _accountService.DidNotReceiveWithAnyArgs().GetByExcelName(default!);
+        await _accountService.DidNotReceiveWithAnyArgs().Create(default!);
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.Account == null && p.PaymentSource == _shop));
+    }
+
+    [Fact]
+    public async Task Upload_DuplicateWithoutAccountAndRowWithoutAccount_SkipsRow()
+    {
+        var existing = new Payment { PaymentId = 10, PaymentSum = -150m, PaymentDate = PaymentDate, Account = null };
+        _paymentService.FindDuplicate(-150m, PaymentDate).Returns(existing);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "", null));
+
+        await _service.Upload("file.csv", new MemoryStream());
+
+        await _paymentService.DidNotReceive().Create(Arg.Any<Payment>());
+        await _paymentService.DidNotReceiveWithAnyArgs().Update();
+        Assert.Null(existing.Account);
+    }
+
+    [Theory]
+    [InlineData(-150, PaymentTypeEnum.Spending)]
+    [InlineData(300, PaymentTypeEnum.Income)]
+    public async Task Upload_TypeNotSpendingOrIncome_TypeBySumSign(decimal sum, PaymentTypeEnum expectedType)
+    {
+        SetRows(new ExcelPayment(PaymentDate, sum, "Магазин", "INV-1", "OK", "Перевод", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentType == expectedType && p.PaymentSum == sum));
+    }
+
+    [Fact]
+    public async Task Upload_SpendingTypeWithPositiveSum_TypeFromFileAndSumAsIs()
+    {
+        // Тип из файла приоритетнее знака суммы; знак суммы при импорте не меняется — его приводит NormalizeSumSign при чтении.
+        SetRows(new ExcelPayment(PaymentDate, 150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentType == PaymentTypeEnum.Spending && p.PaymentSum == 150m));
+        await _paymentService.Received(1).FindDuplicate(150m, PaymentDate);
+    }
+
+    [Fact]
+    public async Task Upload_RowWithoutSourceName_ThrowsArgumentNullExceptionWithoutCommit()
+    {
+        // Фиксирует текущее поведение: пустая ячейка источника в xlsx даёт SourceName = null, и импорт падает
+        // необработанным исключением (500) вместо ValidationException — см. «Вне объёма» в plan.md задачи 0023.
+        SetRows(new ExcelPayment(PaymentDate, -150m, null!, "INV-1", "OK", "Списание", "Карта"));
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() => _service.Upload("file.xlsx", new MemoryStream()));
+
+        await _paymentService.DidNotReceive().Create(Arg.Any<Payment>());
+        await _transaction.DidNotReceiveWithAnyArgs().Commit();
+    }
+
+    [Fact]
+    public async Task Upload_RowWithEmptySourceName_CreatesSourceWithEmptyName()
+    {
+        // Фиксирует текущее поведение: пустое имя источника (пустая колонка CSV) не отклоняется — создаётся
+        // источник с пустым именем (см. «Вне объёма» в plan.md задачи 0023).
+        var emptySource = new PaymentSource(9, "", null, null, Now, null);
+        _paymentSourceService.Create(Arg.Any<PaymentSource>()).Returns(9);
+        _paymentSourceService.GetById(9).Returns(emptySource);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "", "INV-1", "OK", "", null));
+
+        await _service.Upload("file.csv", new MemoryStream());
+
+        await _paymentSourceService.Received(1).Create(Arg.Is<PaymentSource>(s => s.PaymentSourceName == ""));
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentSource == emptySource));
+    }
+
     private void SetRows(params ExcelPayment[] rows) =>
         _fileFormat.GetFileNodes(Arg.Any<Stream>()).Returns(rows.ToList());
 }

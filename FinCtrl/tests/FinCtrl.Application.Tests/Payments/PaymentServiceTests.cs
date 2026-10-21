@@ -118,6 +118,55 @@ public class PaymentServiceTests
     }
 
     [Fact]
+    public async Task BulkAssignTags_SourceCategory_MatchesByEffectiveCategory()
+    {
+        var source = new PaymentSource(3, "Магазин", 7, null, Now, null);
+        _paymentRepository.GetByDateRange(October).Returns(new List<Payment>
+        {
+            new() { PaymentId = 1, PaymentSource = source },
+            new() { PaymentId = 2, PaymentSource = source, PaymentCategory = new Category(8) },
+            new() { PaymentId = 3 }
+        });
+
+        var count = await _service.BulkAssignTags(October, [7, 8], [1, 2]);
+
+        Assert.Equal(2, count);
+        await _paymentRepository.Received(1).AddTagsToPayments(
+            Arg.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 1, 2 })),
+            Arg.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 1, 2 })));
+    }
+
+    [Fact]
+    public async Task BulkAssignTags_OwnCategoryOverridesSource_SourceCategoryNotMatched()
+    {
+        var source = new PaymentSource(3, "Магазин", 7, null, Now, null);
+        _paymentRepository.GetByDateRange(October).Returns(new List<Payment>
+        {
+            new() { PaymentId = 1, PaymentSource = source, PaymentCategory = new Category(8) }
+        });
+
+        var count = await _service.BulkAssignTags(October, [7], [1]);
+
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task BulkAssignTags_NoMatches_ReturnsZeroAndPassesEmptyList()
+    {
+        _paymentRepository.GetByDateRange(October).Returns(new List<Payment>
+        {
+            new() { PaymentId = 1 },
+            new() { PaymentId = 2, PaymentCategory = new Category(8) }
+        });
+
+        var count = await _service.BulkAssignTags(October, [7], [1]);
+
+        Assert.Equal(0, count);
+        await _paymentRepository.Received(1).AddTagsToPayments(
+            Arg.Is<IEnumerable<int>>(ids => !ids.Any()), Arg.Any<IEnumerable<int>>());
+    }
+
+    [Fact]
     public async Task BulkAssignTags_UnknownTag_ThrowsValidationException()
     {
         await Assert.ThrowsAsync<ValidationException>(() => _service.BulkAssignTags(October, [7], [99]));
