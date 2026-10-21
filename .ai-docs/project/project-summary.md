@@ -410,3 +410,11 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - Domain: `CategoryIds` (`Savings`, `FakeEmpty`, `FakeTotal`) вместо `33`/`int.MaxValue`, `Category.IsFake`, `Category.ColorOrDefault`; `Payment` — `class` вместо `record`.
 - Главная: категория в списке платежей ячейки и в модалке правки — `effectiveCategory` (поле `category` теперь своя категория платежа, как в «Операциях»); у источника в списке показывается его описание (раньше не маппилось).
 - Новый тестовый проект `FinCtrl.Website.Tests` — маппинг DTO (`PaymentDto`, `CategoryDto`, таблица главной, `EditPaymentRequest`).
+
+## Чистка шаблона Vite во frontend (задача 0019, 2026-10-20)
+
+- Удалены остатки шаблона Vite: `src/components/HelloWorld.vue`, `TheWelcome.vue`, `WelcomeItem.vue`, `src/components/icons/*`, `src/assets/logo.svg`, а также неиспользуемые `src/pages/paymentsTable/Style.css` и `src/utils/sortUtils.js`. В `src/components/` остались только рабочие `CategoryTreeSelect.vue` и `TagMultiSelect.vue`.
+- `src/App.vue` — только шаблон (каркас + меню), без `<script>`: импорты шаблонных компонентов и `PaymentsTable` были мёртвыми.
+- `PaymentsTable.vue`: убраны отладочные `console.log` и debug-`watch(formData)`. В `src/` не осталось `console.log` (только `console.error` в обработчиках ошибок).
+- `README.md` frontend — краткое описание и команды со ссылкой на `CLAUDE.md`; `index.html` — `lang="ru"`.
+- Шаблонный `src/assets/base.css` (тёмная тема через `prefers-color-scheme`) пока оставлен — решение в задаче 0022.

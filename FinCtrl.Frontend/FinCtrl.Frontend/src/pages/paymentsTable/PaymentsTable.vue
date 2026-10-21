@@ -203,7 +203,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue' // Добавлен watch
+import { ref, reactive, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
 import { APP_CONFIG } from '../../../config'
@@ -386,7 +386,6 @@ const fetchData = async (groupingType) => {
     }
     selectedTagIds.value.forEach(id => params.append('tagIds', id))
 
-    console.log('Fetching data with params:', params.toString()) // Для отладки
     return await axios.get(APP_CONFIG.apiBaseUrl + '/api/PaymentsApi', { params })
 }
 
@@ -512,19 +511,16 @@ const savePayment = async () => {
 const submitForm = async () => {
     // Проверяем, что категории загружены
     if (!categoriesLoaded.value) {
-        console.log('Категории еще не загружены, откладываем загрузку платежей')
         return
     }
     
     loading.value = true
-    console.log('Loading payments data...') // Для отладки
     
     // Тип группировки фиксируем на момент запроса: select могут поменять, не нажав «Показать»
     const groupingType = Number(formData.groupingType)
 
     try {
         const response = await fetchData(groupingType)
-        console.log('Payments data received:', response.data) // Для отладки
         
         paymentsTree.value = response.data.paymentsTree || []
         maxValue.value = computeMaxValue(paymentsTree.value)
@@ -547,8 +543,6 @@ const submitForm = async () => {
                 label: item.label
             }))
         
-        console.log('Period headers:', periodHeaders.value) // Для отладки
-        
         // Очищаем выбранные платежи при обновлении данных
         clearSelection()
     } catch (err) {
@@ -559,7 +553,6 @@ const submitForm = async () => {
         alert('Произошла ошибка при загрузке платежей. Проверьте консоль для подробностей.')
     } finally {
         loading.value = false
-        console.log('Loading finished') // Для отладки
     }
 }
 
@@ -568,11 +561,6 @@ onMounted(() => {
     loadAccounts()
     loadTags()
 })
-
-// Добавляем watcher для отладки
-watch(formData, (newValue) => {
-    console.log('Form data changed:', newValue)
-}, { deep: true })
 </script>
 
 <style scoped>
