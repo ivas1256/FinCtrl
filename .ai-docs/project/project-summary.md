@@ -41,6 +41,13 @@
 `Execute/ExecuteScalar/Query/FirstOrDefault` (с задачи 0015 синхронных вызовов Dapper нет). Dommel/FluentMap в коде нет, раньше
 документация упоминала их по ошибке.
 
+**Транзакции (с задачи 0016):** соединение одно на scope (`DbConnectionFactory`, scoped), он же реализует
+`IUnitOfWork` (`FinCtrl.Common`). Сервис открывает транзакцию `await using var tx = await _unitOfWork.BeginTransaction();`
+… `await tx.Commit();` — освобождение без `Commit` откатывает. Все хелперы `RepositoryBase` автоматически идут в текущей
+транзакции; соединение наружу не отдаётся (прямой `conn.QueryAsync` без транзакции упал бы). Повторный `BeginTransaction`
+при открытой транзакции возвращает вложенную no-op — репозиторий может сам защищать свою многошаговую запись
+(`SetPaymentTags`, `AddTagsToPayments`, `TagRepository.Delete`), а сервис — объединять несколько репозиториев (импорт).
+
 **БД:** MS SQL Server, дев-строка подключения в
 `FinCtrl.Website/appsettings.Development.json`:
 `Server=Ivan; Database=FinCtrl_db_dev2` (Windows-аутентификация,
@@ -115,11 +122,18 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 | 13 (M) | Тип ("Списание"/"Пополнение") |
 
 **Паттерн get-or-create** (используется одинаково и для `PaymentSource`,
-и для `Account`): проверить `Exists(имя)` → если нет, создать и
-перечитать по id; если есть — получить по имени
-(`GetByName`/`GetByExcelName`). Это общий шаблон для любой
+и для `Account`): получить по имени (`GetByName`/`GetByExcelName`) →
+если нет, создать и перечитать по id; результат кэшируется по имени на
+время импорта файла (с задачи 0016 — один запрос на имя за файл, а не
+два на строку). Это общий шаблон для любой
 lookup-сущности, создаваемой автоматически при импорте — держаться его и
 для будущих подобных сущностей.
+
+**Атомарность и лог (с задачи 0016):** весь файл импортируется в одной
+транзакции — ошибка на любой строке откатывает и платежи, и созданные
+источники/счета (identity при этом расходуются). Отмена запроса
+(`CancellationToken`) проверяется перед каждой строкой. Итог пишется в
+лог: `Импорт файла …: строк N, создано платежей …, дозаполнен счёт …, пропущено дублей …`.
 
 **Дедупликация / дозаполнение:** для каждой строки файла ищется уже
 существующий платёж с той же суммой и датой (`FindDuplicate`). Если не
@@ -334,4 +348,14 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - Один `const`-SELECT на репозиторий; у платежей — `PaymentRepository.SelectPayment` для `Get/GetByDateRange/GetBySource/FindDuplicate/GetListPaged`. Исправлен алиас: `PaymentSourceCategory_ParentCategoryId` (у категории источника платежа теперь заполнен `parentCategoryId`). Тест `FinCtrl/tests/FinCtrl.Infrastructure.Tests/Payments/PaymentRepositoryTests.cs` сверяет алиасы SELECT'а со свойствами `PaymentDto`.
 - Маппинг без `dynamic`: `QueryAsync<Account>`/`<Tag>`/`<Category>` (у категорий `NULL`-цвет заменяется на `Category.DefaultColor`), теги платежей — через `PaymentTagRow`.
 - `GetTagsForPayments` грузит теги пачками по 2000 id — нет 500 на периодах с > 2100 платежами.
-- Без изменений (задача 0016): `WITH (NOLOCK)` в SELECT'е платежей, рекурсивная загрузка дерева категорий, отсутствие транзакций.
+- Без изменений (задача 0016): `WITH (NOLOCK)` в SELECT'е платежей, рекурсивная загрузка дерева категорий, отсутствие транзакций. Сделано задачей 0016 (см. ниже).
+
+## Транзакции, дерево категорий, лог импорта (задача 0016, 2026-10-20)
+
+- `IUnitOfWork`/`ITransaction` в `FinCtrl.Common`; реализация — `DbConnectionFactory` (транзакция соединения scope, вложенная — no-op), `RepositoryBase` передаёт текущую транзакцию во все вызовы Dapper, поле фабрики в базе `private`. Подробности — в разделе «Доступ к данным».
+- В транзакции: `PaymentRepository.SetPaymentTags` (DELETE + INSERT), `AddTagsToPayments`, `TagRepository.Delete` (связи + тег), импорт файла целиком.
+- `PaymentsImportService`: `ILogger` с итогом, `CancellationToken` (из `UploadFile`), кэш источников/счетов — на строку остаются `FindDuplicate` + `Create`/`Update`.
+- Дерево категорий (`GET api/CategoriesApi/getTree`, главная) — один SELECT + сборка в `CategoryService.GetCategoriesTree` (сортировка по `OrderIndex`, затем `CategoryId`; категории с несуществующим родителем в дерево не попадают). `ICategoryRepository.GetCategoriesTree` удалён. Ответ `getTree` — единицы мс вместо 1–5 с.
+- Знак суммы — доменное правило `Payment.NormalizeSumSign()` (расход с положительной суммой → отрицательная), вызывается маппером при чтении. При импорте не применяется: в dev-базе ~1450 расходов с положительной суммой, а поиск дублей сравнивает сумму как есть.
+- `WITH (NOLOCK)` убран из `SelectPayment` и COUNT в `GetListPaged`.
+- Не сделано: `EditPayment` (Update + SetPaymentTags) не в одной транзакции — оркестрация в контроллере, переносится в `PaymentService.Edit` задачей 0018.

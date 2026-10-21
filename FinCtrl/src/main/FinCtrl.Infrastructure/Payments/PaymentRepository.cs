@@ -58,7 +58,7 @@ namespace FinCtrl.Infrastructure.Payments
                 c_ps.OrderIndex AS PaymentSourceCategory_OrderIndex,
                 c_ps.CreatedAt AS PaymentSourceCategory_CreatedAt,
                 c_ps.LastUpdatedAt AS PaymentSourceCategory_LastUpdatedAt
-            FROM Payments p WITH (NOLOCK)
+            FROM Payments p
             LEFT JOIN PaymentSources ps ON p.PaymentSourceId = ps.PaymentSourceId
             LEFT JOIN Accounts a ON p.AccountId = a.AccountId
             LEFT JOIN Categories c ON p.PaymentCategoryCategoryId = c.CategoryId
@@ -125,6 +125,9 @@ namespace FinCtrl.Infrastructure.Payments
 
         public async Task SetPaymentTags(int paymentId, IReadOnlyCollection<int> tagIds)
         {
+            // DELETE + INSERT — в одной транзакции, иначе ошибка на вставке оставит платёж без тегов.
+            await using var transaction = await BeginTransaction();
+
             var sql = @"DELETE FROM dbo.PaymentTags WHERE PaymentId = @PaymentId;";
             await Execute(sql, new { PaymentId = paymentId });
 
@@ -133,6 +136,8 @@ namespace FinCtrl.Infrastructure.Payments
                 var insertSql = @"INSERT INTO dbo.PaymentTags (PaymentId, TagId) VALUES (@PaymentId, @TagId);";
                 await Execute(insertSql, tagIds.Select(tagId => new { PaymentId = paymentId, TagId = tagId }));
             }
+
+            await transaction.Commit();
         }
 
         public async Task AddTagsToPayments(IEnumerable<int> paymentIds, IEnumerable<int> tagIds)
@@ -146,7 +151,11 @@ namespace FinCtrl.Infrastructure.Payments
                 INSERT INTO dbo.PaymentTags (PaymentId, TagId) VALUES (@PaymentId, @TagId);";
 
             var pairs = ids.SelectMany(paymentId => tags.Select(tagId => new { PaymentId = paymentId, TagId = tagId }));
+
+            // Dapper выполняет команду по разу на пару — без транзакции при ошибке часть тегов осталась бы назначенной.
+            await using var transaction = await BeginTransaction();
             await Execute(sql, pairs);
+            await transaction.Commit();
         }
 
         public async Task<int> Create(Payment payment)
@@ -275,7 +284,7 @@ namespace FinCtrl.Infrastructure.Payments
 
             // Быстрый COUNT без сортировки и загрузки данных
             var countSql = $@"SELECT COUNT(*)
-                FROM Payments p WITH (NOLOCK)
+                FROM Payments p
                 LEFT JOIN PaymentSources ps ON p.PaymentSourceId = ps.PaymentSourceId
                 {whereClause}";
             var totalCount = await ExecuteScalar<int>(countSql, queryParams);

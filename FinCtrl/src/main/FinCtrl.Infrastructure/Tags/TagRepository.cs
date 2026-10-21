@@ -72,15 +72,19 @@ namespace FinCtrl.Infrastructure.Tags
         public async Task Delete(params Tag[] tags)
         {
             // Нет каскадного удаления на уровне БД (FK_PaymentTags_Tags — NO ACTION),
-            // поэтому сначала вручную чистим связи, затем сам тег.
+            // поэтому сначала вручную чистим связи, затем сам тег — в одной транзакции.
             var deleteLinksSql = @"DELETE FROM dbo.PaymentTags WHERE TagId = @TagId;";
             var deleteTagSql = @"DELETE FROM dbo.Tags WHERE TagId = @TagId;";
+
+            await using var transaction = await BeginTransaction();
 
             foreach (var tag in tags)
             {
                 await Execute(deleteLinksSql, new { tag.TagId });
                 await Execute(deleteTagSql, new { tag.TagId });
             }
+
+            await transaction.Commit();
         }
     }
 }

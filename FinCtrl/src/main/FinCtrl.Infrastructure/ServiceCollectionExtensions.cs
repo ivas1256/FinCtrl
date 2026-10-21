@@ -4,6 +4,7 @@ using FinCtrl.Application.Payments;
 using FinCtrl.Application.PaymentsImport.FileFormats;
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Application.Tags;
+using FinCtrl.Common;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Infrastructure.Accounts;
 using FinCtrl.Infrastructure.Categories;
@@ -21,6 +22,8 @@ namespace FinCtrl.Infrastructure
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {
             services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
+            // Транзакция живёт в соединении scope, поэтому IUnitOfWork — та же фабрика, а не отдельный экземпляр.
+            services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IDbConnectionFactory>());
 
             services.AddScoped<IPaymentSourceRepository, PaymentSourceRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
