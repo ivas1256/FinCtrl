@@ -204,8 +204,10 @@ SELECT один — `PaymentRepository.SelectPayment`, его алиасы об�
 
 - `src/config.js` → `APP_CONFIG.apiBaseUrl` из `VITE_API_BASE_URL` (по умолчанию `http://localhost:5000`; с задачи 0021, раньше — захардкоженный корневой `config.js`).
 - `src/utils/format.js` — общие форматтеры сумм и дат (с задачи 0021).
+- `src/components/AlertMessage.vue` + `src/composables/useAlerts.js` — сообщения об ошибке/успехе вместо `alert()` (с задачи 0022, стайлгайд 4.12).
+- Глобальные стили — Bootstrap 5.3 + `src/assets/main.css` (только `--bs-body-font-size: 15px`); тема только светлая (с задачи 0022).
 - `index.js` — роуты: `/` (главная), `/dashboard`, `/payments`
-  ("Операции"), `/payment-sources`, `/categories`, `/accounts`.
+  ("Операции"), `/payment-sources`, `/categories`, `/accounts`, `/tags`.
 - `src/App.vue` — левое меню-сайдбар со ссылками на все роуты.
 - Страницы (`src/pages/`):
   - `paymentsTable/PaymentsTable.vue` — **главная страница**: тепловая
@@ -220,6 +222,7 @@ SELECT один — `PaymentRepository.SelectPayment`, его алиасы об�
     источников платежа (без создания/удаления).
   - `accounts/Accounts.vue` — полноценный CRUD для счетов (создание,
     инлайн-правка, удаление).
+  - `tags/Tags.vue` — CRUD тегов (по образцу `Accounts.vue`).
   - `categories/Categories.vue`, `dashboard/Dashboard.vue`.
 
 ## История доработок в этой сессии (2026-09-08 — 2026-09-17)
@@ -418,7 +421,7 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - `src/App.vue` — только шаблон (каркас + меню), без `<script>`: импорты шаблонных компонентов и `PaymentsTable` были мёртвыми.
 - `PaymentsTable.vue`: убраны отладочные `console.log` и debug-`watch(formData)`. В `src/` не осталось `console.log` (только `console.error` в обработчиках ошибок).
 - `README.md` frontend — краткое описание и команды со ссылкой на `CLAUDE.md`; `index.html` — `lang="ru"`.
-- Шаблонный `src/assets/base.css` (тёмная тема через `prefers-color-scheme`) пока оставлен — решение в задаче 0022.
+- Шаблонный `src/assets/base.css` (тёмная тема через `prefers-color-scheme`) пока оставлен — решение в задаче 0022 (удалён).
 
 ## Один Bootstrap 5.3 из npm (задача 0020, 2026-10-20)
 
@@ -426,7 +429,7 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - JS Bootstrap — только через `import { Modal } from 'bootstrap'` (модуль ESM регистрирует и data-API, в т.ч. `data-bs-dismiss="modal"`); глобального `window.bootstrap` больше нет. `Payments.vue`/`PaymentsTable.vue` переведены с `new bootstrap.Modal(...)`/`getInstance` на `Modal.getOrCreateInstance(el)`.
 - Страж от регрессии — `src/bootstrapSetup.spec.js` (нет Bootstrap в `index.html`, порядок импорта CSS, нет `bootstrap.*` в `.vue`).
 - Визуальные отличия 5.0 → 5.3 (сверено поэлементно на всех 7 страницах): геометрия (положение/размеры элементов) не изменилась; изменились только токены оформления — скругления (4px → 6px, `-sm` 3.2px → 4px), цвет рамок (`rgba(0,0,0,.125)`/`#ced4da` → `#dee2e6`), `text-muted` (`#6c757d` → `rgba(33,37,41,.75)`), текст внутри `.card`/`.table` теперь `--bs-body-color` (`#212529`) вместо унаследованного из `base.css` `#2c3e50` (в тёмной схеме `base.css` заголовки карточек стали читаемыми).
-- **Грабля:** в dev-режиме CSS инжектится скриптом после первой отрисовки, а `base.css` задаёт `transition` цвета/фона у `body` — в фоновой (скрытой) вкладке вычисленный цвет `body` может временно быть чёрным/прозрачным. Это не регрессия; в production CSS подключается `<link>`.
+- **Грабля:** в dev-режиме CSS инжектится скриптом после первой отрисовки, а `base.css` задаёт `transition` цвета/фона у `body` — в фоновой (скрытой) вкладке вычисленный цвет `body` может временно быть чёрным/прозрачным. Это не регрессия; в production CSS подключается `<link>`. (С задачи 0022 `base.css` удалён, грабля неактуальна.)
 
 ## Общие форматтеры и адрес API из env (задача 0021, 2026-10-20)
 
@@ -435,3 +438,12 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - **Грабля (исправлено):** дата для input через `new Date(s).toISOString()` считается в UTC, при положительном смещении пояса (UTC+5) локальная полночь даёт предыдущий день — в модалке правки платежа на главной дата была на день раньше, диапазон по умолчанию на дашборде мог сдвинуться ночью. Также `new Date("YYYY-MM-DD")` разбирается как UTC — `parseDate` разбирает такие строки как локальную полночь.
 - Адрес API: корневой `config.js` перенесён в `src/config.js`, `apiBaseUrl = resolveApiBaseUrl(import.meta.env)` — `VITE_API_BASE_URL` (завершающий `/` отбрасывается) или `http://localhost:5000`. Локальные переопределения — в `.env.local` (`*.local` и `.env` в `.gitignore`). Пример `.env.example` не добавлен: хук pre-pr-check блокирует любые `.env.*` в диффе (см. «Вне объёма» задачи 0021).
 - Тесты: `src/utils/format.spec.js` (в поясе `Asia/Yekaterinburg`, чтобы UTC-сдвиг воспроизводился на любой машине), `src/config.spec.js`, страж `src/sharedFormat.spec.js` (в `.vue` нет локальных `formatCurrency`/`formatDate`, `Intl.NumberFormat`, `toLocale*`, `toISOString().split`).
+
+## Frontend по стайлгайду (задача 0022, 2026-10-20)
+
+- Все компоненты — `<script setup>`: `PaymentCategoryRow.vue` (рекурсивный, имя через `defineOptions`), `PaymentList.vue`, `PaymentSourcesList.vue` переведены с Options API без изменения поведения.
+- `alert()` убран из `src/` (31 вызов): ошибки загрузки/сохранения/валидации и сообщения об успехе массовых сохранений — `AlertMessage.vue` + `useAlerts()` над содержимым страницы; ошибки в модалках (правка платежа на главной, категории, массовые теги, платежи источника) — внутри модалки; ошибка создания тега — под полем `TagMultiSelect`. Загрузка данных и начало сохранения сбрасывают прошлые сообщения. `confirm()` (удаление, смена страницы с несохранёнными изменениями) оставлены.
+- Главная: спиннер вместо таблицы на время загрузки категорий/платежей и пустое состояние «Нет данных»; модалка правки — `modal-lg`. «Операции»: `modal-lg` у массового назначения тегов, длинные названия в фильтре источников переносятся (раньше — горизонтальная прокрутка списка), кнопки шапки переносятся на узком экране.
+- Удалён шаблонный `src/assets/base.css` (create-vue): его тёмная тема через `prefers-color-scheme` красила только `body` — в тёмной теме ОС заголовок страницы на чёрном фоне и текст в белых карточках был почти не виден; `transition` цвета у `body` давал мигание в dev. Теперь шрифт/цвет/межстрочный — Bootstrap (`system-ui`, `#212529`, 1.5), размер текста оставлен 15px (`main.css`). Приложение всегда светлое; dark-правило тепловой карты в `PaymentCategoryRow.vue` убрано.
+- Исправлено попутно: в `PaymentList.vue` `payment.paymentSource.description` без `?.` ронял список платежей ячейки при платеже без источника; в разделе «Frontend» добавлены `/tags`, `Tags.vue`.
+- Тесты: страж `src/styleguide.spec.js` (нет Options API, `alert(`, `prefers-color-scheme`/`base.css`; `modal-lg` у модалок правки; спиннер на главной), `useAlerts.spec.js`, `AlertMessage.spec.js`, `TagMultiSelect.spec.js`, компоненты главной `PaymentCategoryRow`/`PaymentList`/`PaymentSourcesList.spec.js`.

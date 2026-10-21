@@ -11,6 +11,7 @@
 - **Иконки**: Unicode-эмодзи (💾, 👁 и т.д.) — только для кнопок-действий в таблицах
 - **Графики**: Chart.js + vue-chartjs + chartjs-plugin-datalabels
 - **HTTP**: axios
+- **Глобальные стили**: только Bootstrap + `src/assets/main.css` (базовый размер текста 15px через `--bs-body-font-size`). Шаблонного `base.css` нет; тема только светлая — `prefers-color-scheme`/тёмную тему не добавлять (это отдельная задача на `data-bs-theme`). Стили страниц — в `<style scoped>`.
 
 ---
 
@@ -358,7 +359,47 @@ Modal.getOrCreateInstance(document.getElementById('myModal')).hide()
 
 Bootstrap подключается одной копией из npm: CSS — в `src/main.js`, JS — только `import { Modal } from 'bootstrap'`. Глобальный `bootstrap.Modal` и CDN-подключения в `index.html` не использовать.
 
-Стандартный размер: `modal-lg`. Кнопка закрытия: `data-bs-dismiss="modal"`.
+Стандартный размер: `modal-lg` (все модалки с формами и списками). Исключение — короткий диалог подтверждения (удаление) без формы: стандартный размер `modal-dialog`. Кнопка закрытия: `data-bs-dismiss="modal"`.
+
+Ошибки действий внутри модалки (сохранение, валидация) показываются **в `modal-body`** через `AlertMessage` (см. 4.12) — страница под модалкой не видна. При открытии модалки ошибку сбрасывать.
+
+### 4.12 Ошибки и сообщения об успехе
+
+`alert()` не использовать (блокирует вкладку, не стилизуется). Сообщения — компонент `src/components/AlertMessage.vue` (Bootstrap `alert-dismissible`, закрывается крестиком, многострочный текст сохраняет переводы строк) и composable `src/composables/useAlerts.js`:
+
+```js
+import AlertMessage from '../../components/AlertMessage.vue'
+import { useAlerts } from '../../composables/useAlerts'
+import { getErrorMessage } from '../../utils/apiError'
+
+// error/success взаимоисключающие: showError сбрасывает success и наоборот
+const { error, success, showError, showSuccess, clearAlerts } = useAlerts()
+
+const load = async () => {
+    loading.value = true
+    clearAlerts() // загрузка и начало сохранения сбрасывают прошлые сообщения
+    try { ... }
+    catch (e) { console.error(e); showError('Ошибка загрузки данных') }
+    finally { loading.value = false }
+}
+
+// Ошибка API — текст из ProblemDetails, иначе запасной
+catch (e) { showError(getErrorMessage(e, 'Ошибка сохранения')) }
+
+// Результат массовой операции
+showSuccess(`Успешно обновлено операций: ${changed.length}`)
+```
+
+```html
+<!-- Над содержимым страницы/карточки (первым элементом card-body или после h4) -->
+<AlertMessage :message="error" @close="clearAlerts" />
+<AlertMessage :message="success" type="success" @close="clearAlerts" />
+
+<!-- Внутри модалки — отдельный ref -->
+<AlertMessage :message="modalError" @close="modalError = null" />
+```
+
+Валидация форм (пустые поля и т.п.) — тем же `showError`/ошибкой модалки. В переиспользуемом поле внутри таблицы (например, `TagMultiSelect`) — мелкий текст под полем: `<div class="small text-danger mt-1" role="alert">`. `confirm()` для подтверждения удаления/ухода со страницы с несохранёнными изменениями пока допустим.
 
 ---
 
@@ -395,6 +436,8 @@ row.g-3                     — два блока в ряд
 
 ### Структура компонента
 
+Только `<script setup>` — Options API (`export default { data, methods }`) не использовать. Рекурсивный компонент ссылается на себя по имени файла; имя задаётся явно через `defineOptions({ name: 'PaymentCategoryRow' })`. Соблюдение (нет Options API, `alert()`, `prefers-color-scheme`/`base.css`; `modal-lg` у модалок правки) проверяет `src/styleguide.spec.js`.
+
 ```vue
 <template>
     <!-- разметка -->
@@ -405,11 +448,12 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { APP_CONFIG } from '../../config'
 import { formatCurrency, formatDate } from '../../utils/format'
+import { useAlerts } from '../../composables/useAlerts'
 
 // Состояние
 const data = ref([])
 const loading = ref(false)
-const error = ref(null)
+const { error, showError, clearAlerts } = useAlerts() // + <AlertMessage :message="error" @close="clearAlerts" /> в шаблоне
 
 // Вычисляемые
 const filtered = computed(() => ...)
@@ -417,8 +461,9 @@ const filtered = computed(() => ...)
 // Методы
 const loadData = async () => {
     loading.value = true
-    try { ... } 
-    catch (e) { error.value = 'Ошибка загрузки данных'; console.error(e) }
+    clearAlerts()
+    try { ... }
+    catch (e) { showError('Ошибка загрузки данных'); console.error(e) }
     finally { loading.value = false }
 }
 

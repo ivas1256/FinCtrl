@@ -1,4 +1,6 @@
 <template>
+    <AlertMessage :message="error" @close="clearAlerts" />
+
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
             <form @submit.prevent="submitForm" class="d-flex flex-wrap gap-3 align-items-center">
@@ -48,7 +50,17 @@
             </div>
         </div>
         <div class="card-body p-0">
-            <div class="hm-wrap">
+            <div v-if="isLoadingTable" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+            </div>
+
+            <div v-else-if="paymentsTree.length === 0" class="text-center py-4 text-muted">
+                Нет данных
+            </div>
+
+            <div v-else class="hm-wrap">
                 <table id="payments-table" class="hm-table">
                     <thead>
                         <tr>
@@ -135,13 +147,14 @@
 
     <!-- Модальное окно редактирования платежа -->
     <div class="modal fade" id="editPaymentModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Редактировать платеж</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <AlertMessage :message="modalError" @close="modalError = null" />
                     <form v-if="editingPayment">
                         <div class="mb-3">
                             <label class="form-label">Сумма</label>
@@ -216,6 +229,8 @@ import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем 
 import { computeMaxValue } from '../../utils/heatmap'
 import { formatCurrency, formatSignedCurrency, toInputDate } from '../../utils/format'
 import { formatPeriodHeader, GroupingType } from '../../utils/periodHeader'
+import AlertMessage from '../../components/AlertMessage.vue'
+import { useAlerts } from '../../composables/useAlerts'
 
 // Добавляем флаг для отслеживания загрузки категорий
 const categoriesLoaded = ref(false)
@@ -237,6 +252,7 @@ const loadCategories = async () => {
         categoryTree.value = []
         categoryOptions.value = []
         categoriesLoaded.value = true
+        showError('Ошибка загрузки категорий')
     }
 }
 
@@ -338,6 +354,12 @@ const selectedCellData = reactive({
 const selectedCategoryId = ref(null)
 const selectedPeriodKey = ref(null)
 const editingPayment = ref(null)
+const { error, showError, clearAlerts } = useAlerts()
+// Ошибка сохранения платежа показывается внутри модалки
+const modalError = ref(null)
+
+// Спиннер вместо таблицы: пока грузятся категории (до первого запроса) и во время запроса платежей
+const isLoadingTable = computed(() => loading.value || !categoriesLoaded.value)
 
 // Вычисляемое свойство для группировки платежей по дате
 const groupedPayments = computed(() => {
@@ -437,6 +459,7 @@ const openEditModal = (payment) => {
         accountId: payment.account?.accountId || '',
         tagIds: (payment.tags || []).map(t => t.tagId)
     }
+    modalError.value = null
 
     Modal.getOrCreateInstance(document.getElementById('editPaymentModal')).show()
 }
@@ -482,7 +505,7 @@ const savePayment = async () => {
         }
     } catch (error) {
         console.error('Ошибка при обновлении платежа:', error)
-        alert(getErrorMessage(error, 'Произошла ошибка при обновлении платежа'))
+        modalError.value = getErrorMessage(error, 'Произошла ошибка при обновлении платежа')
     }
 }
 
@@ -493,7 +516,8 @@ const submitForm = async () => {
     }
     
     loading.value = true
-    
+    clearAlerts()
+
     // Тип группировки фиксируем на момент запроса: select могут поменять, не нажав «Показать»
     const groupingType = Number(formData.groupingType)
 
@@ -528,7 +552,7 @@ const submitForm = async () => {
         paymentsTree.value = []
         periodHeaders.value = []
         maxValue.value = 0
-        alert('Произошла ошибка при загрузке платежей. Проверьте консоль для подробностей.')
+        showError('Ошибка загрузки платежей')
     } finally {
         loading.value = false
     }
