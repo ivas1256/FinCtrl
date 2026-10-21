@@ -287,3 +287,9 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 
 - `PaymentRepository.GetBySource` (`GET api/PaymentsApi/by-source/{id}`, модалка «Показать платежи» на странице «Источники») выбирал платежи без фильтра `IsDeleted = 0` и показывал мягко удалённые. Добавлено условие `AND p.IsDeleted = 0`.
 - **Грабля:** удаление платежей мягкое (`IsDeleted = 1`), фильтр в SQL пишется в каждом запросе вручную — в новых выборках из `Payments` не забывать `p.IsDeleted = 0`. Без фильтра остался только `PaymentRepository.GetAll` (используется лишь legacy MVC `PaymentController`, удаляется задачей 0011).
+
+## Категории источников одним запросом (задача 0009, 2026-10-20)
+
+- `PaymentSourceService` больше не догружает категории источников через `ICategoryService` (`MapCategories` удалён, вместе с N+1 и тихой подменой: при ненайденной категории источник отдавался с «пустой» категорией с одним id). Зависимость `ICategoryService` из сервиса убрана; `Edit` собирает `new Category(categoryId)` — для UPDATE нужен только id.
+- `PaymentSourceRepository`: общий `SelectPaymentSource` с `LEFT JOIN Categories` для `GetAll`/`GetById`/`GetByName`/`GetListPaged`, маппинг через плоскую строку `PaymentSourceRow` (алиасы `Category_*`) → `MapToPaymentSource()`; методы чтения переведены на `QueryAsync`.
+- Поведение: `PUT api/PaymentSourcesApi[/{id}]` с несуществующим `categoryId` раньше молча снимал категорию, теперь падает на FK `FK_PaymentSources_Categories_CategoryId` (500); нормальный 400/404 — задача 0017.
