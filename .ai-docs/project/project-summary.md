@@ -20,17 +20,16 @@
 
 Все backend-проекты `FinCtrl/` входят в `FinCtrl.Backend.sln`:
 - `FinCtrl.Website` — единственное исполняемое приложение в решении
-  (`FinCtrl.Backend.sln`). ASP.NET Core, там же REST API
-  контроллеры и остатки старых MVC-контроллеров/Razor-views (например
-  `Controllers/PaymentSourceController.cs` + `Views/PaymentSource/`) —
-  это legacy, реально не используется, вместо него работает Vue SPA.
+  (`FinCtrl.Backend.sln`). ASP.NET Core, только REST API
+  (`*ApiController`, `AddControllers` + `MapControllers`); UI — Vue SPA.
+  Legacy MVC/Razor-фронтенд удалён задачей 0011.
   Program/Startup регистрирует `AddApplication()` + `AddInfrastructure()`,
   CORS настроен на Vue dev-сервер (`localhost:3000/5173/8080/5174`).
 - `src/main/FinCtrl.Domain` — сущности (без EF, POCO; `Payment` пока `record`, что нарушает гайд, — см. `architecture-audit.md`).
 - `src/main/FinCtrl.Application` — сервисы (бизнес-логика).
 - `src/main/FinCtrl.Infrastructure` — репозитории (Dapper, raw SQL).
 - `src/common/FinCtrl.Common`, `FinCtrl.Common.Infrastructure` —
-  общий `RepositoryBase`, `IDbConnectionFactory`, `Pagination`, `DateRange`.
+  общий `RepositoryBase`, `IDbConnectionFactory`, `DateRange`.
 
 Других backend-проектов в репозитории нет: заброшенная попытка
 переписать бэкенд на EF Core ("clean architecture" rewrite вне `.sln`)
@@ -194,9 +193,6 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 
 - `db/migrations/` на момент 2026-09-08 не был закоммичен в git — стоит
   проверить/закоммитить.
-- Легаси Razor/MVC-страницы в `FinCtrl.Website` не дублировались новым
-  функционалом (например, у "Счетов" нет legacy-страницы) — если она
-  понадобится, это отдельная задача.
 - При добавлении новых полей к `Payment` — не забывать `PaymentDto`
   (Infrastructure и Website), `MainStatisticPayment` (используется
   деревом статистики на главной) и все SQL-выборки в `PaymentRepository`.
@@ -282,7 +278,7 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 ## Удалённые платежи в модалке источника (задача 0008, 2026-10-20)
 
 - `PaymentRepository.GetBySource` (`GET api/PaymentsApi/by-source/{id}`, модалка «Показать платежи» на странице «Источники») выбирал платежи без фильтра `IsDeleted = 0` и показывал мягко удалённые. Добавлено условие `AND p.IsDeleted = 0`.
-- **Грабля:** удаление платежей мягкое (`IsDeleted = 1`), фильтр в SQL пишется в каждом запросе вручную — в новых выборках из `Payments` не забывать `p.IsDeleted = 0`. Без фильтра остался только `PaymentRepository.GetAll` (используется лишь legacy MVC `PaymentController`, удаляется задачей 0011).
+- **Грабля:** удаление платежей мягкое (`IsDeleted = 1`), фильтр в SQL пишется в каждом запросе вручную — в новых выборках из `Payments` не забывать `p.IsDeleted = 0`. Единственный запрос без фильтра (`PaymentRepository.GetAll`, нужный только legacy MVC) удалён задачей 0011.
 
 ## Категории источников одним запросом (задача 0009, 2026-10-20)
 
@@ -294,3 +290,9 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 
 - Удалены заброшенные проекты EF Core-переписывания (net6, вне `FinCtrl.Backend.sln`): `FinCtrl/FinCtrl.Backend.Core.RestAPI/`, `FinCtrl/FinCtrl.DAL/`, `FinCtrl/src/Payments/*` (4 проекта), `FinCtrl/src/FinCtrl.CoreLib/`. Рабочий код на них не ссылался, поведение приложения не изменилось.
 - Весь backend теперь — проекты `.sln`: `FinCtrl.Website`, `src/main/*`, `src/common/*`, `tests/*`.
+
+## Удаление legacy MVC-фронтенда (задача 0011, 2026-10-20)
+
+- Из `FinCtrl.Website` удалены MVC-контроллеры (`MainPageController`, `PaymentController`, `PaymentSourceController`, `CategoryController`), `Views/`, `Models/`, `wwwroot/` (~14 МБ вендорных библиотек), `jsconfig.json`, пакет `Microsoft.VisualStudio.Web.CodeGeneration.Design`. `Startup`: `AddControllers` + `MapControllers`, без `UseStaticFiles` (Swagger UI отдаёт статику сам).
+- Больше нет пишущих endpoint’ов в обход SPA без antiforgery (`/Payment/delete|edit|editPayments|upload`, `/Category/update`, `POST /payment-source`). `GET /` на backend → 404; все `api/*` и `/swagger` без изменений.
+- Удалён код, нужный только MVC: `IPaymentService`/`IPaymentRepository.GetAll(Pagination)` и `.Delete` (мягкое удаление платежа — в SPA удаления нет; понадобится — добавить вместе с API), класс `Pagination`, `DateTimeExtensions.TryParseExact`, `IPaymentSourceService.Update(params)` (встроен в `Edit`), `CategoryDto.ToModel`/`IsOnlyIncomeStr`/`ParentCategoryId`/`OrderIndex` — из ответов `api/PaymentsApi` у `category`/`effectiveCategory` пропали всегда пустые `parentCategoryId`/`orderIndex`.

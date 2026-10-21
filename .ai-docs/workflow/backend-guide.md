@@ -34,7 +34,7 @@ FinCtrl/
 │   │   ├── FinCtrl.Application/          — сервисы (сценарии), интерфейсы репозиториев, исключения приложения
 │   │   └── FinCtrl.Infrastructure/       — реализации репозиториев (Dapper + SQL), подключение к БД, парсинг файлов
 │   └── common/                           — переиспользуемый код, не привязанный к предметной области
-│       ├── FinCtrl.Common/               — общее для всех слоёв (DateRange, Pagination, хелперы)
+│       ├── FinCtrl.Common/               — общее для всех слоёв (DateRange, хелперы)
 │       ├── FinCtrl.Common.Domain/        — общее для Domain (базовые типы сущностей/value objects)
 │       ├── FinCtrl.Common.Application/   — общее для Application (базовые исключения, абстракции)
 │       └── FinCtrl.Common.Infrastructure/ — общее для Infrastructure (RepositoryBase, IDbConnectionFactory)

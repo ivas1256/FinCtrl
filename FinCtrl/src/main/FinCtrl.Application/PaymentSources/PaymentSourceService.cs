@@ -42,24 +42,15 @@ namespace FinCtrl.Application.PaymentSources
             await _repository.Delete(id);
         }
 
-        public async Task Update(params PaymentSource[] paymentSource)
-        {
-            var now = _timeProvider.GetLocalNow().DateTime;
-            foreach (var item in paymentSource)
-            {
-                item.Updated(now);
-            }
-
-            await _repository.Update(paymentSource);
-        }
-
         public async Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description)
         {
             // Для UPDATE репозиторию нужен только id категории — загружать её целиком незачем.
             var category = categoryId.HasValue ? new Category(categoryId.Value) : null;
             var toUpdate = PaymentSource.CreateFromExisting(paymentSourceId, paymentSourceName, category, description);
 
-            await Update(toUpdate);
+            toUpdate.Updated(_timeProvider.GetLocalNow().DateTime);
+
+            await _repository.Update(toUpdate);
         }
 
         public async Task<bool> Exists(string paymentSourceName)
