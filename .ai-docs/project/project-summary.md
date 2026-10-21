@@ -24,7 +24,8 @@
   (`*ApiController`, `AddControllers` + `MapControllers`); UI — Vue SPA.
   Legacy MVC/Razor-фронтенд удалён задачей 0011.
   Program/Startup регистрирует `AddApplication()` + `AddInfrastructure()`,
-  CORS настроен на Vue dev-сервер (`localhost:3000/5173/8080/5174`).
+  CORS разрешает Vue dev-серверы из `appsettings.json` → `Cors:AllowedOrigins`
+  (`localhost:3000/5173/5174/8080`).
 - `src/main/FinCtrl.Domain` — сущности (без EF, POCO; `Payment` пока `record`, что нарушает гайд, — см. `architecture-audit.md`).
 - `src/main/FinCtrl.Application` — сервисы (бизнес-логика).
 - `src/main/FinCtrl.Infrastructure` — репозитории (Dapper, raw SQL).
@@ -296,3 +297,14 @@ GetBySource/FindDuplicate`) и отдельный inline `dataSql` внутри
 - Из `FinCtrl.Website` удалены MVC-контроллеры (`MainPageController`, `PaymentController`, `PaymentSourceController`, `CategoryController`), `Views/`, `Models/`, `wwwroot/` (~14 МБ вендорных библиотек), `jsconfig.json`, пакет `Microsoft.VisualStudio.Web.CodeGeneration.Design`. `Startup`: `AddControllers` + `MapControllers`, без `UseStaticFiles` (Swagger UI отдаёт статику сам).
 - Больше нет пишущих endpoint’ов в обход SPA без antiforgery (`/Payment/delete|edit|editPayments|upload`, `/Category/update`, `POST /payment-source`). `GET /` на backend → 404; все `api/*` и `/swagger` без изменений.
 - Удалён код, нужный только MVC: `IPaymentService`/`IPaymentRepository.GetAll(Pagination)` и `.Delete` (мягкое удаление платежа — в SPA удаления нет; понадобится — добавить вместе с API), класс `Pagination`, `DateTimeExtensions.TryParseExact`, `IPaymentSourceService.Update(params)` (встроен в `Edit`), `CategoryDto.ToModel`/`IsOnlyIncomeStr`/`ParentCategoryId`/`OrderIndex` — из ответов `api/PaymentsApi` у `category`/`effectiveCategory` пропали всегда пустые `parentCategoryId`/`orderIndex`.
+
+## Чистка мусора в backend-коде (задача 0012, 2026-10-20)
+
+- Удалены черновики и мёртвый код: `struct Test` с `Main` и `CsvMap` (`CsvFileFormat`), `catch { throw; }` в `XlsxFileFormat`, `Domain/CategoryTree.cs`, `DateRange.Intersect`, неиспользуемая переменная в `MainStatisticService`, `Program.OnConfiguring`, закомментированный код (Program, Startup, PaymentsImportService, PaymentSourceRepository, GetPaymentsTableResponse, launchSettings).
+- Удалены неиспользуемые члены: `IPaymentService`/`IPaymentRepository.Exists(sum, date)` (дубли ищет `FindDuplicate`), `IPaymentSourceService`/`IPaymentSourceRepository.Delete`, `ITagService.GetByName` (у репозитория остался — нужен `Exists`), `PeriodDto.ChildrenSum` (из ответа `GET api/PaymentsApi` пропало всегда нулевое поле `childrenSum`, фронтенд его не читал).
+- `ExcelPackage.LicenseContext` выставляется только в `XlsxFileFormat` (раньше ещё и в `PaymentsImportService`).
+- Папка/namespace `Controllers/PaymentSourceesApi` → `PaymentSourcesApi` (URL `api/PaymentSourcesApi` не изменился); у `PaymentsApiController` убран `partial`; лишние `using` удалены во всех проектах (`dotnet format style --diagnostics IDE0005`).
+- Удалены пакеты CsvHelper (Website, Application), `Microsoft.AspNetCore.OpenApi`, явный `System.Text.Json`, `System.Linq.Async` и локальный инструмент `dotnet-ef` (`FinCtrl.Website/.config/dotnet-tools.json`).
+- `Startup`: CORS-origins читаются из `Cors:AllowedOrigins` (`appsettings.json`), Swagger называется «FinCtrl API», логирование — только NLog (без `AddConsole`/`AddDebug` перед `ClearProviders`).
+- Тесты парсеров импорта: `FinCtrl/tests/FinCtrl.Application.Tests/PaymentsImport/FileFormats/`.
+- **Грабля:** `CsvFileFormat` пропускает заголовок по `parser.LineNumber == 2`; у файла из одной строки-заголовка без перевода строки заголовок не пропускается и импорт падает на парсинге даты.

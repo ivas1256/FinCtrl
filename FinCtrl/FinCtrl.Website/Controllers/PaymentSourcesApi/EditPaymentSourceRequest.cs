@@ -2,7 +2,7 @@
 
 using System.ComponentModel.DataAnnotations;
 
-namespace FinCtrl.Website.Controllers.PaymentSourceesApi;
+namespace FinCtrl.Website.Controllers.PaymentSourcesApi;
 
 /// <summary>
 /// Тело запроса правки одного источника платежа; id источника передаётся в роуте.

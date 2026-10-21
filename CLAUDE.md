@@ -34,7 +34,7 @@ npm run dev     # Vite dev-сервер на :5173
 npm run build
 npm run test    # Vitest (jsdom), тесты *.spec.js рядом с кодом
 ```
-Адрес API захардкожен в `config.js` (`APP_CONFIG.apiBaseUrl = http://localhost:5000`); CORS на backend разрешает localhost:3000/5173/5174/8080.
+Адрес API захардкожен в `config.js` (`APP_CONFIG.apiBaseUrl = http://localhost:5000`); CORS на backend разрешает origins из `appsettings.json` → `Cors:AllowedOrigins` (localhost:3000/5173/5174/8080).
 
 В `.claude/launch.json` описаны preview-конфигурации `backend` и `frontend` для команд выше.
 

@@ -1,9 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Application.Categories;
 using FinCtrl.Application.Payments;

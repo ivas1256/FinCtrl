@@ -1,9 +1,6 @@
 using Dapper;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Infrastructure.Accounts
 {

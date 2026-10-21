@@ -8,22 +8,17 @@ using FinCtrl.Domain.Statistic;
 using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Globalization;
 using System.Linq;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Unicode;
 using System.Threading.Tasks;
 
 namespace FinCtrl.Website.Controllers.PaymentsApi
 {
     [Route("api/[controller]")]
     [ApiController]
-    public partial class PaymentsApiController : ControllerBase
+    public class PaymentsApiController : ControllerBase
     {
         private readonly IMainStatisticService _mainStatisticService;
         private readonly ICategoryService _categoryService;

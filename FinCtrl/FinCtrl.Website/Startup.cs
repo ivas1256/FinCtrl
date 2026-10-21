@@ -1,3 +1,4 @@
+using System;
 using FinCtrl.Application;
 using FinCtrl.Infrastructure;
 using Microsoft.AspNetCore.Builder;
@@ -13,6 +14,8 @@ namespace FinCtrl.Website
 {
     public class Startup
     {
+        private const string CorsPolicyName = "AllowVueApp";
+
         private readonly IConfiguration _configuration;
 
         public Startup(IConfiguration configuration)
@@ -26,19 +29,15 @@ namespace FinCtrl.Website
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "FinCtrl API", Version = "v1" });
             });
 
-            var allowedOrigins = new[] {
-                "http://localhost:3000",  // Vite
-                "http://localhost:5173",  // Vite default
-                "http://localhost:8080",  // Vue CLI
-                "http://localhost:5174"   // Vite alternate
-            };
+            // Адреса dev-серверов SPA, которым разрешены запросы к API (секция Cors:AllowedOrigins в appsettings)
+            var allowedOrigins = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 
             services.AddCors(options =>
             {
-                options.AddPolicy("AllowVueApp", policy =>
+                options.AddPolicy(CorsPolicyName, policy =>
                 {
                     policy.WithOrigins(allowedOrigins)
                           .AllowAnyHeader()
@@ -48,9 +47,6 @@ namespace FinCtrl.Website
 
             services.AddLogging(c =>
             {
-                c.AddConsole();
-                c.AddDebug();
-
                 c.ClearProviders();
                 c.AddNLog();
             });
@@ -67,16 +63,12 @@ namespace FinCtrl.Website
                 app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "FinCtrl API V1");
                 });
             }
 
-            //app.UseHttpsRedirection();
             app.UseRouting();
-            //app.UseAuthorization();
-
-            // Then in the middleware pipeline
-            app.UseCors("AllowVueApp");
+            app.UseCors(CorsPolicyName);
 
             app.UseEndpoints(endpoints =>
             {

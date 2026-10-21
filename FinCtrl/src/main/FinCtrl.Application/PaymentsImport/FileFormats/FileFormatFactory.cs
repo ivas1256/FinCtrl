@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FinCtrl.Application.PaymentsImport.FileFormats
+﻿namespace FinCtrl.Application.PaymentsImport.FileFormats
 {
     internal class FileFormatFactory
     {

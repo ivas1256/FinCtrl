@@ -1,11 +1,7 @@
 ﻿using Dapper;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Infrastructure.PaymentSources
 {
@@ -62,16 +58,6 @@ namespace FinCtrl.Infrastructure.PaymentSources
             return (await conn.QueryAsync<PaymentSourceRow>(sql, new { paymentSourceName }))
                 .Select(x => x.MapToPaymentSource())
                 .FirstOrDefault();
-        }
-
-        public async Task Delete(params PaymentSource[] paymentSources)
-        {
-            var sql = @"DELETE FROM dbo.PaymentSources WHERE PaymentSourceId = @PaymentSourceId;";
-
-            foreach (var paymentSource in paymentSources)
-            {
-                await Execute(sql, new { paymentSource.PaymentSourceId });
-            }
         }
 
         public async Task<bool> Exists(string paymentSourceName)
@@ -164,8 +150,6 @@ SELECT * FROM @generated_keys";
                 paymentSource.CreatedAt,
                 paymentSource.LastUpdatedAt
             });
-
-            //var id = conn.ExecuteScalar<int>("SELECT SCOPE_IDENTITY();");
             return id;
         }
     }

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace FinCtrl.Website.Controllers.PaymentSourceesApi
+namespace FinCtrl.Website.Controllers.PaymentSourcesApi
 {
     [Route("api/[controller]")]
     [ApiController]

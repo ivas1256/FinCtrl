@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace FinCtrl.Common
+﻿namespace FinCtrl.Common
 {
     public static class DateTimeExtensions
     {

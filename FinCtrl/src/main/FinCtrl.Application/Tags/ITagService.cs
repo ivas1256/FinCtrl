@@ -1,6 +1,4 @@
 using FinCtrl.Domain;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Application.Tags
 {
@@ -8,7 +6,6 @@ namespace FinCtrl.Application.Tags
     {
         Task<List<Tag>> GetAll();
         Task<Tag?> GetById(int tagId);
-        Task<Tag?> GetByName(string tagName);
 
         Task<int> Create(Tag tag);
         Task Update(params Tag[] tags);
