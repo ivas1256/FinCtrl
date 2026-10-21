@@ -129,21 +129,11 @@ namespace FinCtrl.Infrastructure.PaymentSources
 
         public async Task<int> Create(PaymentSource paymentSource)
         {
-            var sql = @"DECLARE @generated_keys table([Id] int)
+            var sql = @"INSERT INTO dbo.PaymentSources (PaymentSourceName, CategoryId, CreatedAt, LastUpdatedAt, Description)
+                        OUTPUT INSERTED.PaymentSourceId
+                        VALUES (@PaymentSourceName, @CategoryId, @CreatedAt, @LastUpdatedAt, @Description);";
 
-INSERT INTO dbo.PaymentSources (PaymentSourceName
-                  , CategoryId
-                  , CreatedAt
-                  , LastUpdatedAt
-                  , Description)
-  OUTPUT INSERTED.PaymentSourceId INTO @generated_keys
-                  VALUES (@PaymentSourceName, @CategoryId, @CreatedAt, @LastUpdatedAt, @Description);
-
-SELECT * FROM @generated_keys";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            var id = conn.ExecuteScalar<int>(sql, new
+            return await ExecuteScalar<int>(sql, new
             {
                 paymentSource.PaymentSourceName,
                 paymentSource.PaymentSourceCategory?.CategoryId,
@@ -151,7 +141,6 @@ SELECT * FROM @generated_keys";
                 paymentSource.CreatedAt,
                 paymentSource.LastUpdatedAt
             });
-            return id;
         }
     }
 }

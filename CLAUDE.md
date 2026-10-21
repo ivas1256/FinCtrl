@@ -56,7 +56,7 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 - `src/main/FinCtrl.Domain` — сущности (POCO; `Payment` пока `record` — legacy, см. аудит).
 - `src/main/FinCtrl.Application` — сервисы (бизнес-логика) и интерфейсы репозиториев `Application/<Фича>/I<Entity>Repository.cs`, регистрация в `ServiceCollectionExtensions.AddApplication()`. На Infrastructure не ссылается.
 - `src/main/FinCtrl.Infrastructure` — реализации репозиториев на raw SQL через Dapper (Dommel/FluentMap и классов-маппингов нет) и парсинг файлов импорта (`PaymentsImport/`, EPPlus); ссылается на Application, регистрация в `AddInfrastructure()`. Website ссылается на Infrastructure только ради `AddInfrastructure()`.
-- `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (хелперы `Execute`/`Query`/`FirstOrDefault` над Dapper), `IDbConnectionFactory`, `DateRange`.
+- `src/common/FinCtrl.Common[.Infrastructure]` — `RepositoryBase` (async-хелперы `Execute`/`ExecuteScalar`/`Query`/`FirstOrDefault` над Dapper), `IDbConnectionFactory`, `DateRange`.
 
 Других backend-проектов в репозитории нет (заброшенная попытка переписать бэкенд на EF Core удалена задачей 0010); тесты — в `tests/` (см. «Команды»).
 
@@ -66,7 +66,7 @@ sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
 - Итоговая категория: собственная категория платежа приоритетнее категории его источника (`PaymentCategory ?? PaymentSource?.PaymentSourceCategory`).
 - `PaymentSource` — метка контрагента из банковского файла (создаётся автоматически при импорте, только чтение/правка); `Account` — реальный банковский счёт (полный CRUD). Импорт для обоих использует паттерн get-or-create по имени — повторять его для будущих lookup-сущностей, создаваемых при импорте.
 - Импорт (`POST api/PaymentsApi/upload` → `PaymentsImportService`, `IFileFormatFactory` → `FileFormatFactory` в `Infrastructure/PaymentsImport/` выбирает `XlsxFileFormat`/`CsvFileFormat`) ищет дубли по сумме + дате и у найденных платежей дозаполняет пустой `Account` вместо создания дубля. Маппинг колонок Excel — в `XlsxFileFormat.cs`.
-- В `PaymentRepository` **два независимых SELECT'а платежей**: `_selectPaymentInfo` (Get/GetByDateRange/GetBySource/FindDuplicate) и inline `dataSql` в `GetListPaged`. Новое поле Payment нужно добавлять в оба, а также в `PaymentDto` (Infrastructure и Website), `MainStatisticPayment` и в оба пути маппинга в `PaymentsApiController` (`GetList` и `BuildTree`). Теги подгружаются отдельно через `GetTagsForPayments`/`AttachTags`.
+- В `PaymentRepository` **один SELECT платежей** — `SelectPayment` (для всех выборок); его алиасы должны совпадать со свойствами `PaymentDto` (Infrastructure) — это проверяет `PaymentRepositoryTests`. Новое поле Payment нужно добавлять в `SelectPayment`, а также в `PaymentDto` (Infrastructure и Website), `MainStatisticPayment` и в оба пути маппинга в `PaymentsApiController` (`GetList` и `BuildTree`). Теги подгружаются отдельно через `GetTagsForPayments`/`AttachTags`.
 - Семантика null в `PaymentEditDto` неоднородна: `CategoryId == null` → не трогать (очистить нельзя; legacy, не менять); `AccountId` → null = не трогать, `0` = очистить; `TagIds` → null = не трогать, список = заменить целиком. Для новых полей использовать конвенцию `AccountId`/`TagIds`.
 - `EditPayment` биндит всё тело через `[FromBody]`, поэтому клиент обязан передавать `paymentId` в теле PUT (значение из роута игнорируется).
 - У `PaymentTags` нет каскадного удаления в БД — `TagRepository.Delete` сначала удаляет связи.

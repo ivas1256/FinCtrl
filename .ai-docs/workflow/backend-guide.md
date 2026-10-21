@@ -107,7 +107,7 @@ FinCtrl/
   - избегать N+1: связанные данные — одним запросом / `WHERE Id IN @Ids`, деревья — одним запросом и сборкой в памяти.
 - Многошаговые записи (DELETE+INSERT связей, удаление с зависимостями, массовый импорт) — **в транзакции**.
 - Маппинг: плоский internal-класс строки (`PaymentDto` с алиасами `Prefix_Column` + `MapToX()`) для сложных JOIN'ов; для простых таблиц — `QueryAsync<T>` с совпадающими именами колонок. `dynamic` в новом коде не использовать.
-- Новое поле таблицы — проверить **все** SELECT'ы сущности (см. грабли в `CLAUDE.md` про два SELECT'а `PaymentRepository`).
+- Новое поле таблицы — проверить **все** SELECT'ы сущности (см. грабли в `CLAUDE.md` про SELECT `PaymentRepository` и маппинги платежа).
 - Миграции — см. `CLAUDE.md` и `task-workflow.md` (новый файл, идемпотентно).
 
 ---
@@ -173,9 +173,8 @@ FinCtrl/
 Зафиксировано анализом кода; исправляется отдельными задачами:
 - `PaymentsApiController` содержит бизнес-логику (`BuildTree`, `ToPeriodKey`, эффективная категория, фейковые категории) и состояние в полях; `DashboardApiController` — расчёт процентов и периодов.
 - Проверки уникальности в `AccountsApiController`/`TagsApiController`; доменные сущности отдаются из `CategoriesApiController` и `PaymentsApiController.GetBySource`.
-- Синхронный Dapper внутри async (`RepositoryBase`, `PaymentSourceRepository`), `.Result` в `PaymentSourceService.MapCategories`.
-- Дублирование списков колонок (`CategoryRepository`, `PaymentSourceRepository`, два SELECT'а в `PaymentRepository`), три способа получить identity, нет транзакций (`SetPaymentTags`, `TagRepository.Delete`).
+- Нет транзакций (`SetPaymentTags`, `TagRepository.Delete`, импорт). (Синхронный Dapper, дублирование SELECT'ов и разные способы получить identity убраны задачами 0009 и 0015.)
 - Пагинация/фильтрация в памяти (`PaymentRepository.GetAll`, фильтр тегов в `GetByDateRange`), N+1 при построении дерева категорий.
 - Магические значения: категория `33`, `int.MaxValue`/`int.MaxValue - 1` для фейковых категорий, `"Списание"`/`"Пополнение"`, `"on"`, даты 1753/9999.
 - `ILogger` подключён (NLog), но нигде не используется.
-- Баги: алиас `PaymentSourceCategory_ParentCategoryCategoryId` в `PaymentRepository` не совпадает со свойством `PaymentDto` (поле всегда null); `EditPayment` падает с NRE при пустом описании/источнике.
+- Баги: `EditPayment` падает с NRE при пустом описании/источнике.
