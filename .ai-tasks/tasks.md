@@ -12,7 +12,7 @@
 | 0005 | `fix/0005-quarter-grouping` | `.ai-tasks/fix/0005-quarter-grouping/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/9 |
 | 0006 | `fix/0006-payment-source-single-save` | `.ai-tasks/fix/0006-payment-source-single-save/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/10 (стек поверх #9) |
 | 0007 | `fix/0007-period-header-format` | `.ai-tasks/fix/0007-period-header-format/` | выполнена | https://github.com/ivas1256/FinCtrl/pull/8 |
-| 0008 | `fix/0008-source-payments-deleted` | `.ai-tasks/fix/0008-source-payments-deleted/` | запланирована | — |
+| 0008 | `fix/0008-source-payments-deleted` | `.ai-tasks/fix/0008-source-payments-deleted/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/11 (стек поверх #10) |
 | 0009 | `fix/0009-payment-source-category-map` | `.ai-tasks/fix/0009-payment-source-category-map/` | запланирована | — |
 | 0010 | `refactor/0010-remove-dead-projects` | `.ai-tasks/refactor/0010-remove-dead-projects/` | запланирована | — |
 | 0011 | `refactor/0011-remove-legacy-mvc` | `.ai-tasks/refactor/0011-remove-legacy-mvc/` | запланирована | — |
