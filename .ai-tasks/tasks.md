@@ -7,11 +7,11 @@
 |----|-------|-------|--------|----|
 | 0001 | `chore/0001-rename-solution` | `.ai-tasks/chore/0001-rename-solution/` | выполнена | — (вошла в монорепо коммитом `5e2c1ea`, отдельного PR нет) |
 | 0002 | `chore/0002-pre-pr-hook` | `.ai-tasks/chore/0002-pre-pr-hook/` | выполнена | https://github.com/ivas1256/FinCtrl/pull/1 |
-| 0003 | `chore/0003-backend-test-infra` | `.ai-tasks/chore/0003-backend-test-infra/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/6 |
-| 0004 | `chore/0004-frontend-test-infra` | `.ai-tasks/chore/0004-frontend-test-infra/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/7 |
-| 0005 | `fix/0005-quarter-grouping` | `.ai-tasks/fix/0005-quarter-grouping/` | запланирована | — |
+| 0003 | `chore/0003-backend-test-infra` | `.ai-tasks/chore/0003-backend-test-infra/` | выполнена | https://github.com/ivas1256/FinCtrl/pull/6 |
+| 0004 | `chore/0004-frontend-test-infra` | `.ai-tasks/chore/0004-frontend-test-infra/` | выполнена | https://github.com/ivas1256/FinCtrl/pull/7 |
+| 0005 | `fix/0005-quarter-grouping` | `.ai-tasks/fix/0005-quarter-grouping/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/9 |
 | 0006 | `fix/0006-payment-source-single-save` | `.ai-tasks/fix/0006-payment-source-single-save/` | запланирована | — |
-| 0007 | `fix/0007-period-header-format` | `.ai-tasks/fix/0007-period-header-format/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/8 |
+| 0007 | `fix/0007-period-header-format` | `.ai-tasks/fix/0007-period-header-format/` | выполнена | https://github.com/ivas1256/FinCtrl/pull/8 |
 | 0008 | `fix/0008-source-payments-deleted` | `.ai-tasks/fix/0008-source-payments-deleted/` | запланирована | — |
 | 0009 | `fix/0009-payment-source-category-map` | `.ai-tasks/fix/0009-payment-source-category-map/` | запланирована | — |
 | 0010 | `refactor/0010-remove-dead-projects` | `.ai-tasks/refactor/0010-remove-dead-projects/` | запланирована | — |

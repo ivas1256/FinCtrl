@@ -42,7 +42,7 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
 
         [HttpGet]
         [ProducesResponseType(typeof(GetPaymentsTableResponse), 200)]
-        public async Task<IActionResult> Get(DateTime? from, DateTime? to, GroupingType periodType, [FromQuery] int[]? tagIds = null)
+        public async Task<IActionResult> Get(DateTime? from, DateTime? to, GroupingType periodType, [FromQuery] int[] tagIds = null)
         {
             _groupingType = periodType;
 
@@ -152,7 +152,7 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
             [FromQuery] string sortDir = "desc",
             [FromQuery] int page = 1,
             [FromQuery] int? pageSize = null,
-            [FromQuery] int[]? tagIds = null)
+            [FromQuery] int[] tagIds = null)
         {
             var dateRange = new DateRange(
                 from?.Date ?? new DateTime(1753, 1, 1),
@@ -296,6 +296,8 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
                     return dateRange.From.ToString("MM yyyy").Replace(" ", "");
                 case GroupingType.Week:
                     return GetWeekNumber(dateRange.From).ToString() + dateRange.From.ToString("yyyy");
+                case GroupingType.Quartal:
+                    return $"Q{(dateRange.From.Month - 1) / 3 + 1}{dateRange.From:yyyy}";
                 case GroupingType.Year:
                     return dateRange.From.ToString("yyyy");
                 case GroupingType.Day:

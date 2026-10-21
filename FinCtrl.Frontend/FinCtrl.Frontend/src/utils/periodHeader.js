@@ -10,6 +10,8 @@ export const GroupingType = Object.freeze({
     Day: 5
 })
 
+const QUARTER_NAMES = ['I', 'II', 'III', 'IV']
+
 const MONTH_NAMES = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
 
 // Дата приходит как ISO без зоны ("2025-10-13T00:00:00") — разбираем вручную, чтобы не зависеть от часового пояса
@@ -43,6 +45,8 @@ export const formatPeriodHeader = (period, groupingType) => {
                 ? `${dayMonth(from)} – ${fullDate(last)}`
                 : `${fullDate(from)} – ${fullDate(last)}`
         }
+        case GroupingType.Quarter:
+            return `${QUARTER_NAMES[Math.floor((from.month - 1) / 3)]} кв. ${from.year}`
         case GroupingType.Year:
             return String(from.year)
         case GroupingType.Day:
