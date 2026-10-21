@@ -226,7 +226,7 @@
                                         <tr v-for="payment in sourcePayments" :key="payment.paymentId">
                                             <td>{{ formatDate(payment.paymentDate) }}</td>
                                             <td :class="payment.paymentSum >= 0 ? 'text-success' : 'text-danger'">
-                                                <strong>{{ payment.paymentSum?.toLocaleString('ru-RU') }} ₽</strong>
+                                                <strong>{{ formatCurrency(payment.paymentSum) }}</strong>
                                             </td>
                                             <td>
                                                 <span class="badge bg-secondary">
@@ -253,7 +253,8 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
-import { APP_CONFIG } from '../../../config'
+import { formatCurrency, formatDate } from '../../utils/format'
+import { APP_CONFIG } from '../../config'
 import { Modal } from 'bootstrap'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 
@@ -294,13 +295,6 @@ const changedItemsCount = computed(() => paymentSources.value.filter(s => hasCha
 const hasChangesForSource = (source) =>
     source.categoryId !== source.originalCategoryId ||
     source.description !== source.originalDescription
-
-const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-        day: '2-digit', month: '2-digit', year: 'numeric'
-    })
-}
 
 const loadPaymentSources = async () => {
     loading.value = true

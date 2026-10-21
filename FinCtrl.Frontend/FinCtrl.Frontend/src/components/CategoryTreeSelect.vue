@@ -25,7 +25,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
-import { APP_CONFIG } from '../../config'
+import { APP_CONFIG } from '../config'
 
 const props = defineProps({
     modelValue: {

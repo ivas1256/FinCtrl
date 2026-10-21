@@ -44,7 +44,7 @@
                 )"
                 :title="`Кликните для просмотра ${(category.periods[period.key]?.payments || []).length} платежей`"
             >
-                {{ formatHeatCurrency(category.periods[period.key]?.totalSum || 0) }}
+                {{ formatSignedCurrency(category.periods[period.key]?.totalSum || 0) }}
             </td>
         </tr>
 
@@ -68,7 +68,8 @@
 </template>
 
 <script>
-import { categoryColor, heatClass, heatStyle, formatHeatCurrency } from '../../utils/heatmap'
+import { categoryColor, heatClass, heatStyle } from '../../utils/heatmap'
+import { formatSignedCurrency } from '../../utils/format'
 
 export default {
     name: 'PaymentCategoryRow',
@@ -130,7 +131,7 @@ export default {
         categoryColor,
         heatClass,
         heatStyle,
-        formatHeatCurrency
+        formatSignedCurrency
     }
 }
 </script>

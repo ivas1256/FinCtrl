@@ -16,7 +16,7 @@
                         <div class="card-body text-center py-3">
                             <div class="period-label text-muted small mb-1">{{ period.label }}</div>
                             <div class="period-date text-muted mb-1">{{ periodDateLabel(period) }}</div>
-                            <div class="period-amount fw-bold">{{ fmt(summary[period.key]) }}</div>
+                            <div class="period-amount fw-bold">{{ formatCurrency(summary[period.key]) }}</div>
                         </div>
                     </div>
                 </div>
@@ -87,7 +87,7 @@
                                     <div class="d-flex align-items-center gap-2 flex-shrink-0">
                                         <span class="text-muted small">{{ cat.percentage }}%</span>
                                         <span class="fw-bold" :class="cat.totalSum > 0 ? 'text-danger' : 'text-muted'">
-                                            {{ fmt(cat.totalSum) }}
+                                            {{ formatCurrency(cat.totalSum) }}
                                         </span>
                                     </div>
                                 </div>
@@ -134,7 +134,7 @@
                                         </span>
                                     </div>
                                 </div>
-                                <div class="text-danger fw-bold ms-2 text-nowrap">{{ fmt(p.paymentSum) }}</div>
+                                <div class="text-danger fw-bold ms-2 text-nowrap">{{ formatCurrency(p.paymentSum) }}</div>
                             </div>
                         </div>
                     </div>
@@ -159,7 +159,8 @@ import {
 } from 'chart.js'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { Bar } from 'vue-chartjs'
-import { APP_CONFIG } from '../../../config'
+import { APP_CONFIG } from '../../config'
+import { formatCurrency, formatShortAmount, formatDate, formatShortDate, toInputDate } from '../../utils/format'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, ChartDataLabels)
 
@@ -205,12 +206,12 @@ const visibleCategories = computed(() =>
 const periodDateLabel = (period) => {
     if (!summary.value) return ''
     if (period.dateKey) {
-        return formatDate(summary.value[period.dateKey])
+        return formatDate(summary.value[period.dateKey], '')
     }
     if (period.fromKey && period.toKey) {
         const from = summary.value[period.fromKey]
         const to = summary.value[period.toKey]
-        return `${formatShortDate(from)} – ${formatShortDate(to)}`
+        return `${formatShortDate(from, '')} – ${formatShortDate(to, '')}`
     }
     return ''
 }
@@ -239,12 +240,12 @@ const chartOptions = computed(() => ({
     plugins: {
         legend: { display: false },
         tooltip: {
-            callbacks: { label: ctx => fmt(ctx.parsed.y) }
+            callbacks: { label: ctx => formatCurrency(ctx.parsed.y) }
         },
         datalabels: {
             anchor: 'end',
             align: 'top',
-            formatter: (value) => value > 0 ? fmtShort(value) : '',
+            formatter: (value) => value > 0 ? formatShortAmount(value) : '',
             font: { size: 10 },
             color: '#555',
             clip: false
@@ -253,7 +254,7 @@ const chartOptions = computed(() => ({
     scales: {
         y: {
             beginAtZero: true,
-            ticks: { callback: val => fmtShort(val), font: { size: 11 } },
+            ticks: { callback: val => formatShortAmount(val), font: { size: 11 } },
             grid: { color: '#f0f0f0' }
         },
         x: {
@@ -264,8 +265,6 @@ const chartOptions = computed(() => ({
 }))
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-
-const toInputDate = (date) => date.toISOString().split('T')[0]
 
 const getDefaultRange = (mode) => {
     const today = new Date()
@@ -281,31 +280,6 @@ const getDefaultRange = (mode) => {
     }
     // Month
     return { from: `${today.getFullYear()}-01-01`, to: todayStr }
-}
-
-const fmt = (value) =>
-    new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(value ?? 0)
-
-const fmtShort = (value) => {
-    if (!value) return '0'
-    if (value >= 1000000) return (value / 1000000).toFixed(1).replace('.0', '') + 'М'
-    if (value >= 1000) return (value / 1000).toFixed(1).replace('.0', '') + 'к'
-    return Math.round(value).toString()
-}
-
-const formatDate = (dateStr) => {
-    if (!dateStr) return ''
-    return new Date(dateStr).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-const formatShortDate = (dateStr) => {
-    if (!dateStr) return ''
-    return new Date(dateStr).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
 }
 
 // ── Data loading ───────────────────────────────────────────────────────────

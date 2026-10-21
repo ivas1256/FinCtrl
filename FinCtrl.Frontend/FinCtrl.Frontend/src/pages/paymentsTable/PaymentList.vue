@@ -3,7 +3,7 @@
         <!-- Группировка по дате -->
         <div v-for="(payments, date) in groupedPayments" :key="date" class="payment-date-group mb-3">
             <h6 class="date-header border-bottom pb-2 mb-3">
-                {{ formatDisplayDate(date) }}
+                {{ formatLongDate(date) }}
                 <small class="text-muted ms-2">
                     {{ formatCurrency(getDateTotal(payments)) }}
                 </small>
@@ -55,6 +55,8 @@
 </template>
 
 <script>
+import { formatCurrency, formatLongDate } from '../../utils/format'
+
 export default {
     name: 'PaymentList',
     props: {
@@ -82,22 +84,8 @@ export default {
         }
     },
     methods: {
-        formatDisplayDate(dateString) {
-            const date = new Date(dateString)
-            return date.toLocaleDateString('ru-RU', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            })
-        },
-        formatCurrency(value) {
-            return new Intl.NumberFormat('ru-RU', {
-                style: 'currency',
-                currency: 'RUB',
-                minimumFractionDigits: 2
-            }).format(value)
-        },
+        formatLongDate,
+        formatCurrency,
         getCategoryName(category) {
             return category?.categoryName || 'Без категории'
         },

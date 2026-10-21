@@ -131,7 +131,7 @@
                                 :class="{ 'table-warning': hasChangesForPayment(payment) }"
                             >
                                 <td><span class="text-muted">{{ payment.paymentId }}</span></td>
-                                <td><small class="text-muted">{{ formatDate(payment.paymentDate) }}</small></td>
+                                <td><small class="text-muted">{{ formatDateTime(payment.paymentDate) }}</small></td>
                                 <td :class="payment.paymentSum >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">
                                     {{ formatCurrency(payment.paymentSum) }}
                                 </td>
@@ -327,7 +327,8 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
-import { APP_CONFIG } from '../../../config'
+import { formatCurrency, formatDateTime } from '../../utils/format'
+import { APP_CONFIG } from '../../config'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import Multiselect from 'vue-multiselect'
@@ -466,18 +467,6 @@ const hasChangesForPayment = (payment) =>
 
 const hasChanges = computed(() => payments.value.some(hasChangesForPayment))
 const changedItemsCount = computed(() => payments.value.filter(hasChangesForPayment).length)
-
-// Форматирование
-const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    const date = new Date(dateString)
-    const datePart = date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    const timePart = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-    return `${datePart} ${timePart}`
-}
-
-const formatCurrency = (value) =>
-    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 2 }).format(value)
 
 // Загрузка данных
 const loadPayments = async () => {
