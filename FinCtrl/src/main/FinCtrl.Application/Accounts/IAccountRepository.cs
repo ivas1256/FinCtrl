@@ -24,6 +24,9 @@ public interface IAccountRepository
     /// <summary>Удаляет счета.</summary>
     Task Delete(params Account[] accounts);
 
+    /// <summary>Число операций со счётом, включая удалённые (на них тоже ссылается внешний ключ).</summary>
+    Task<int> CountPayments(int accountId);
+
     /// <summary>Есть ли счёт с таким именем из банковского файла.</summary>
     Task<bool> Exists(string excelAccountName);
 }

@@ -6,5 +6,6 @@ namespace FinCtrl.Application.PaymentsImport.FileFormats;
 public interface IFileFormat
 {
     /// <summary>Читает строки операций из файла.</summary>
+    /// <exception cref="FinCtrl.Common.Application.ValidationException">Файл не читается или содержит некорректные значения.</exception>
     List<ExcelPayment> GetFileNodes(Stream fileStream);
 }

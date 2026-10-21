@@ -21,7 +21,7 @@
 | 0014 | `refactor/0014-layer-dependencies` | `.ai-tasks/refactor/0014-layer-dependencies/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/17 (стек поверх #16) |
 | 0015 | `refactor/0015-async-repositories` | `.ai-tasks/refactor/0015-async-repositories/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/18 (стек поверх #17) |
 | 0016 | `refactor/0016-db-transactions` | `.ai-tasks/refactor/0016-db-transactions/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/19 (стек поверх #18) |
-| 0017 | `refactor/0017-errors-validation` | `.ai-tasks/refactor/0017-errors-validation/` | запланирована | — |
+| 0017 | `refactor/0017-errors-validation` | `.ai-tasks/refactor/0017-errors-validation/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/20 (стек поверх #19) |
 | 0018 | `refactor/0018-thin-api-controllers` | `.ai-tasks/refactor/0018-thin-api-controllers/` | запланирована | — |
 | 0019 | `refactor/0019-frontend-template-cleanup` | `.ai-tasks/refactor/0019-frontend-template-cleanup/` | запланирована | — |
 | 0020 | `refactor/0020-frontend-single-bootstrap` | `.ai-tasks/refactor/0020-frontend-single-bootstrap/` | запланирована | — |

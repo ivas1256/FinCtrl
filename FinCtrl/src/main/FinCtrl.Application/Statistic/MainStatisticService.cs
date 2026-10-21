@@ -1,5 +1,6 @@
 ﻿using FinCtrl.Application.Payments;
 using FinCtrl.Common;
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
 using FinCtrl.Domain.Statistic;
 
@@ -17,6 +18,12 @@ namespace FinCtrl.Application.Statistic
 
         public async Task<List<MainStatisticGroupItem>> Calculate(DateRange dateRange, GroupingType groupingType, int[]? tagIds = null)
         {
+            // Проверка до выборки: без платежей группировка не вызывается, и ошибка зависела бы от данных.
+            if (groupingType == GroupingType.NotSelected || !Enum.IsDefined(groupingType))
+            {
+                throw new ValidationException("Не выбран тип группировки периодов");
+            }
+
             var payments = await _paymentService.GetByDateRange(dateRange, tagIds);
 
             var fakePaymentsSummary = payments
@@ -72,7 +79,7 @@ namespace FinCtrl.Application.Statistic
                 case GroupingType.Year:
                     return new DateTime(paymentDate.Year, 1, 1);
                 default:
-                    throw new NotImplementedException(groupingType.ToString());
+                    throw new ArgumentOutOfRangeException(nameof(groupingType), groupingType, null);
             }
         }
 
@@ -85,7 +92,7 @@ namespace FinCtrl.Application.Statistic
                 GroupingType.Week => periodStartDate.AddDays(7).Date,
                 GroupingType.Day => periodStartDate.Date,
                 GroupingType.Year => new DateTime(periodStartDate.Year + 1, 1, 1),
-                _ => throw new NotImplementedException(groupingType.ToString()),
+                _ => throw new ArgumentOutOfRangeException(nameof(groupingType), groupingType, null),
             };
         }
     }

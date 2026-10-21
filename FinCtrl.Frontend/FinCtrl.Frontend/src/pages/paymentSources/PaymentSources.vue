@@ -252,6 +252,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
+import { getErrorMessage } from '../../utils/apiError'
 import { APP_CONFIG } from '../../../config'
 import { Modal } from 'bootstrap'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
@@ -406,7 +407,7 @@ const saveSingleItem = async (source) => {
         source.originalDescription = source.description
     } catch (error) {
         console.error('Ошибка сохранения источника:', error)
-        alert('Ошибка сохранения')
+        alert(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -431,7 +432,7 @@ const saveAllChanges = async () => {
         alert(`Успешно обновлено ${changedSources.length} источников!`)
     } catch (error) {
         console.error('Ошибка массового сохранения:', error)
-        alert('Ошибка сохранения некоторых источников')
+        alert(getErrorMessage(error, 'Ошибка сохранения некоторых источников'))
     } finally {
         saving.value = false
     }

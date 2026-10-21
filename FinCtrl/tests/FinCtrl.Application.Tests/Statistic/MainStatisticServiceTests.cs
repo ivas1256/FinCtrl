@@ -1,6 +1,7 @@
 using FinCtrl.Application.Payments;
 using FinCtrl.Application.Statistic;
 using FinCtrl.Common;
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
 using FinCtrl.Domain.Statistic;
 using NSubstitute;
@@ -72,6 +73,24 @@ public class MainStatisticServiceTests
         var item = Assert.Single(result, x => x.Category == _food);
         Assert.Equal(new DateTime(2026, 2, 1), item.Period.From);
         Assert.Equal(new DateTime(2026, 3, 1), item.Period.To);
+    }
+
+    [Theory]
+    [InlineData(GroupingType.NotSelected)]
+    [InlineData((GroupingType)42)]
+    public async Task Calculate_GroupingNotSelectedOrUnknown_ThrowsValidationException(GroupingType groupingType)
+    {
+        GivenPayments(Spending(-100, new DateTime(2026, 2, 17)));
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.Calculate(AnyRange, groupingType));
+    }
+
+    [Fact]
+    public async Task Calculate_GroupingNotSelectedWithoutPayments_ThrowsValidationException()
+    {
+        GivenPayments();
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.Calculate(AnyRange, GroupingType.NotSelected));
     }
 
     private void GivenPayments(params Payment[] payments)

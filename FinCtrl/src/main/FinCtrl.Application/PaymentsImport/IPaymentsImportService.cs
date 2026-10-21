@@ -10,6 +10,9 @@ namespace FinCtrl.Application.PaymentsImport
         /// <param name="fileName">Имя файла — по расширению выбирается формат.</param>
         /// <param name="fileStream">Содержимое файла; закрывается после чтения.</param>
         /// <param name="cancellationToken">Отмена проверяется перед каждой строкой; отменённый импорт откатывается.</param>
+        /// <exception cref="FinCtrl.Common.Application.ValidationException">
+        /// Формат не поддерживается, файл не читается, содержит некорректные значения или в нём нет операций.
+        /// </exception>
         Task Upload(string fileName, Stream fileStream, CancellationToken cancellationToken = default);
     }
 }

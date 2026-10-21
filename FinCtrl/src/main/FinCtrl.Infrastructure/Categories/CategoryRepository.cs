@@ -31,6 +31,19 @@ namespace FinCtrl.Infrastructure.Categories
             return (await QueryCategories(_select + " WHERE c.CategoryId = @id", new { id })).FirstOrDefault();
         }
 
+        public async Task<CategoryUsage> GetUsage(int categoryId)
+        {
+            // Без фильтра IsDeleted: удалённые операции тоже держат внешний ключ на категорию
+            var sql = @"SELECT
+                  (SELECT COUNT(*) FROM dbo.Categories WHERE ParentCategoryCategoryId = @categoryId) ChildCount
+                 ,(SELECT COUNT(*) FROM dbo.PaymentSources WHERE CategoryId = @categoryId) PaymentSourceCount
+                 ,(SELECT COUNT(*) FROM dbo.Payments WHERE PaymentCategoryCategoryId = @categoryId) PaymentCount";
+
+            var row = await FirstOrDefault<CategoryUsageRow>(sql, new { categoryId });
+
+            return new CategoryUsage(row!.ChildCount, row.PaymentSourceCount, row.PaymentCount);
+        }
+
         public async Task Delete(params Category[] categories)
         {
             var sql = @"DELETE FROM dbo.Categories WHERE CategoryId = @CategoryId;";
@@ -89,6 +102,14 @@ namespace FinCtrl.Infrastructure.Categories
                 category.Color,
                 category.CreatedAt
             });
+        }
+
+        // Строка счётчиков связей: Dapper маппит по именам колонок, позиционный record ему не нужен
+        private sealed class CategoryUsageRow
+        {
+            public int ChildCount { get; set; }
+            public int PaymentSourceCount { get; set; }
+            public int PaymentCount { get; set; }
         }
 
         // Dapper пишет NULL из колонки Color поверх инициализатора свойства — подставляем цвет по умолчанию.

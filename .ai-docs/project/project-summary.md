@@ -1,4 +1,4 @@
-# FinCtrl — саммари проекта (актуально на 2026-09-17)
+# FinCtrl — саммари проекта (актуально на 2026-10-20)
 
 Личное приложение для учёта финансов. Основной сценарий: пользователь
 выгружает из банка Excel/CSV со списком операций, приложение их импортирует,
@@ -31,6 +31,17 @@
 - `src/main/FinCtrl.Infrastructure` — реализации репозиториев (Dapper, raw SQL) и парсинг файлов импорта; ссылается на Application.
 - `src/common/FinCtrl.Common`, `FinCtrl.Common.Infrastructure` —
   общий `RepositoryBase`, `IDbConnectionFactory`, `DateRange`.
+- `src/common/FinCtrl.Common.Application` (с задачи 0017) — исключения приложения
+  `NotFoundException`/`ValidationException`/`ConflictException` и `Paging.Validate`.
+
+**Ошибки API (с задачи 0017):** сервисы бросают исключения приложения, глобальный
+`ApiExceptionHandler` (`Website/ErrorHandling/`, `AddProblemDetails` + `UseExceptionHandler`)
+отдаёт ProblemDetails (`application/problem+json`: `title`, `detail`, `status`):
+`ValidationException` → 400, `NotFoundException` → 404, `ConflictException` → 409, прочее → 500
+(в Development `detail` = текст исключения, иначе общий текст; стек — в лог). Ошибки DataAnnotations
+на DTO — автоматический 400 `ValidationProblemDetails` с полем `errors`. Пустые 4xx (неизвестный маршрут) —
+тоже ProblemDetails (`UseStatusCodePages`). Страницы исключения больше нет и в Development.
+Frontend показывает текст через `src/utils/apiError.js` → `getErrorMessage(error, fallback)`.
 
 Других backend-проектов в репозитории нет: заброшенная попытка
 переписать бэкенд на EF Core ("clean architecture" rewrite вне `.sln`)
@@ -122,7 +133,8 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 | 13 (M) | Тип ("Списание"/"Пополнение") |
 
 **Паттерн get-or-create** (используется одинаково и для `PaymentSource`,
-и для `Account`): получить по имени (`GetByName`/`GetByExcelName`) →
+и для `Account`): получить по имени (`GetByName`/`GetByExcelName` — единственные методы
+сервисов, возвращающие `null`; `GetById` с задачи 0017 бросает `NotFoundException`) →
 если нет, создать и перечитать по id; результат кэшируется по имени на
 время импорта файла (с задачи 0016 — один запрос на имя за файл, а не
 два на строку). Это общий шаблон для любой
@@ -134,6 +146,11 @@ lookup-сущности, создаваемой автоматически пр�
 источники/счета (identity при этом расходуются). Отмена запроса
 (`CancellationToken`) проверяется перед каждой строкой. Итог пишется в
 лог: `Импорт файла …: строк N, создано платежей …, дозаполнен счёт …, пропущено дублей …`.
+
+**Ошибки файла (с задачи 0017) → 400:** неподдерживаемое расширение, не-xlsx содержимое,
+некорректная дата/сумма или мало колонок (`Строка N: …`), файл без операций (пустой или только
+заголовок). CSV разбирается независимо от культуры сервера: дата — `ru-RU` (`01.10.2025 12:30:00`)
+или ISO, сумма — с запятой или точкой, пробелы-разделители разрядов игнорируются.
 
 **Дедупликация / дозаполнение:** для каждой строки файла ищется уже
 существующий платёж с той же суммой и датой (`FindDuplicate`). Если не
@@ -159,6 +176,12 @@ lookup-сущности, создаваемой автоматически пр�
   create/delete нет.
 - **AccountsApi** — полный CRUD: `GET`, `POST`, `PUT {id}`, `DELETE {id}`.
 - **CategoriesApi** — дерево категорий и т.п.
+- **Коды ошибок (с задачи 0017):** PUT/DELETE несуществующего id во всех API → 404; дубликат имени
+  счёта/тега (создание и переименование) → 409; удаление счёта с операциями и категории с дочерними
+  категориями/источниками/операциями → 409 с количеством связей (учитываются и удалённые операции —
+  на них тоже ссылается FK); несуществующие категория/счёт/тег/родитель в правке → 400 (раньше 500 на FK);
+  родитель категории — она сама или её потомок → 400; цвет не `#RRGGBB` → 400; `page < 1`/`pageSize < 1` → 400;
+  `GET api/PaymentsApi` без `periodType` → 400.
 
 **Грабля, на которую уже наступали:** раньше в `PaymentRepository` было два
 раздельно написанных SELECT'а платежей (`_selectPaymentInfo` и inline
@@ -299,7 +322,7 @@ SELECT один — `PaymentRepository.SelectPayment`, его алиасы об�
 
 - `PaymentSourceService` больше не догружает категории источников через `ICategoryService` (`MapCategories` удалён, вместе с N+1 и тихой подменой: при ненайденной категории источник отдавался с «пустой» категорией с одним id). Зависимость `ICategoryService` из сервиса убрана; `Edit` собирает `new Category(categoryId)` — для UPDATE нужен только id.
 - `PaymentSourceRepository`: общий `SelectPaymentSource` с `LEFT JOIN Categories` для `GetAll`/`GetById`/`GetByName`/`GetListPaged`, маппинг через плоскую строку `PaymentSourceRow` (алиасы `Category_*`) → `MapToPaymentSource()`; методы чтения переведены на `QueryAsync`.
-- Поведение: `PUT api/PaymentSourcesApi[/{id}]` с несуществующим `categoryId` раньше молча снимал категорию, теперь падает на FK `FK_PaymentSources_Categories_CategoryId` (500); нормальный 400/404 — задача 0017.
+- Поведение: `PUT api/PaymentSourcesApi[/{id}]` с несуществующим `categoryId` раньше молча снимал категорию, теперь падает на FK `FK_PaymentSources_Categories_CategoryId` (500); с задачи 0017 — 400 (несуществующий источник — 404).
 
 ## Удаление мёртвых backend-проектов (задача 0010, 2026-10-20)
 
@@ -321,7 +344,7 @@ SELECT один — `PaymentRepository.SelectPayment`, его алиасы об�
 - Удалены пакеты CsvHelper (Website, Application), `Microsoft.AspNetCore.OpenApi`, явный `System.Text.Json`, `System.Linq.Async` и локальный инструмент `dotnet-ef` (`FinCtrl.Website/.config/dotnet-tools.json`).
 - `Startup`: CORS-origins читаются из `Cors:AllowedOrigins` (`appsettings.json`), Swagger называется «FinCtrl API», логирование — только NLog (без `AddConsole`/`AddDebug` перед `ClearProviders`).
 - Тесты парсеров импорта: `FinCtrl/tests/FinCtrl.Application.Tests/PaymentsImport/FileFormats/` (с задачи 0014 — `FinCtrl/tests/FinCtrl.Infrastructure.Tests/PaymentsImport/`).
-- **Грабля:** `CsvFileFormat` пропускает заголовок по `parser.LineNumber == 2`; у файла из одной строки-заголовка без перевода строки заголовок не пропускается и импорт падает на парсинге даты.
+- **Грабля (исправлена задачей 0017):** `CsvFileFormat` пропускал заголовок по `parser.LineNumber == 2`; у файла из одной строки-заголовка без перевода строки заголовок не пропускается и импорт падает на парсинге даты.
 
 ## net9 и Microsoft.Data.SqlClient (задача 0013, 2026-10-20)
 
@@ -339,7 +362,7 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - Интерфейсы репозиториев (`IAccountRepository`, `ICategoryRepository`, `IPaymentRepository`, `IPaymentSourceRepository`, `ITagRepository`) перенесены в `Application/<Фича>/` (namespace `FinCtrl.Application.<Фича>`), получили XML-doc; сигнатуры не менялись. `PaymentDto`/`PaymentSourceRow` в контракт не входят и остались `internal` в Infrastructure.
 - Импорт: `XlsxFileFormat`, `CsvFileFormat`, `FileFormatFactory` (теперь `internal`) — в `Infrastructure/PaymentsImport/`, пакет EPPlus — в Infrastructure. В Application — `IFileFormat` и новый `IFileFormatFactory` (`PaymentsImportService` зависит от интерфейса, регистрация — в `AddInfrastructure()`).
 - Новый тестовый проект `FinCtrl/tests/FinCtrl.Infrastructure.Tests` (тесты парсеров и фабрики форматов, `InternalsVisibleTo` в Infrastructure); тесты `PaymentsImportService` с моками — `FinCtrl/tests/FinCtrl.Application.Tests/PaymentsImport/`.
-- **Грабля (не исправлена):** `CsvFileFormat` парсит сумму через `decimal.Parse` в текущей культуре — на машине с ru-RU сумма с точкой (`-55.5`) падает с `FormatException` (500), нужна запятая.
+- **Грабля (исправлена задачей 0017):** `CsvFileFormat` парсил сумму через `decimal.Parse` в текущей культуре — на машине с ru-RU сумма с точкой (`-55.5`) падает с `FormatException` (500), нужна запятая.
 
 ## Async-репозитории и единые SELECT'ы (задача 0015, 2026-10-20)
 
@@ -359,3 +382,15 @@ et9.0. System.Data.SqlClient заменён на Microsoft.Data.SqlClient 6.1.1 
 - Знак суммы — доменное правило `Payment.NormalizeSumSign()` (расход с положительной суммой → отрицательная), вызывается маппером при чтении. При импорте не применяется: в dev-базе ~1450 расходов с положительной суммой, а поиск дублей сравнивает сумму как есть.
 - `WITH (NOLOCK)` убран из `SelectPayment` и COUNT в `GetListPaged`.
 - Не сделано: `EditPayment` (Update + SetPaymentTags) не в одной транзакции — оркестрация в контроллере, переносится в `PaymentService.Edit` задачей 0018.
+
+## Обработка ошибок и валидация (задача 0017, 2026-10-20)
+
+- Новый проект `FinCtrl.Common.Application`: `NotFoundException`, `ValidationException`, `ConflictException`, `Paging`. Глобальный `ApiExceptionHandler` → ProblemDetails, подробности — в разделе «Ошибки API».
+- Проверки обязательности и уникальности перенесены из `AccountsApi`/`TagsApi` в `AccountService`/`TagService`; `GetById` сервисов бросает `NotFoundException`; `Update`/`Delete` проверяют существование. Проверка связей перед удалением: `IAccountRepository.CountPayments`, `ICategoryRepository.GetUsage`.
+- `PaymentService` проверяет существование категории/счёта (`Update`) и тегов (`SetPaymentTags`, `BulkAssignTags`) до записи; `PaymentSourceService.Edit` — источника и категории.
+- `MainStatisticService`: `NotSelected`/неизвестная группировка → `ValidationException` (раньше `NotImplementedException` → 500). `FileFormatFactory` — `ValidationException` вместо `NotImplementedException`.
+- Исправлено: `CsvFileFormat` зависел от культуры (`-55.5` на ru-RU → 500) и падал на файле из одной строки-заголовка без перевода строки (`LineNumber` = -1 после последней строки — номер строки теперь считается вручную).
+- DataAnnotations: `AccountDto`, `TagDto` (`[Required]`, `[StringLength(255)]`), `CategoryCrudDto` (`[Required]`), `BulkAssignTagsDto` (`[MinLength(1)]`), `UploadFile` (`[Required] file`).
+- Лог: `ExceptionHandlerMiddleware` заглушён в `nlog.config` (писал ERROR со стеком на каждую 400/404/409); ожидаемые ошибки `ApiExceptionHandler` пишет как INFO без стека, непредвиденные — ERROR со стеком.
+- **Грабля:** NLog (`AddNLog`) убирает фильтры `Logging:LogLevel` из appsettings/`AddFilter` — уровни логирования задаются только правилами `nlog.config`.
+- **Грабля (не исправлена, задача 0018):** `EditPayment` — `Update` и `SetPaymentTags` в разных транзакциях: при несуществующем теге платёж уже сохранён (`LastUpdatedAt`, описание), а ответ — 400.

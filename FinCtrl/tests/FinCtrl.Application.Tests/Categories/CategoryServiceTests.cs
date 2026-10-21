@@ -1,4 +1,5 @@
 using FinCtrl.Application.Categories;
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
@@ -62,6 +63,127 @@ public class CategoryServiceTests
         var root = Assert.Single(tree);
         Assert.Equal(1, root.CategoryId);
         Assert.Empty(root.Children);
+    }
+
+    [Fact]
+    public async Task GetById_UnknownCategory_ThrowsNotFoundException()
+    {
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetById(99));
+    }
+
+    [Fact]
+    public async Task Create_EmptyColor_UsesDefaultColor()
+    {
+        var category = new Category { CategoryName = "Еда", Color = "" };
+
+        await _service.Create(category);
+
+        await _repository.Received(1).Create(Arg.Is<Category>(c => c.Color == Category.DefaultColor));
+    }
+
+    [Theory]
+    [InlineData("", "#ffffff")]
+    [InlineData("  ", "#ffffff")]
+    [InlineData("Еда", "красный")]
+    [InlineData("Еда", "#ffffff00")]
+    public async Task Create_InvalidNameOrColor_ThrowsValidationException(string name, string color)
+    {
+        await Assert.ThrowsAsync<ValidationException>(() =>
+            _service.Create(new Category { CategoryName = name, Color = color }));
+
+        await _repository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Fact]
+    public async Task Create_UnknownParent_ThrowsValidationException()
+    {
+        await Assert.ThrowsAsync<ValidationException>(() =>
+            _service.Create(new Category { CategoryName = "Еда", ParentCategoryId = 99 }));
+
+        await _repository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Fact]
+    public async Task Update_UnknownCategory_ThrowsNotFoundException()
+    {
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.Update(new Category(99) { CategoryName = "Еда" }));
+
+        await _repository.DidNotReceiveWithAnyArgs().Update();
+    }
+
+    [Fact]
+    public async Task Update_ValidParent_Saves()
+    {
+        GivenStoredCategories(Cat(1, null, 0), Cat(2, null, 0));
+
+        await _service.Update(new Category(2) { CategoryName = "Кафе", ParentCategoryId = 1 });
+
+        await _repository.Received(1).Update(Arg.Is<Category[]>(c => c.Length == 1 && c[0].ParentCategoryId == 1));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public async Task Update_ParentIsSelfOrDescendant_ThrowsValidationException(int parentId)
+    {
+        // 1 → 2 → 3: родителем категории 1 не может быть ни она сама, ни внук 3
+        GivenStoredCategories(Cat(1, null, 0), Cat(2, 1, 0), Cat(3, 2, 0));
+
+        await Assert.ThrowsAsync<ValidationException>(() =>
+            _service.Update(new Category(1) { CategoryName = "Еда", ParentCategoryId = parentId }));
+
+        await _repository.DidNotReceiveWithAnyArgs().Update();
+    }
+
+    [Fact]
+    public async Task Update_UnknownParent_ThrowsValidationException()
+    {
+        GivenStoredCategories(Cat(1, null, 0));
+
+        await Assert.ThrowsAsync<ValidationException>(() =>
+            _service.Update(new Category(1) { CategoryName = "Еда", ParentCategoryId = 99 }));
+    }
+
+    [Fact]
+    public async Task Delete_UnusedCategory_Deletes()
+    {
+        GivenStoredCategories(Cat(1, null, 0));
+        _repository.GetUsage(1).Returns(new CategoryUsage(0, 0, 0));
+
+        await _service.Delete(1);
+
+        await _repository.Received(1).Delete(Arg.Is<Category[]>(c => c.Length == 1 && c[0].CategoryId == 1));
+    }
+
+    [Theory]
+    [InlineData(1, 0, 0)]
+    [InlineData(0, 2, 0)]
+    [InlineData(0, 0, 3)]
+    public async Task Delete_UsedCategory_ThrowsConflictException(int children, int sources, int payments)
+    {
+        GivenStoredCategories(Cat(1, null, 0));
+        _repository.GetUsage(1).Returns(new CategoryUsage(children, sources, payments));
+
+        await Assert.ThrowsAsync<ConflictException>(() => _service.Delete(1));
+
+        await _repository.DidNotReceiveWithAnyArgs().Delete();
+    }
+
+    [Fact]
+    public async Task Delete_UnknownCategory_ThrowsNotFoundException()
+    {
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.Delete(99));
+
+        await _repository.DidNotReceiveWithAnyArgs().Delete();
+    }
+
+    private void GivenStoredCategories(params Category[] categories)
+    {
+        SetCategories(categories);
+        foreach (var category in categories)
+        {
+            _repository.GetById(category.CategoryId).Returns(category);
+        }
     }
 
     private void SetCategories(params Category[] categories) =>

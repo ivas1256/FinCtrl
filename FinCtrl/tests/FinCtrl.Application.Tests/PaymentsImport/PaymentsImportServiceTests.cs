@@ -4,6 +4,7 @@ using FinCtrl.Application.PaymentsImport;
 using FinCtrl.Application.PaymentsImport.FileFormats;
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Common;
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
 using FinCtrl.Domain.PaymentsImport;
 using Microsoft.Extensions.Logging;
@@ -51,11 +52,32 @@ public class PaymentsImportServiceTests
     [Fact]
     public async Task Upload_FileName_SelectsFormatByExtension()
     {
-        _fileFormat.GetFileNodes(Arg.Any<Stream>()).Returns([]);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
 
         await _service.Upload("выписка.XLSX", new MemoryStream());
 
         _fileFormatFactory.Received(1).Create(".XLSX");
+    }
+
+    [Fact]
+    public async Task Upload_FileWithoutRows_ThrowsValidationExceptionWithoutTransaction()
+    {
+        SetRows();
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(() => _service.Upload("пусто.csv", new MemoryStream()));
+
+        Assert.Contains("пусто.csv", ex.Message);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().BeginTransaction();
+    }
+
+    [Fact]
+    public async Task Upload_UnsupportedFormat_PropagatesValidationException()
+    {
+        _fileFormatFactory.Create(".pdf").Throws(new ValidationException("Неподдерживаемый формат файла"));
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.Upload("выписка.pdf", new MemoryStream()));
+
+        await _unitOfWork.DidNotReceiveWithAnyArgs().BeginTransaction();
     }
 
     [Fact]
