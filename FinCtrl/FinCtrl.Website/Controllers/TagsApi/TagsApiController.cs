@@ -1,10 +1,6 @@
 using FinCtrl.Application.Tags;
 using FinCtrl.Domain;
-using FinCtrl.Website.RequestDto;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Website.Controllers.TagsApi
 {
@@ -21,6 +17,7 @@ namespace FinCtrl.Website.Controllers.TagsApi
             _timeProvider = timeProvider;
         }
 
+        /// <summary>Все теги по алфавиту.</summary>
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -28,43 +25,33 @@ namespace FinCtrl.Website.Controllers.TagsApi
                 .Select(TagDto.FromModel));
         }
 
+        /// <summary>Создаёт тег; 409 — тег с таким названием уже есть.</summary>
         [HttpPost]
         public async Task<IActionResult> Create(TagDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.TagName))
-                return BadRequest("Название тега обязательно");
-
-            if (await _tagService.Exists(dto.TagName))
-                return BadRequest("Тег с таким названием уже существует");
-
             var newTag = Tag.CreateNew(dto.TagName, _timeProvider.GetLocalNow().DateTime);
             var id = await _tagService.Create(newTag);
 
             return Ok(TagDto.FromModel(await _tagService.GetById(id)));
         }
 
+        /// <summary>Переименовывает тег; 404 — тег не найден, 409 — название занято.</summary>
         [HttpPut("{tagId}")]
         public async Task<IActionResult> Update(int tagId, TagDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.TagName))
-                return BadRequest("Название тега обязательно");
-
             var toUpdate = Tag.CreateFromExisting(tagId, dto.TagName);
             await _tagService.Update(toUpdate);
 
-            return Ok();
+            return NoContent();
         }
 
+        /// <summary>Удаляет тег вместе со связями с операциями; 404 — тег не найден.</summary>
         [HttpDelete("{tagId}")]
         public async Task<IActionResult> Delete(int tagId)
         {
-            var tag = await _tagService.GetById(tagId);
-            if (tag is null)
-                return NotFound();
+            await _tagService.Delete(tagId);
 
-            await _tagService.Delete(tag);
-
-            return Ok();
+            return NoContent();
         }
     }
 }

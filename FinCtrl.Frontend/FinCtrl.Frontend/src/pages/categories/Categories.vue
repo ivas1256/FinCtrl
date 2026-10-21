@@ -2,6 +2,8 @@
     <div>
         <h4 class="mb-4">Категории</h4>
 
+        <AlertMessage :message="error" @close="clearAlerts" />
+
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Дерево категорий</h5>
@@ -44,6 +46,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
+                        <AlertMessage :message="modalError" @close="modalError = null" />
                         <div class="mb-3">
                             <label class="form-label">Название</label>
                             <input
@@ -126,6 +129,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
+                        <AlertMessage :message="modalError" @close="modalError = null" />
                         <p>Удалить категорию <strong>«{{ deletingCategory?.categoryName }}»</strong>?</p>
                         <p v-if="deletingCategory?.children?.length > 0" class="text-warning">
                             ⚠️ Категория содержит {{ deletingCategory.children.length }} подкатегорий(ю).
@@ -151,9 +155,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { getErrorMessage } from '../../utils/apiError'
 import { Modal } from 'bootstrap'
-import { APP_CONFIG } from '../../../config'
+import { APP_CONFIG } from '../../config'
 import CategoryNode from './CategoryNode.vue'
+import AlertMessage from '../../components/AlertMessage.vue'
+import { useAlerts } from '../../composables/useAlerts'
 import { DEFAULT_CATEGORY_COLOR } from '../../utils/heatmap'
 
 const DEFAULT_COLOR = DEFAULT_CATEGORY_COLOR
@@ -161,6 +168,9 @@ const DEFAULT_COLOR = DEFAULT_CATEGORY_COLOR
 const categories = ref([])
 const loading = ref(false)
 const saving = ref(false)
+const { error, showError, clearAlerts } = useAlerts()
+// Ошибка сохранения/удаления показывается внутри открытой модалки
+const modalError = ref(null)
 
 const editingId = ref(null)
 const deletingCategory = ref(null)
@@ -200,12 +210,13 @@ const flatCategories = computed(() => {
 
 const loadCategories = async () => {
     loading.value = true
+    clearAlerts()
     try {
         const res = await axios.get(`${APP_CONFIG.apiBaseUrl}/api/CategoriesApi/getTree`)
         categories.value = res.data || []
     } catch (e) {
         console.error(e)
-        alert('Ошибка загрузки категорий')
+        showError('Ошибка загрузки категорий')
     } finally {
         loading.value = false
     }
@@ -220,6 +231,7 @@ const openCreateModal = (parent) => {
         orderIndex: 0,
         color: DEFAULT_COLOR
     }
+    modalError.value = null
     categoryModal.show()
 }
 
@@ -232,11 +244,13 @@ const openEditModal = (node) => {
         orderIndex: node.orderIndex,
         color: node.color || DEFAULT_COLOR
     }
+    modalError.value = null
     categoryModal.show()
 }
 
 const confirmDelete = (node) => {
     deletingCategory.value = node
+    modalError.value = null
     deleteModal.show()
 }
 
@@ -260,7 +274,7 @@ const saveCategory = async () => {
         await loadCategories()
     } catch (e) {
         console.error(e)
-        alert('Ошибка сохранения')
+        modalError.value = getErrorMessage(e, 'Ошибка сохранения')
     } finally {
         saving.value = false
     }
@@ -275,7 +289,7 @@ const deleteCategory = async () => {
         await loadCategories()
     } catch (e) {
         console.error(e)
-        alert('Ошибка удаления')
+        modalError.value = getErrorMessage(e, 'Ошибка удаления')
     } finally {
         saving.value = false
     }

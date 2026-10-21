@@ -1,11 +1,11 @@
-﻿using FinCtrl.Domain.PaymentsImport;
-using System.Collections.Generic;
-using System.IO;
+using FinCtrl.Domain.PaymentsImport;
 
-namespace FinCtrl.Application.PaymentsImport.FileFormats
+namespace FinCtrl.Application.PaymentsImport.FileFormats;
+
+/// <summary>Формат банковского файла: разбор выгрузки в строки импорта.</summary>
+public interface IFileFormat
 {
-    public interface IFileFormat
-    {
-        List<ExcelPayment> GetFileNodes(Stream fileStream);
-    }
+    /// <summary>Читает строки операций из файла.</summary>
+    /// <exception cref="FinCtrl.Common.Application.ValidationException">Файл не читается или содержит некорректные значения.</exception>
+    List<ExcelPayment> GetFileNodes(Stream fileStream);
 }

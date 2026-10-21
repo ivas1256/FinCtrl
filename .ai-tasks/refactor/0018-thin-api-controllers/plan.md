@@ -1,40 +1,75 @@
 # План: [0018] Тонкие API-контроллеры и DTO-контракт
 
-> Статус: `запланирована`. При старте сверить план с текущим кодом (номера строк из аудита могли сместиться) и обновить.
+> Статус: `на ревью`. План сверен с кодом после задач 0005–0017 (интерфейсы репозиториев в Application, async, `IUnitOfWork`, исключения + `ApiExceptionHandler`).
 
 ## Затрагиваемые части
-- `Website/Controllers/PaymentsApi/*`, `DashboardApi/*`, `CategoriesApi/*`, `RequestDto/*`
-- `Application/Statistic/*`, `Dashboard/*`, `Payments/*`
-- `Domain/Payment.cs`, `Category.cs`, `Common/DateRange.cs`
-- Vue-страницы, отправляющие `ExcludeFromStatsStr`/`IsOnlyIncome`
+Backend:
+- `Domain/Payment.cs` (`record` → `class`), `Category.cs` + новый `CategoryIds.cs`, `Statistic/*` (read-модель таблицы, удалить `MainStatisticPayment`), `Dashboard/DashboardSummary.cs`.
+- `Common/DateRange.cs` — фабрика из включительных дат.
+- `Application/Statistic/*` — `GetPaymentsTable` (дерево, ключи периодов, фейковые категории, период по умолчанию).
+- `Application/Dashboard/*` — проценты, топ-платежи, дефолтные периоды графика, исключающая `To`.
+- `Application/Payments/*` — `Edit(PaymentEdit)` под `IUnitOfWork`; `GetListPaged` с открытыми границами дат.
+- `Infrastructure/Payments/PaymentRepository.cs` — условия по датам только при заданных границах.
+- `Website/Controllers/*Api/*` — тонкие контроллеры, DTO по папкам фич, `*Response`, `NoContent()`; удалить `RequestDto/`.
+- `tests/FinCtrl.Website.Tests/` — новый проект (+ `.sln`).
+
+Frontend:
+- `pages/payments/Payments.vue` — `excludeFromStats: bool` вместо `excludeFromStatsStr`.
+- `pages/paymentsTable/PaymentsTable.vue`, `PaymentList.vue` — 204 вместо проверки `status === 200`, `effectiveCategory`.
+- `pages/paymentSources/PaymentSources.vue` — модалка платежей источника по `PaymentDto`.
 
 ## Шаги
-- [ ] Тесты на текущее поведение (характеризационные)
-- [ ] Перенос логики Payments/Statistic
-- [ ] Dashboard
-- [ ] Правка платежа в сервис
-- [ ] DTO/маппинг/Response
-- [ ] Константы и DateRange
-- [ ] bool-контракт + frontend
-- [ ] record → class
-- [ ] Ручная проверка, документация
-- [ ] Сборка + тесты + ручная проверка (Definition of Done)
-- [ ] PR
+- [x] Domain: `CategoryIds`, `Payment` → `class`, read-модель таблицы
+- [x] Statistic: `GetPaymentsTable` в сервисе + тесты
+- [x] Dashboard: проценты, топ, периоды + тесты
+- [x] `PaymentService.Edit` + тесты; `GetListPaged` без 1753/9999
+- [x] Website: DTO по папкам, один маппинг, `*Response`, `NoContent()`, тонкие контроллеры
+- [x] `FinCtrl.Website.Tests`: маппинг
+- [x] Frontend: bool-контракт, 204, `effectiveCategory`
+- [x] Ручная проверка, документация
+- [x] Сборка + тесты + ручная проверка (Definition of Done)
+- [x] PR
 
 ## Тесты
-Уточнить при старте задачи (регламент §3).
+- `MainStatisticServiceTests`: `GetPaymentsTable` — сумма узла = своя + потомки, платежи потомков в ячейке, все периоды в каждом узле, фейковые «Без категории»/«ВСЕГО» в конце, ключи периодов (месяц/неделя/квартал/год/день), период по умолчанию от `TimeProvider`, `Day` — период `[d, d+1)`.
+- `DashboardServiceTests`: проценты (и при нулевых тратах), топ-платежи по модулю, дефолтные периоды графика по режимам, исключающая `To` в графике.
+- `PaymentServiceTests`: `Edit` — null не трогает поля (описание, флаг, категория, счёт, теги), `AccountId = 0` очищает, категория источника не записывается в платёж, пустое описание очищает, несуществующие тег/категория/счёт → 400 без записи, правка + теги в одной транзакции (commit), ошибка тегов — без commit, NotFound.
+- `FinCtrl.Website.Tests`: `PaymentDto.FromModel` (категория своя/источника, `categorySource`, `createdAt` источника, теги), `CategoryDto.FromModel` (дерево), маппинг таблицы главной.
+- Frontend: логики для юнит-тестов не добавляется (правки — поля запросов).
 
 ## Ручная проверка
-Сценарии из критериев приемки — в preview `backend` + `frontend` / на dev-базе.
+- preview `backend` + `frontend`: все страницы, инлайн и массовая правка платежей, модалка правки на главной, CRUD счетов/тегов/категорий, импорт через API, модалка платежей источника.
+- curl: PUT платежа без `description`/`excludeFromStats` — поля не меняются; PUT с несуществующим тегом — 400 и платёж не изменён; PUT/DELETE — 204; `GET list` — `paymentSource.createdAt` заполнен.
+- Тестовые изменения данных вернуть.
 
 ## Риски и открытые вопросы
-- Самая крупная задача. При старте предложить пользователю разбить её на 2–3 PR: Payments/Statistic, Dashboard, DTO-контракт.
+- Крупная задача (постановка предлагала 2–3 PR). Решение — см. журнал.
+- Смена формы ответов (`by-source`, `CategoriesApi`) может задеть страницы: пройти все.
 
 ## Журнал решений
 - 2026-10-20: задача заведена по итогам аудита архитектуры (`.ai-docs/project/architecture-audit.md`).
+- 2026-10-20: ветка создана от `refactor/0017-errors-validation`, а не от `main` (отступление от п.1.2 регламента): пользователь выбрал «стек веток», PR #9→…→#20 ещё не смёржены. PR — в `refactor/0017-errors-validation`, мёржить после #20.
+- 2026-10-20: одна задача — один PR (не делим на 2–3): стек уже из 12 PR, пользователь поручил задачу целиком; части разнесены по логическим коммитам.
+- 2026-10-20: в постановку включены пункты, отложенные задачами 0015–0017: атомарный `EditPayment` в `PaymentService.Edit`, затирание описания, 204, `createdAt` источника в списке, `CategoryDto` из `RequestDto/`, проект `FinCtrl.Website.Tests`, §10 гайда.
+- 2026-10-20: семантика правки платежа изменена на «null = не трогать» для `description` и `excludeFromStats` (раньше PUT без них затирал описание и сбрасывал флаг). Клиент не ломается: «Операции» всегда шлют оба поля (описание из `v-model`, пустое поле — `""` → очистка), модалка главной флаг не шлёт — теперь он не сбрасывается. Пустая строка/пробелы в описании → `NULL` в БД.
+- 2026-10-20: `ExcludeFromStatsStr` (`"on"`) удалён без обратной совместимости — согласованная правка frontend (`excludeFromStats: bool`); других клиентов у API нет.
+- 2026-10-20: id правки платежа — из роута (`EditPayment(int paymentId, [FromBody] EditPaymentRequest)`), `paymentId` в теле игнорируется; frontend перестал его слать. URL не изменился.
+- 2026-10-20: legacy-семантика `CategoryId` сохранена (null — не трогать, категория источника не пишется, очистить нельзя) — постановка CLAUDE.md «не менять».
+- 2026-10-20: один `PaymentDto.FromModel(Payment)` для главной, «Операций» и `by-source`; `MainStatisticPayment` удалён (read-модель таблицы хранит `Payment`). Поле `category` на главной теперь — своя категория (как в «Операциях»), а итоговая — `effectiveCategory`: главная (`PaymentList.vue`, модалка правки) переведена на `effectiveCategory`, поведение то же. Побочно в ответе главной появились `paymentSource.description/categoryId/createdAt` (шаблон `PaymentList.vue` уже выводил описание источника).
+- 2026-10-20: `CategoryDto` — один выходной DTO категории (плоский список, дерево с `children`, категория в платеже), а не отдельные «короткий» и «полный» — один маппинг на пару типов. JSON категории платежа стал надмножеством прежнего.
+- 2026-10-20: `DateRange.To` — исключающая везде, HTTP-даты `from`/`to` — включительно (`DateRange.FromInclusiveDates`). Изменение поведения: `GET api/PaymentsApi` раньше брал `to` как исключающую, и день `to` (по умолчанию сегодня) не попадал в таблицу главной — теперь попадает, как в `list`/`bulk-tags`/графике. Период «День» — `[d, d+1)` (заголовок по `from`, не затронут). `GetListPaged` принимает `DateTime? from, DateTime? to` — без дат условие в SQL не добавляется.
+- 2026-10-20: `DashboardService.GetChartData(mode, from?, to?)` — `to` исключающая, значения по умолчанию по режиму в сервисе; неизвестный режим/перевёрнутый период → 400 (раньше `NotImplementedException`). Числовой `mode` вне enum отсекает model binding (400).
+- 2026-10-20: ключи периодов (`MMyyyy`, `<неделя>yyyy`, `Q<n>yyyy`, …) считаются в `InvariantCulture` — тот же результат, что раньше в `CurrentCulture` (григорианский календарь), но без зависимости от культуры сервера.
+- 2026-10-20: `POST upload` оставлен `200 Ok()` (постановка — 204 только для PUT/DELETE); `PagedResponse<T>` — в `Controllers/` (общий для двух фич).
 
 ## Вне объёма (найдено попутно)
--
+- Ключ периода «Неделя» (`<номер недели><год начала>`) может совпасть для недели 1 следующего года, начинающейся в декабре, и недели 1 текущего года (`12024`), если период таблицы охватывает обе — предложить отдельную задачу (ключ по дате начала).
+- Выбор в правке платежа категории, совпадающей с категорией источника, не снимает свою категорию платежа (legacy `CategoryId`) — отдельная задача на явную очистку.
+- Импорт: `FindDuplicate` ищет по сумме со знаком, а у старых расходов в БД сумма положительная (нормализуется при чтении) — повторная загрузка такой операции создаёт дубль (проявилось при ручной проверке импорта). Отдельная fix-задача (поиск по `ABS`/нормализация данных миграцией).
+- `PUT api/PaymentSourcesApi` (legacy, id в теле) принимает выходной `PaymentSourceDto` — перевести массовое сохранение на `PUT {id}` и удалить маршрут.
+- `.ai-tasks/chore/0023-unit-tests-current-features/` описывает тесты `PaymentsApiController.EditPayment` и `paymentId` из тела — при старте 0023 актуализировать (логика теперь в `PaymentService.Edit`, тесты есть).
 
 ## Итог
-Заполняется по завершении.
+- Сделано: логика таблицы главной, Dashboard и правки платежа перенесена в Application; контроллеры тонкие, без состояния; DTO по папкам фич, один маппинг на пару типов, именованные ответы, 204 на PUT/DELETE; `CategoryIds`, исключающая `DateRange.To`, без 1753/9999; `Payment` — class; bool-контракт `excludeFromStats`; новый `FinCtrl.Website.Tests`; документация обновлена.
+- Проверено: `dotnet build` (0 ошибок, 0 предупреждений), `dotnet test` (Domain 17, Application 119, Infrastructure 24, Website 9 — зелёные), `npm run build`, `npm run test` (29). Preview: все страницы, модалка правки на главной, инлайн и массовая правка в «Операциях», модалка платежей источника, CRUD тегов (UI), счетов и категорий (API), импорт через API; curl-сценарии семантики null, атомарности (400 без изменений), 204/404.
+- Тестовые данные возвращены (описания/теги/`LastUpdatedAt` платежей 7929, 7930; тестовые тег/счёт/категория удалены; созданный при проверке импорта дубль удалён). У платежа 7931 (правка через модалку главной) описание возвращено, но прежнее значение `LastUpdatedAt` не было записано до проверки — он остался `2026-10-20 15:47`.

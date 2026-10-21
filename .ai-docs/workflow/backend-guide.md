@@ -34,7 +34,7 @@ FinCtrl/
 │   │   ├── FinCtrl.Application/          — сервисы (сценарии), интерфейсы репозиториев, исключения приложения
 │   │   └── FinCtrl.Infrastructure/       — реализации репозиториев (Dapper + SQL), подключение к БД, парсинг файлов
 │   └── common/                           — переиспользуемый код, не привязанный к предметной области
-│       ├── FinCtrl.Common/               — общее для всех слоёв (DateRange, Pagination, хелперы)
+│       ├── FinCtrl.Common/               — общее для всех слоёв (DateRange, хелперы)
 │       ├── FinCtrl.Common.Domain/        — общее для Domain (базовые типы сущностей/value objects)
 │       ├── FinCtrl.Common.Application/   — общее для Application (базовые исключения, абстракции)
 │       └── FinCtrl.Common.Infrastructure/ — общее для Infrastructure (RepositoryBase, IDbConnectionFactory)
@@ -44,7 +44,7 @@ FinCtrl/
 ```
 
 - `src/main` — код FinCtrl; `src/common` — код, который можно перенести в другой проект без изменений. В `common` нет ничего про платежи, категории и т.п.
-- `src/common` делится по тем же слоям: `FinCtrl.Common.<Слой>` нужен только этому слою и подключается только им (и вышележащими); `FinCtrl.Common` — общий для всех. Проект `Common.<Слой>` заводится, когда в нём появляется первый код (сейчас есть `FinCtrl.Common` и `FinCtrl.Common.Infrastructure`).
+- `src/common` делится по тем же слоям: `FinCtrl.Common.<Слой>` нужен только этому слою и подключается только им (и вышележащими); `FinCtrl.Common` — общий для всех. Проект `Common.<Слой>` заводится, когда в нём появляется первый код (сейчас есть `FinCtrl.Common`, `FinCtrl.Common.Application` и `FinCtrl.Common.Infrastructure`).
 - `tests/` — см. раздел 8.
 
 ### Кричащая архитектура (Screaming Architecture)
@@ -57,7 +57,7 @@ FinCtrl/
 ### Зависимости
 
 Правила:
-- **Целевое направление**: Application **не** ссылается на Infrastructure. Интерфейсы репозиториев для новых фич кладём в Application (`Application/<Фича>/I<Entity>Repository.cs`), реализацию — в Infrastructure. Сейчас интерфейсы лежат в Infrastructure (техдолг) — при переносе фичи переносить целиком.
+- Application **не** ссылается на Infrastructure (с задачи 0014). Интерфейсы репозиториев и других внешних зависимостей (например `IFileFormat`/`IFileFormatFactory` импорта) — в Application (`Application/<Фича>/I<Entity>Repository.cs`), реализации — в Infrastructure (`internal`), регистрация — в `AddInfrastructure()`. Парсинг файлов (EPPlus, `TextFieldParser`) — в Infrastructure.
 - Website ссылается на Infrastructure **только** ради `AddInfrastructure()` в `Startup`. Контроллеры работают только с сервисами Application, не с репозиториями.
 - Read-модели для отчётов/дашборда (`DashboardSummary`, `MainStatistic*`) — допустимы в Domain или Application; это не сущности, им не нужно поведение.
 
@@ -83,11 +83,15 @@ FinCtrl/
 - Сервис отвечает за **сценарий**: валидацию входных данных, бизнес-проверки (уникальность имени, существование связанных сущностей), оркестрацию репозиториев, транзакционную границу.
 - Простой CRUD может быть тонким сервисом — это нормально, но проверки вида «имя уже существует» живут здесь, а не в контроллере.
 - Сервис может звать другой сервис, если это переиспользование сценария; избегать циклов и цепочек > 2.
-- **Ошибки** — исключения приложения, а не `null`/строки/`NotImplementedException`:
+- **Ошибки** — исключения приложения из `FinCtrl.Common.Application` (с задачи 0017), а не `null`/строки/`NotImplementedException`:
   - `NotFoundException` — сущность не найдена (→ 404);
-  - `ValidationException` / `DomainException` — некорректные данные или нарушение правила (→ 400);
-  - заводятся в Application первой задачей, которой они понадобятся, вместе с глобальным обработчиком в Website (ProblemDetails).
-  - `NotImplementedException` — только для реально не реализованного кода, не как бизнес-ошибка.
+  - `ValidationException` — некорректные данные, несуществующая связанная сущность, нарушение правила (→ 400);
+  - `ConflictException` — конфликт с текущими данными: дубликат имени, удаление используемой сущности (→ 409);
+  - в ответ их превращает глобальный `ApiExceptionHandler` (Website, ProblemDetails); `Message` уходит пользователю в `detail` — писать по-русски, понятно, с именем/id сущности;
+  - `GetById` сервиса бросает `NotFoundException`; `null` возвращают только поисковые методы (`GetByName` для get-or-create) — семантику `null` описывать в XML-doc;
+  - проверять существование связанных сущностей и связи перед удалением **до записи** — не полагаться на FK в БД (он даёт 500);
+  - бросаемые исключения перечислять в XML-doc интерфейса (`<exception cref="...">`);
+  - `NotImplementedException` — только для реально не реализованного кода, не как бизнес-ошибка; недостижимая ветка `switch` — `ArgumentOutOfRangeException`.
 - Возвращать доменные сущности или read-модели; `IReadOnlyList<T>`/`List<T>` вместо ленивых `IEnumerable<T>`. Для пагинации — именованный тип или кортеж `(Items, TotalCount)`.
 - Логирование — `ILogger<T>` в сервисах для значимых событий (импорт: сколько создано/пропущено; неожиданные ситуации). Не логировать и тут же пробрасывать одно и то же исключение на каждом слое.
 
@@ -105,9 +109,13 @@ FinCtrl/
   - Id после вставки — `OUTPUT INSERTED.<Id>` + `ExecuteScalarAsync<int>`;
   - soft delete (`IsDeleted`) учитывать во всех выборках, где он есть;
   - избегать N+1: связанные данные — одним запросом / `WHERE Id IN @Ids`, деревья — одним запросом и сборкой в памяти.
-- Многошаговые записи (DELETE+INSERT связей, удаление с зависимостями, массовый импорт) — **в транзакции**.
+- Многошаговые записи (DELETE+INSERT связей, удаление с зависимостями, массовый импорт) — **в транзакции**:
+  - внутри одного репозитория — `await using var tx = await BeginTransaction();` … `await tx.Commit();` (хелпер `RepositoryBase`);
+  - сценарий из нескольких репозиториев/сервисов — в сервисе Application через `IUnitOfWork.BeginTransaction()` (`FinCtrl.Common`);
+  - освобождение без `Commit` — откат; вложенный `BeginTransaction` входит во внешнюю транзакцию, фиксирует внешняя;
+  - запросы — только через хелперы `RepositoryBase` (они передают текущую транзакцию), соединение напрямую не брать.
 - Маппинг: плоский internal-класс строки (`PaymentDto` с алиасами `Prefix_Column` + `MapToX()`) для сложных JOIN'ов; для простых таблиц — `QueryAsync<T>` с совпадающими именами колонок. `dynamic` в новом коде не использовать.
-- Новое поле таблицы — проверить **все** SELECT'ы сущности (см. грабли в `CLAUDE.md` про два SELECT'а `PaymentRepository`).
+- Новое поле таблицы — проверить **все** SELECT'ы сущности (см. грабли в `CLAUDE.md` про SELECT `PaymentRepository` и маппинги платежа).
 - Миграции — см. `CLAUDE.md` и `task-workflow.md` (новый файл, идемпотентно).
 
 ---
@@ -118,8 +126,9 @@ FinCtrl/
 - Контроллер **тонкий**: принять DTO → вызвать сервис → смапить результат в DTO. Без агрегаций, построения деревьев, расчёта периодов, процентов, дефолтных диапазонов дат — это Application. Без состояния в полях контроллера.
 - Наружу — **только DTO**, не доменные сущности. DTO лежат рядом с контроллером (`Controllers/<Feature>Api/`), один публичный тип на файл (маленькие вложенные record'ы одного ответа — можно вместе). Имена: `<Entity>Dto`, `Create<Entity>Request`, `<Something>Response`.
 - Маппинг — вручную: статические `FromModel`/`ToModel` в DTO или методы-расширения. Один маппинг на пару типов, не дублировать в разных action'ах.
-- Тело запроса — явно `[FromBody]`; id в PUT — из роута (существующий `EditPayment` с id в теле — legacy, не повторять).
-- Ответы: `200 Ok(dto)` — чтение/правка с результатом, `201`/`200` — создание с телом, `204 NoContent()` — без тела, `400` — ошибка валидации, `404` — не найдено. Ошибки — в формате ProblemDetails через глобальный обработчик, а не `BadRequest("строка")`.
+- Тело запроса — явно `[FromBody]`; id в PUT — из роута (legacy-исключение — `PUT api/PaymentSourcesApi` с id в теле, не повторять).
+- Правка с частичным телом (как `EditPaymentRequest`): поле `null`/отсутствует — не трогать; «очистить» — явным значением (`0` для id, пустая строка для текста, пустой список).
+- Ответы: `200 Ok(dto)` — чтение/правка с результатом, `201`/`200` — создание с телом, `204 NoContent()` — без тела, `400` — ошибка валидации, `404` — не найдено, `409` — конфликт. Ошибки — в формате ProblemDetails через глобальный обработчик (контроллер просто не ловит исключения сервиса), а не `BadRequest("строка")`/`NotFound()` после проверки на `null`.
 - Под-маршруты новых action'ов — kebab-case (`bulk-tags`, `by-source/{id}`).
 - Базовая проверка формы входа (обязательные поля, диапазоны) — атрибутами DataAnnotations на DTO; бизнес-проверки — в сервисе.
 - В JSON-API — нормальные типы (`bool`), не HTML-формовые `"on"`.
@@ -147,7 +156,7 @@ FinCtrl/
 
 Требования к покрытию — в `task-workflow.md`, раздел 3.
 
-- Тесты лежат в `FinCtrl/tests/`, отдельный xUnit-проект на каждый тестируемый проект: `FinCtrl.<Проект>.Tests` (`FinCtrl.Application.Tests` тестирует `FinCtrl.Application`). Все тестовые проекты входят в `FinCtrl.Backend.sln`.
+- Тесты лежат в `FinCtrl/tests/`, отдельный xUnit-проект на каждый тестируемый проект: `FinCtrl.<Проект>.Tests` (`FinCtrl.Application.Tests` тестирует `FinCtrl.Application`, `FinCtrl.Infrastructure.Tests` — `FinCtrl.Infrastructure`: парсеры импорта и прочая логика без БД, `FinCtrl.Website.Tests` — маппинг DTO, логика контроллеров (даты, id из роута) и `ApiExceptionHandler`, `FinCtrl.Common.Tests` — `DateRange` и хелперы `FinCtrl.Common`). Все тестовые проекты входят в `FinCtrl.Backend.sln`.
 - **Namespace и путь теста повторяют тестируемый класс** с вставкой `.Tests` после имени проекта: `FinCtrl.Application.Tags.TagService` → `tests/FinCtrl.Application.Tests/Tags/TagServiceTests.cs`, namespace `FinCtrl.Application.Tests.Tags`.
 - Один тестовый класс `<Класс>Tests` на тестируемый класс; имя теста — `<Метод>_<Условие>_<ОжидаемыйРезультат>`; структура Arrange / Act / Assert.
 - Для доступа к `internal`-реализациям — `InternalsVisibleTo` на тестовый проект.
@@ -171,12 +180,8 @@ FinCtrl/
 ## 10. Известный техдолг (не повторять в новом коде)
 
 Зафиксировано анализом кода; исправляется отдельными задачами:
-- Application ссылается на Infrastructure, интерфейсы репозиториев лежат в Infrastructure.
-- `PaymentsApiController` содержит бизнес-логику (`BuildTree`, `ToPeriodKey`, эффективная категория, фейковые категории) и состояние в полях; `DashboardApiController` — расчёт процентов и периодов.
-- Проверки уникальности в `AccountsApiController`/`TagsApiController`; доменные сущности отдаются из `CategoriesApiController` и `PaymentsApiController.GetBySource`.
-- Синхронный Dapper внутри async (`RepositoryBase`, `PaymentSourceRepository`), `.Result` в `PaymentSourceService.MapCategories`.
-- Дублирование списков колонок (`CategoryRepository`, `PaymentSourceRepository`, два SELECT'а в `PaymentRepository`), три способа получить identity, нет транзакций (`SetPaymentTags`, `TagRepository.Delete`).
-- Пагинация/фильтрация в памяти (`PaymentRepository.GetAll`, фильтр тегов в `GetByDateRange`), N+1 при построении дерева категорий.
-- Магические значения: категория `33`, `int.MaxValue`/`int.MaxValue - 1` для фейковых категорий, `"Списание"`/`"Пополнение"`, `"on"`, даты 1753/9999.
-- Nullable выключен в `FinCtrl.Website`; разные TargetFramework (net6/7/9); legacy `System.Data.SqlClient`; `ILogger` подключён (NLog), но нигде не используется.
-- Баги: алиас `PaymentSourceCategory_ParentCategoryCategoryId` в `PaymentRepository` не совпадает со свойством `PaymentDto` (поле всегда null); `EditPayment` падает с NRE при пустом описании/источнике.
+- Фильтрация в памяти: фильтр тегов в `PaymentRepository.GetByDateRange`; `BulkAssignTags` выбирает весь период и фильтрует категории в памяти.
+- Магические значения: `"Списание"`/`"Пополнение"` в импорте; строки `"date"`/`"source"`/`"category"`, `"asc"`/`"desc"` сортировки списка операций.
+- Legacy-маршрут `PUT api/PaymentSourcesApi` (id в теле, входной тип — выходной `PaymentSourceDto`); legacy-семантика `CategoryId` в правке платежа (очистить свою категорию нельзя).
+- `ILogger` (NLog) используется только в импорте (итог, с задачи 0016); в остальных сервисах логов нет.
+- (Бизнес-логика и состояние в `PaymentsApiController`/`DashboardApiController`, доменные сущности и анонимные типы в ответах, неатомарный `EditPayment`, `"on"`, id категорий `33`/`int.MaxValue`, даты 1753/9999, `RequestDto/` убраны задачей 0018; транзакции, синхронный Dapper, дублирование SELECT'ов, разные способы получить identity и N+1 дерева категорий — задачами 0009, 0015, 0016.)

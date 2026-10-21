@@ -1,17 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CsvHelper" Version="30.0.1" />
-    <PackageReference Include="EPPlus" Version="6.0.5" />
-    <PackageReference Include="Microsoft.Bcl.TimeProvider" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.1" />
-    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.4" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,7 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\common\FinCtrl.Common\FinCtrl.Common.csproj" />
     <ProjectReference Include="..\FinCtrl.Domain\FinCtrl.Domain.csproj" />
-    <ProjectReference Include="..\FinCtrl.Infrastructure\FinCtrl.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\common\FinCtrl.Common.Application\FinCtrl.Common.Application.csproj" />
   </ItemGroup>
 
 </Project>

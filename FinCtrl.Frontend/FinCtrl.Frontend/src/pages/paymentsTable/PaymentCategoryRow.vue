@@ -44,13 +44,13 @@
                 )"
                 :title="`Кликните для просмотра ${(category.periods[period.key]?.payments || []).length} платежей`"
             >
-                {{ formatHeatCurrency(category.periods[period.key]?.totalSum || 0) }}
+                {{ formatSignedCurrency(category.periods[period.key]?.totalSum || 0) }}
             </td>
         </tr>
 
         <!-- Дочерние категории -->
         <template v-if="category.children && category.children.length > 0 && isExpanded">
-            <payment-category-row
+            <PaymentCategoryRow
                 v-for="child in category.children"
                 :key="child.categoryId"
                 :category="child"
@@ -67,72 +67,65 @@
     </template>
 </template>
 
-<script>
-import { categoryColor, heatClass, heatStyle, formatHeatCurrency } from '../../utils/heatmap'
+<script setup>
+import { ref, computed } from 'vue'
+import { categoryColor, heatClass, heatStyle } from '../../utils/heatmap'
+import { formatSignedCurrency } from '../../utils/format'
 
-export default {
-    name: 'PaymentCategoryRow',
-    props: {
-        category: {
-            type: Object,
-            required: true
-        },
-        periods: {
-            type: Array,
-            required: true
-        },
-        level: {
-            type: Number,
-            default: 0
-        },
-        parentExpanded: {
-            type: Boolean,
-            default: true
-        },
-        maxValue: {
-            type: Number,
-            default: 0
-        },
-        catIndex: {
-            type: Number,
-            default: 0
-        },
-        selectedCategoryId: {
-            type: [Number, String],
-            default: null
-        },
-        selectedPeriodKey: {
-            type: String,
-            default: null
-        }
+// Компонент рекурсивный: в шаблоне ссылается сам на себя по имени
+defineOptions({ name: 'PaymentCategoryRow' })
+
+const props = defineProps({
+    category: {
+        type: Object,
+        required: true
     },
-    emits: ['cell-click'],
-    data() {
-        return {
-            isExpanded: true
-        }
+    periods: {
+        type: Array,
+        required: true
     },
-    computed: {
-        shouldShow() {
-            return this.level === 0 || this.parentExpanded
-        }
+    level: {
+        type: Number,
+        default: 0
     },
-    methods: {
-        toggleExpand() {
-            this.isExpanded = !this.isExpanded
-        },
-        handleCellClick(payments, categoryName, periodName, totalSum, categoryId, periodKey) {
-            this.$emit('cell-click', payments, categoryName, periodName, totalSum, categoryId, periodKey)
-        },
-        isSelected(periodKey) {
-            return this.selectedCategoryId === this.category.categoryId && this.selectedPeriodKey === periodKey
-        },
-        categoryColor,
-        heatClass,
-        heatStyle,
-        formatHeatCurrency
+    parentExpanded: {
+        type: Boolean,
+        default: true
+    },
+    maxValue: {
+        type: Number,
+        default: 0
+    },
+    catIndex: {
+        type: Number,
+        default: 0
+    },
+    selectedCategoryId: {
+        type: [Number, String],
+        default: null
+    },
+    selectedPeriodKey: {
+        type: String,
+        default: null
     }
+})
+
+const emit = defineEmits(['cell-click'])
+
+const isExpanded = ref(true)
+
+const shouldShow = computed(() => props.level === 0 || props.parentExpanded)
+
+const toggleExpand = () => {
+    isExpanded.value = !isExpanded.value
 }
+
+const handleCellClick = (payments, categoryName, periodName, totalSum, categoryId, periodKey) => {
+    emit('cell-click', payments, categoryName, periodName, totalSum, categoryId, periodKey)
+}
+
+const isSelected = (periodKey) =>
+    props.selectedCategoryId === props.category.categoryId && props.selectedPeriodKey === periodKey
 </script>
 
 <style scoped>
@@ -187,9 +180,4 @@ export default {
 .hm-cell.hm-zero  { color: #aab4c2; cursor: default; }
 .hm-cell.hm-income { color: #198754; }
 .hm-cell.hm-hi    { color: #6e1517; }
-
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .hm-cell.hm-hi { color: #ffcdd2; }
-}
-:root[data-theme="dark"] .hm-cell.hm-hi { color: #ffcdd2; }
 </style>

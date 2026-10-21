@@ -1,29 +1,37 @@
-﻿using FinCtrl.Common.Infrastructure;
+using FinCtrl.Application.Accounts;
+using FinCtrl.Application.Categories;
+using FinCtrl.Application.Payments;
+using FinCtrl.Application.PaymentsImport.FileFormats;
+using FinCtrl.Application.PaymentSources;
+using FinCtrl.Application.Tags;
+using FinCtrl.Common;
+using FinCtrl.Common.Infrastructure;
 using FinCtrl.Infrastructure.Accounts;
 using FinCtrl.Infrastructure.Categories;
 using FinCtrl.Infrastructure.Payments;
+using FinCtrl.Infrastructure.PaymentsImport;
 using FinCtrl.Infrastructure.PaymentSources;
 using FinCtrl.Infrastructure.Tags;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Infrastructure
 {
     public static class ServiceCollectionExtensions
     {
+        /// <summary>Регистрирует реализации Infrastructure: подключение к БД, репозитории, форматы файлов импорта.</summary>
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {
             services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
+            // Транзакция живёт в соединении scope, поэтому IUnitOfWork — та же фабрика, а не отдельный экземпляр.
+            services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IDbConnectionFactory>());
 
             services.AddScoped<IPaymentSourceRepository, PaymentSourceRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
             services.AddScoped<IAccountRepository, AccountRepository>();
             services.AddScoped<ITagRepository, TagRepository>();
+
+            services.AddScoped<IFileFormatFactory, FileFormatFactory>();
 
             return services;
         }

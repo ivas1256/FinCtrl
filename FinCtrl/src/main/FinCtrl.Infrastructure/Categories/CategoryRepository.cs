@@ -1,13 +1,6 @@
-﻿using FinCtrl.Common.Infrastructure;
+﻿using FinCtrl.Application.Categories;
+using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
-using System;
-using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Dapper;
 
 namespace FinCtrl.Infrastructure.Categories
 {
@@ -17,82 +10,38 @@ namespace FinCtrl.Infrastructure.Categories
         {
         }
 
+        private const string _select = @"SELECT
+                  c.CategoryId
+                 ,c.CategoryName
+                 ,c.CreatedAt
+                 ,c.LastUpdatedAt
+                 ,c.ParentCategoryCategoryId ParentCategoryId
+                 ,c.IsOnlyIncome
+                 ,c.OrderIndex
+                 ,c.Color
+                FROM dbo.Categories c";
+
         public async Task<IEnumerable<Category>> GetAll()
         {
+            return await QueryCategories(_select);
+        }
+
+        public async Task<Category?> GetById(int id)
+        {
+            return (await QueryCategories(_select + " WHERE c.CategoryId = @id", new { id })).FirstOrDefault();
+        }
+
+        public async Task<CategoryUsage> GetUsage(int categoryId)
+        {
+            // Без фильтра IsDeleted: удалённые операции тоже держат внешний ключ на категорию
             var sql = @"SELECT
-                  CategoryId
-                 ,CategoryName
-                 ,CreatedAt
-                 ,LastUpdatedAt
-                 ,ParentCategoryCategoryId ParentCategoryId
-                 ,IsOnlyIncome
-                 ,OrderIndex
-                 ,Color
-                FROM dbo.Categories;";
+                  (SELECT COUNT(*) FROM dbo.Categories WHERE ParentCategoryCategoryId = @categoryId) ChildCount
+                 ,(SELECT COUNT(*) FROM dbo.PaymentSources WHERE CategoryId = @categoryId) PaymentSourceCount
+                 ,(SELECT COUNT(*) FROM dbo.Payments WHERE PaymentCategoryCategoryId = @categoryId) PaymentCount";
 
-            var conn = await _connectionFactory.GetConnectionAsync();
+            var row = await FirstOrDefault<CategoryUsageRow>(sql, new { categoryId });
 
-            return (await conn.QueryAsync(sql))
-                .Select(MapCategory)
-                .ToList();
-        }
-
-        public async Task<List<Category>> GetCategoriesTree()
-        {
-            var sql = @"
-                SELECT
-                  CategoryId
-                 ,CategoryName
-                 ,CreatedAt
-                 ,LastUpdatedAt
-                 ,ParentCategoryCategoryId ParentCategoryId
-                 ,IsOnlyIncome
-                 ,OrderIndex
-                 ,Color
-                FROM Categories
-                WHERE ParentCategoryCategoryId IS NULL
-                Order By OrderIndex;";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            var rootCategories = (await conn.QueryAsync(sql))
-                .Select(MapCategory)
-                .ToList();
-            foreach (var category in rootCategories)
-            {
-                category.Children = await GetChildCategories(category.CategoryId);
-            }
-
-            return rootCategories;
-        }
-
-        private async Task<List<Category>> GetChildCategories(int categoryId)
-        {
-            var sql = @"
-                    SELECT
-                      CategoryId
-                     ,CategoryName
-                     ,CreatedAt
-                     ,LastUpdatedAt
-                     ,ParentCategoryCategoryId ParentCategoryId
-                     ,IsOnlyIncome
-                     ,OrderIndex
-                     ,Color
-                    FROM Categories
-                    WHERE ParentCategoryCategoryId = @ParentId
-                    Order By OrderIndex;";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            var children = (await conn.QueryAsync(sql, new { ParentId = categoryId }))
-                .Select(MapCategory)
-                .ToList();
-            foreach (var childCategory in children)
-            {
-                childCategory.Children = await GetChildCategories(childCategory.CategoryId);
-            }
-
-            return children;
+            return new CategoryUsage(row!.ChildCount, row.PaymentSourceCount, row.PaymentCount);
         }
 
         public async Task Delete(params Category[] categories)
@@ -107,7 +56,6 @@ namespace FinCtrl.Infrastructure.Categories
 
         public async Task Update(params Category[] categories)
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
             var sql = @"UPDATE dbo.Categories
                 SET
                     CategoryName = @CategoryName,
@@ -121,7 +69,7 @@ namespace FinCtrl.Infrastructure.Categories
 
             foreach (var category in categories)
             {
-                await conn.ExecuteAsync(sql, new
+                await Execute(sql, new
                 {
                     category.CategoryId,
                     category.CategoryName,
@@ -145,8 +93,7 @@ namespace FinCtrl.Infrastructure.Categories
                 category.Color = Category.DefaultColor;
             }
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-            return await conn.ExecuteScalarAsync<int>(sql, new
+            return await ExecuteScalar<int>(sql, new
             {
                 category.CategoryName,
                 category.ParentCategoryId,
@@ -157,37 +104,24 @@ namespace FinCtrl.Infrastructure.Categories
             });
         }
 
-        public async Task<Category?> GetById(int id)
+        // Строка счётчиков связей: Dapper маппит по именам колонок, позиционный record ему не нужен
+        private sealed class CategoryUsageRow
         {
-            var sql = @"SELECT
-                  CategoryId
-                 ,CategoryName
-                 ,CreatedAt
-                 ,LastUpdatedAt
-                 ,ParentCategoryCategoryId ParentCategoryId
-                 ,IsOnlyIncome
-                 ,OrderIndex
-                 ,Color
-                FROM dbo.Categories
-                WHERE CategoryId = @id;";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync(sql, new { id }))
-                .Select(MapCategory)
-                .FirstOrDefault();
+            public int ChildCount { get; set; }
+            public int PaymentSourceCount { get; set; }
+            public int PaymentCount { get; set; }
         }
 
-        private static Category MapCategory(dynamic x) => new Category
+        // Dapper пишет NULL из колонки Color поверх инициализатора свойства — подставляем цвет по умолчанию.
+        private async Task<List<Category>> QueryCategories(string sql, object? param = null)
         {
-            CategoryId = x.CategoryId,
-            CategoryName = x.CategoryName,
-            CreatedAt = x.CreatedAt,
-            LastUpdatedAt = x.LastUpdatedAt,
-            ParentCategoryId = x.ParentCategoryId,
-            IsOnlyIncome = x.IsOnlyIncome,
-            OrderIndex = x.OrderIndex,
-            Color = x.Color ?? Category.DefaultColor
-        };
+            var categories = (await Query<Category>(sql, param)).ToList();
+            foreach (var category in categories)
+            {
+                category.Color ??= Category.DefaultColor;
+            }
+
+            return categories;
+        }
     }
 }

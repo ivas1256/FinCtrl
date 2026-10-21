@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FinCtrl.Domain.PaymentsImport
+﻿namespace FinCtrl.Domain.PaymentsImport
 {
     public record ExcelPayment
     {

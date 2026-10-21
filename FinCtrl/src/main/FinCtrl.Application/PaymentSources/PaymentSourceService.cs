@@ -1,83 +1,58 @@
 ﻿using FinCtrl.Application.Categories;
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
-using FinCtrl.Infrastructure.PaymentSources;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Application.PaymentSources
 {
     internal class PaymentSourceService : IPaymentSourceService
     {
         private readonly IPaymentSourceRepository _repository;
-        private readonly ICategoryService _categoryService;
+        private readonly ICategoryRepository _categoryRepository;
         private readonly TimeProvider _timeProvider;
 
-        public PaymentSourceService(IPaymentSourceRepository repository, ICategoryService categoryService, TimeProvider timeProvider)
+        public PaymentSourceService(IPaymentSourceRepository repository, ICategoryRepository categoryRepository, TimeProvider timeProvider)
         {
             _repository = repository;
-            _categoryService = categoryService;
+            _categoryRepository = categoryRepository;
             _timeProvider = timeProvider;
         }
 
+        // Категории источников репозиторий загружает сам (JOIN), догружать их здесь не нужно.
         public async Task<List<PaymentSource>> GetAll()
         {
-            var paymentSources = (await _repository.GetAll())
+            return (await _repository.GetAll())
                 .OrderByDescending(x => x.PaymentSourceId)
                 .ToList();
-
-            await MapCategories(paymentSources);
-
-            return paymentSources;
         }
 
-        public async Task<PaymentSource?> GetById(int paymentSourceId)
+        public async Task<PaymentSource> GetById(int paymentSourceId)
         {
-            var paymentSource = await _repository.GetById(paymentSourceId);
-            if (paymentSource is null)
-            {
-                return null;
-            }
-
-            await MapCategories(new List<PaymentSource> { paymentSource });
-
-            return paymentSource;
+            return await _repository.GetById(paymentSourceId)
+                ?? throw new NotFoundException($"Источник платежа {paymentSourceId} не найден");
         }
 
         public async Task<PaymentSource?> GetByName(string paymentSourceName)
         {
-            var paymentSource = await _repository.GetByName(paymentSourceName);
-            if (paymentSource is null)
-            {
-                return null;
-            }
-
-            await MapCategories(new List<PaymentSource> { paymentSource });
-
-            return paymentSource;
+            return await _repository.GetByName(paymentSourceName);
         }
 
-        public async Task Delete(params PaymentSource[] id)
+        public async Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description)
         {
-            await _repository.Delete(id);
-        }
+            if (string.IsNullOrWhiteSpace(paymentSourceName))
+                throw new ValidationException("Название источника обязательно");
 
-        public async Task Update(params PaymentSource[] paymentSource)
-        {
-            var now = _timeProvider.GetLocalNow().DateTime;
-            foreach (var item in paymentSource)
-            {
-                item.Updated(now);
-            }
+            await GetById(paymentSourceId);
 
-            await _repository.Update(paymentSource);
-        }
+            if (categoryId is int id && await _categoryRepository.GetById(id) is null)
+                throw new ValidationException($"Категория {id} не найдена");
 
-        public async Task<bool> Exists(string paymentSourceName)
-        {
-            return await _repository.Exists(paymentSourceName);
+            // Для UPDATE репозиторию нужен только id категории — загружать её целиком незачем.
+            var category = categoryId.HasValue ? new Category(categoryId.Value) : null;
+            var toUpdate = PaymentSource.CreateFromExisting(paymentSourceId, paymentSourceName, category, description);
+
+            toUpdate.Updated(_timeProvider.GetLocalNow().DateTime);
+
+            await _repository.Update(toUpdate);
         }
 
         public async Task<int> Create(PaymentSource paymentSource)
@@ -88,32 +63,9 @@ namespace FinCtrl.Application.PaymentSources
         public async Task<(List<PaymentSource> Items, int TotalCount)> GetListPaged(
             string? search, bool noCategoryOnly, int page, int? pageSize)
         {
+            Paging.Validate(page, pageSize);
+
             return await _repository.GetListPaged(search, noCategoryOnly, page, pageSize);
-        }
-
-
-        //TODO delete this
-        private async Task MapCategories(IEnumerable<PaymentSource> paymentSources)
-        {
-            var categoryIds = paymentSources
-                .Select(x => x.PaymentSourceCategory?.CategoryId)
-                .OfType<int>()
-                .Distinct();
-
-            var categories = new Dictionary<int, Category>();
-            foreach (var categoryId in categoryIds)
-            {
-                var category = await _categoryService.GetById(categoryId);
-                if (category is not null)
-                    categories[categoryId] = category;
-            }
-
-            foreach (var paymentSource in paymentSources)
-            {
-                if (paymentSource.PaymentSourceCategory is not null
-                    && categories.TryGetValue(paymentSource.PaymentSourceCategory.CategoryId, out var category))
-                    paymentSource.PaymentSourceCategory = category;
-            }
         }
     }
 }

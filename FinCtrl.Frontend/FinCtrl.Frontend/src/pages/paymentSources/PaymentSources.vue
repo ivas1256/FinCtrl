@@ -56,6 +56,9 @@
             </div>
 
             <div class="card-body">
+                <AlertMessage :message="error" @close="clearAlerts" />
+                <AlertMessage :message="success" type="success" @close="clearAlerts" />
+
                 <!-- Состояние загрузки -->
                 <div v-if="loading" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
@@ -202,6 +205,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                        <AlertMessage :message="paymentsError" @close="paymentsError = null" />
                         <div v-if="loadingPayments" class="text-center py-3">
                             <div class="spinner-border spinner-border-sm" role="status">
                                 <span class="visually-hidden">Загрузка платежей...</span>
@@ -209,7 +213,7 @@
                             <span class="ms-2">Загрузка платежей...</span>
                         </div>
                         <div v-else>
-                            <div v-if="sourcePayments.length === 0" class="text-center py-3 text-muted">
+                            <div v-if="sourcePayments.length === 0 && !paymentsError" class="text-center py-3 text-muted">
                                 Нет платежей для этого источника
                             </div>
                             <div v-else class="table-responsive">
@@ -225,12 +229,12 @@
                                     <tbody>
                                         <tr v-for="payment in sourcePayments" :key="payment.paymentId">
                                             <td>{{ formatDate(payment.paymentDate) }}</td>
-                                            <td :class="payment.amount >= 0 ? 'text-success' : 'text-danger'">
-                                                <strong>{{ payment.paymentSum?.toLocaleString('ru-RU') }} ₽</strong>
+                                            <td :class="payment.paymentSum >= 0 ? 'text-success' : 'text-danger'">
+                                                <strong>{{ formatCurrency(payment.paymentSum) }}</strong>
                                             </td>
                                             <td>
                                                 <span class="badge bg-secondary">
-                                                    {{ getCategoryName(payment.paymentCategory?.Id) }}
+                                                    {{ payment.effectiveCategory?.categoryName || 'Без категории' }}
                                                 </span>
                                             </td>
                                             <td>{{ payment.paymentDescription || '-' }}</td>
@@ -252,14 +256,19 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
-import { APP_CONFIG } from '../../../config'
+import { getErrorMessage } from '../../utils/apiError'
+import { formatCurrency, formatDate } from '../../utils/format'
+import { APP_CONFIG } from '../../config'
 import { Modal } from 'bootstrap'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
+import AlertMessage from '../../components/AlertMessage.vue'
+import { useAlerts } from '../../composables/useAlerts'
 
 const paymentSources = ref([])
 const categories = ref([])
 const loading = ref(false)
 const saving = ref(false)
+const { error, success, showError, showSuccess, clearAlerts } = useAlerts()
 
 const searchQuery = ref('')
 const filterNoCategory = ref(false)
@@ -271,6 +280,7 @@ const pageSizeOptions = [500, 1000, 5000, null]
 const selectedSource = ref(null)
 const sourcePayments = ref([])
 const loadingPayments = ref(false)
+const paymentsError = ref(null)
 const paymentsModal = ref(null)
 
 const totalPages = computed(() =>
@@ -294,30 +304,9 @@ const hasChangesForSource = (source) =>
     source.categoryId !== source.originalCategoryId ||
     source.description !== source.originalDescription
 
-const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-        day: '2-digit', month: '2-digit', year: 'numeric'
-    })
-}
-
-const getCategoryName = (categoryId) => {
-    if (!categoryId) return 'Без категории'
-    function findCategory(list, id) {
-        if (!Array.isArray(list)) return null
-        for (const cat of list) {
-            if (cat?.categoryId === id) return cat
-            const found = findCategory(cat?.children, id)
-            if (found) return found
-        }
-        return null
-    }
-    const cat = findCategory(categories.value, categoryId)
-    return cat ? cat.categoryName : 'Неизвестно'
-}
-
 const loadPaymentSources = async () => {
     loading.value = true
+    clearAlerts()
     try {
         const params = {
             search: searchQuery.value || undefined,
@@ -335,7 +324,7 @@ const loadPaymentSources = async () => {
         }))
     } catch (error) {
         console.error('Ошибка загрузки источников платежей:', error)
-        alert('Ошибка загрузки данных')
+        showError('Ошибка загрузки данных')
     } finally {
         loading.value = false
     }
@@ -370,13 +359,14 @@ const loadCategories = async () => {
 
 const loadPaymentsForSource = async (paymentSourceId) => {
     loadingPayments.value = true
+    paymentsError.value = null
     try {
         const response = await axios.get(`${APP_CONFIG.apiBaseUrl}/api/PaymentsApi/by-source/${paymentSourceId}`)
         sourcePayments.value = response.data
     } catch (error) {
         console.error('Ошибка загрузки платежей:', error)
         sourcePayments.value = []
-        alert('Ошибка загрузки платежей')
+        paymentsError.value = 'Ошибка загрузки платежей'
     } finally {
         loadingPayments.value = false
     }
@@ -393,6 +383,7 @@ const showPaymentsForSource = async (source) => {
 
 const saveSingleItem = async (source) => {
     saving.value = true
+    clearAlerts()
     try {
         await axios.put(
             `${APP_CONFIG.apiBaseUrl}/api/PaymentSourcesApi/${source.paymentSourceId}`,
@@ -406,7 +397,7 @@ const saveSingleItem = async (source) => {
         source.originalDescription = source.description
     } catch (error) {
         console.error('Ошибка сохранения источника:', error)
-        alert('Ошибка сохранения')
+        showError(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -414,6 +405,7 @@ const saveSingleItem = async (source) => {
 
 const saveAllChanges = async () => {
     saving.value = true
+    clearAlerts()
     try {
         const changedSources = paymentSources.value.filter(s => hasChangesForSource(s))
         await Promise.all(changedSources.map(source =>
@@ -428,10 +420,10 @@ const saveAllChanges = async () => {
             source.originalCategoryId = source.categoryId
             source.originalDescription = source.description
         })
-        alert(`Успешно обновлено ${changedSources.length} источников!`)
+        showSuccess(`Успешно обновлено источников: ${changedSources.length}`)
     } catch (error) {
         console.error('Ошибка массового сохранения:', error)
-        alert('Ошибка сохранения некоторых источников')
+        showError(getErrorMessage(error, 'Ошибка сохранения некоторых источников'))
     } finally {
         saving.value = false
     }

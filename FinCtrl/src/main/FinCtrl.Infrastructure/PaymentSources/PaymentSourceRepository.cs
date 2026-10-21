@@ -1,11 +1,7 @@
-﻿using Dapper;
+using FinCtrl.Application.PaymentSources;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Infrastructure.PaymentSources
 {
@@ -15,73 +11,47 @@ namespace FinCtrl.Infrastructure.PaymentSources
         {
         }
 
+        // Общий SELECT источника: категория подтягивается JOIN'ом, а не отдельным запросом на каждый источник.
+        private const string SelectPaymentSource = @"SELECT
+                  ps.PaymentSourceId
+                 ,ps.PaymentSourceName
+                 ,ps.Description
+                 ,ps.CreatedAt
+                 ,ps.LastUpdatedAt
+                 ,c.CategoryId Category_CategoryId
+                 ,c.CategoryName Category_CategoryName
+                 ,c.ParentCategoryCategoryId Category_ParentCategoryId
+                 ,c.IsOnlyIncome Category_IsOnlyIncome
+                 ,c.OrderIndex Category_OrderIndex
+                 ,c.Color Category_Color
+                 ,c.CreatedAt Category_CreatedAt
+                 ,c.LastUpdatedAt Category_LastUpdatedAt
+              FROM PaymentSources ps
+              LEFT JOIN Categories c ON c.CategoryId = ps.CategoryId";
+
         public async Task<List<PaymentSource>> GetAll()
         {
-            var sql = @"SELECT
-                          ps.PaymentSourceId
-                         ,ps.PaymentSourceName
-                         ,ps.CategoryId
-                         ,ps.CreatedAt
-                         ,ps.LastUpdatedAt
-                         ,ps.Description
-                      FROM PaymentSources ps;";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return conn.Query(sql)
-                .Select(x => new PaymentSource(x.PaymentSourceId, x.PaymentSourceName, x.CategoryId
-                    , x.Description, x.CreatedAt, x.LastUpdatedAt))
+            return (await Query<PaymentSourceRow>(SelectPaymentSource))
+                .Select(x => x.MapToPaymentSource())
                 .ToList();
         }
 
         public async Task<PaymentSource?> GetById(int paymentSourceId)
         {
-            var sql = @"SELECT
-                          ps.PaymentSourceId
-                         ,ps.PaymentSourceName
-                         ,ps.CategoryId
-                         ,ps.CreatedAt
-                         ,ps.LastUpdatedAt
-                         ,ps.Description
-                      FROM PaymentSources ps
-                      WHERE PaymentSourceId = @paymentSourceId;";
+            var sql = SelectPaymentSource + " WHERE ps.PaymentSourceId = @paymentSourceId;";
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return conn.Query(sql, new { paymentSourceId })
-                .Select(x => new PaymentSource(x.PaymentSourceId, x.PaymentSourceName, x.CategoryId,
-                    x.Description, x.CreatedAt, x.LastUpdatedAt))
+            return (await Query<PaymentSourceRow>(sql, new { paymentSourceId }))
+                .Select(x => x.MapToPaymentSource())
                 .SingleOrDefault();
         }
 
         public async Task<PaymentSource?> GetByName(string paymentSourceName)
         {
-            var sql = @"SELECT
-                     ps.PaymentSourceId
-                    ,ps.PaymentSourceName
-                    ,ps.CategoryId
-                    ,ps.Description              
-                    ,ps.CreatedAt
-                    ,ps.LastUpdatedAt
-                  FROM PaymentSources ps
-                  WHERE ps.PaymentSourceName = @paymentSourceName";
+            var sql = SelectPaymentSource + " WHERE ps.PaymentSourceName = @paymentSourceName;";
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return conn.Query(sql, new { paymentSourceName })
-                .Select(x => new PaymentSource(x.PaymentSourceId, x.PaymentSourceName, x.CategoryId,
-                    x.Description, x.CreatedAt, x.LastUpdatedAt))
+            return (await Query<PaymentSourceRow>(sql, new { paymentSourceName }))
+                .Select(x => x.MapToPaymentSource())
                 .FirstOrDefault();
-        }
-
-        public async Task Delete(params PaymentSource[] paymentSources)
-        {
-            var sql = @"DELETE FROM dbo.PaymentSources WHERE PaymentSourceId = @PaymentSourceId;";
-
-            foreach (var paymentSource in paymentSources)
-            {
-                await Execute(sql, new { paymentSource.PaymentSourceId });
-            }
         }
 
         public async Task<bool> Exists(string paymentSourceName)
@@ -132,28 +102,17 @@ namespace FinCtrl.Infrastructure.PaymentSources
                 Take = pageSize
             };
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-
             var countSql = $"SELECT COUNT(*) FROM PaymentSources ps {where}";
-            var totalCount = await conn.ExecuteScalarAsync<int>(countSql, queryParams);
+            var totalCount = await ExecuteScalar<int>(countSql, queryParams);
 
-            var dataSql = new StringBuilder(@"SELECT
-                ps.PaymentSourceId, ps.PaymentSourceName, ps.CategoryId,
-                ps.CreatedAt, ps.LastUpdatedAt, ps.Description
-            FROM PaymentSources ps");
+            var dataSql = new StringBuilder(SelectPaymentSource);
             dataSql.Append(where);
             dataSql.Append(" ORDER BY ps.PaymentSourceId DESC");
             if (pageSize.HasValue)
                 dataSql.Append(" OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY");
 
-            var items = (await conn.QueryAsync(dataSql.ToString(), queryParams))
-                .Select(x => new PaymentSource(
-                    (int)x.PaymentSourceId,
-                    (string)x.PaymentSourceName,
-                    (int?)x.CategoryId,
-                    (string?)x.Description,
-                    (DateTime)x.CreatedAt,
-                    (DateTime?)x.LastUpdatedAt))
+            var items = (await Query<PaymentSourceRow>(dataSql.ToString(), queryParams))
+                .Select(x => x.MapToPaymentSource())
                 .ToList();
 
             return (items, totalCount);
@@ -161,21 +120,11 @@ namespace FinCtrl.Infrastructure.PaymentSources
 
         public async Task<int> Create(PaymentSource paymentSource)
         {
-            var sql = @"DECLARE @generated_keys table([Id] int)
+            var sql = @"INSERT INTO dbo.PaymentSources (PaymentSourceName, CategoryId, CreatedAt, LastUpdatedAt, Description)
+                        OUTPUT INSERTED.PaymentSourceId
+                        VALUES (@PaymentSourceName, @CategoryId, @CreatedAt, @LastUpdatedAt, @Description);";
 
-INSERT INTO dbo.PaymentSources (PaymentSourceName
-                  , CategoryId
-                  , CreatedAt
-                  , LastUpdatedAt
-                  , Description)
-  OUTPUT INSERTED.PaymentSourceId INTO @generated_keys
-                  VALUES (@PaymentSourceName, @CategoryId, @CreatedAt, @LastUpdatedAt, @Description);
-
-SELECT * FROM @generated_keys";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            var id = conn.ExecuteScalar<int>(sql, new
+            return await ExecuteScalar<int>(sql, new
             {
                 paymentSource.PaymentSourceName,
                 paymentSource.PaymentSourceCategory?.CategoryId,
@@ -183,9 +132,6 @@ SELECT * FROM @generated_keys";
                 paymentSource.CreatedAt,
                 paymentSource.LastUpdatedAt
             });
-
-            //var id = conn.ExecuteScalar<int>("SELECT SCOPE_IDENTITY();");
-            return id;
         }
     }
 }

@@ -50,78 +50,57 @@
     </div>
 </template>
 
-<script>
-export default {
-    name: 'PaymentSourcesList',
-    props: {
-        payments: {
-            type: Array,
-            required: true,
-            default: () => []
-        }
-    },
-    data() {
-        return {
-            sortOrder: 'asc' // 'asc' или 'desc'
-        }
-    },
-    computed: {
-        // Группируем платежи по источникам
-        sourcesWithAmounts() {
-            const sourcesMap = {}
-            
-            this.payments.forEach(payment => {
-                const sourceId = payment.paymentSource?.paymentSourceId || 'unknown'
-                const sourceName = payment.paymentSource?.paymentSourceName || 'Без источника'
-                
-                if (!sourcesMap[sourceId]) {
-                    sourcesMap[sourceId] = {
-                        paymentSourceId: sourceId,
-                        paymentSourceName: sourceName,
-                        totalSum: 0,
-                        count: 0
-                    }
-                }
-                
-                sourcesMap[sourceId].totalSum += payment.paymentSum
-                sourcesMap[sourceId].count += 1
-            })
-            
-            return Object.values(sourcesMap)
-        },
-        
-        // Отсортированные источники
-        sortedSources() {
-            const sources = [...this.sourcesWithAmounts]
-            
-            return sources.sort((a, b) => {
-                if (this.sortOrder === 'desc') {
-                    return b.totalSum - a.totalSum // по убыванию
-                } else {
-                    return a.totalSum - b.totalSum // по возрастанию
-                }
-            })
-        },
-        
-        // Общая сумма по всем источникам
-        totalAllSources() {
-            return this.sourcesWithAmounts.reduce((sum, source) => sum + source.totalSum, 0)
-        }
-    },
-    methods: {
-        formatCurrency(value) {
-            return new Intl.NumberFormat('ru-RU', {
-                style: 'currency',
-                currency: 'RUB',
-                minimumFractionDigits: 2
-            }).format(value)
-        },
-        
-        toggleSortOrder() {
-            // Переключаем между убывающим и возрастающим порядком
-            this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc'
-        }
+<script setup>
+import { ref, computed } from 'vue'
+import { formatCurrency } from '../../utils/format'
+
+const props = defineProps({
+    payments: {
+        type: Array,
+        default: () => []
     }
+})
+
+const sortOrder = ref('asc') // 'asc' или 'desc'
+
+// Группируем платежи по источникам
+const sourcesWithAmounts = computed(() => {
+    const sourcesMap = {}
+
+    props.payments.forEach(payment => {
+        const sourceId = payment.paymentSource?.paymentSourceId || 'unknown'
+        const sourceName = payment.paymentSource?.paymentSourceName || 'Без источника'
+
+        if (!sourcesMap[sourceId]) {
+            sourcesMap[sourceId] = {
+                paymentSourceId: sourceId,
+                paymentSourceName: sourceName,
+                totalSum: 0,
+                count: 0
+            }
+        }
+
+        sourcesMap[sourceId].totalSum += payment.paymentSum
+        sourcesMap[sourceId].count += 1
+    })
+
+    return Object.values(sourcesMap)
+})
+
+// Отсортированные по сумме источники
+const sortedSources = computed(() =>
+    [...sourcesWithAmounts.value].sort((a, b) =>
+        sortOrder.value === 'desc' ? b.totalSum - a.totalSum : a.totalSum - b.totalSum
+    )
+)
+
+// Общая сумма по всем источникам
+const totalAllSources = computed(() =>
+    sourcesWithAmounts.value.reduce((sum, source) => sum + source.totalSum, 0)
+)
+
+const toggleSortOrder = () => {
+    sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
 }
 </script>
 

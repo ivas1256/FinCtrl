@@ -14,6 +14,8 @@
             </div>
 
             <div class="card-body">
+                <AlertMessage :message="error" @close="clearAlerts" />
+
                 <div v-if="loading" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Загрузка...</span>
@@ -90,25 +92,24 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import { APP_CONFIG } from '../../../config'
+import { getErrorMessage } from '../../utils/apiError'
+import { useAlerts } from '../../composables/useAlerts'
+import AlertMessage from '../../components/AlertMessage.vue'
+import { formatDate } from '../../utils/format'
+import { APP_CONFIG } from '../../config'
 
 const tags = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const creating = ref(false)
 const newTag = ref({ tagName: '' })
-
-const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-        day: '2-digit', month: '2-digit', year: 'numeric'
-    })
-}
+const { error, showError, clearAlerts } = useAlerts()
 
 const hasChanges = (tag) => tag.tagName !== tag.originalTagName
 
 const loadTags = async () => {
     loading.value = true
+    clearAlerts()
     try {
         const response = await axios.get(APP_CONFIG.apiBaseUrl + '/api/TagsApi')
         tags.value = response.data.map(tag => ({
@@ -117,7 +118,7 @@ const loadTags = async () => {
         }))
     } catch (error) {
         console.error('Ошибка загрузки тегов:', error)
-        alert('Ошибка загрузки данных')
+        showError('Ошибка загрузки данных')
     } finally {
         loading.value = false
     }
@@ -134,10 +135,11 @@ const cancelCreate = () => {
 
 const createTag = async () => {
     if (!newTag.value.tagName.trim()) {
-        alert('Заполните название тега')
+        showError('Заполните название тега')
         return
     }
     saving.value = true
+    clearAlerts()
     try {
         await axios.post(APP_CONFIG.apiBaseUrl + '/api/TagsApi', {
             tagName: newTag.value.tagName.trim()
@@ -146,7 +148,7 @@ const createTag = async () => {
         await loadTags()
     } catch (error) {
         console.error('Ошибка создания тега:', error)
-        alert(error?.response?.data || 'Ошибка создания тега')
+        showError(getErrorMessage(error, 'Ошибка создания тега'))
     } finally {
         saving.value = false
     }
@@ -154,6 +156,7 @@ const createTag = async () => {
 
 const saveTag = async (tag) => {
     saving.value = true
+    clearAlerts()
     try {
         await axios.put(`${APP_CONFIG.apiBaseUrl}/api/TagsApi/${tag.tagId}`, {
             tagName: tag.tagName
@@ -161,7 +164,7 @@ const saveTag = async (tag) => {
         tag.originalTagName = tag.tagName
     } catch (error) {
         console.error('Ошибка сохранения тега:', error)
-        alert(error?.response?.data || 'Ошибка сохранения')
+        showError(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -170,12 +173,13 @@ const saveTag = async (tag) => {
 const deleteTag = async (tag) => {
     if (!confirm(`Удалить тег "${tag.tagName}"?`)) return
     saving.value = true
+    clearAlerts()
     try {
         await axios.delete(`${APP_CONFIG.apiBaseUrl}/api/TagsApi/${tag.tagId}`)
         await loadTags()
     } catch (error) {
         console.error('Ошибка удаления тега:', error)
-        alert('Не удалось удалить тег')
+        showError(getErrorMessage(error, 'Не удалось удалить тег'))
     } finally {
         saving.value = false
     }

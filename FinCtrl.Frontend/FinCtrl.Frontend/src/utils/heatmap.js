@@ -47,13 +47,3 @@ export const computeMaxValue = (tree) => {
   traverse(tree)
   return max
 }
-
-// Знак суммы отображается как есть (без Math.abs) — расход отрицательный, поступление положительное
-export const formatHeatCurrency = (value) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    minimumFractionDigits: 2,
-    signDisplay: 'exceptZero'
-  }).format(value || 0)
-}

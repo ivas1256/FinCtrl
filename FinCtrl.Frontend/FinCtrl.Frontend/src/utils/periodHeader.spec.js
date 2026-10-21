@@ -36,4 +36,21 @@ describe('formatPeriodHeader', () => {
   it('тип группировки строкой (из select) обрабатывается так же', () => {
     expect(formatPeriodHeader(period('2025-01-01', '2026-01-01'), '4')).toBe('2025')
   })
+
+  it('группировка не выбрана или неизвестна — диапазон «с – по» без вычитания дня', () => {
+    expect(formatPeriodHeader(period('2025-10-01', '2025-11-01'), GroupingType.NotSelected)).toBe('01.10.2025 – 01.11.2025')
+    expect(formatPeriodHeader(period('2025-10-01', '2025-11-01'), undefined)).toBe('01.10.2025 – 01.11.2025')
+  })
+
+  it('неделя на стыке месяцев внутри года — без года у начала', () => {
+    expect(formatPeriodHeader(period('2025-09-29', '2025-10-06'), GroupingType.Week)).toBe('29.09 – 05.10.2025')
+  })
+
+  it('неделя, кончающаяся 31 декабря, — без перехода года', () => {
+    expect(formatPeriodHeader(period('2029-12-24', '2030-01-01'), GroupingType.Week)).toBe('24.12 – 31.12.2029')
+  })
+
+  it('период с временем в дате — время отбрасывается', () => {
+    expect(formatPeriodHeader({ from: '2025-10-15T13:45:00', to: '2025-10-16T00:00:00' }, GroupingType.Day)).toBe('15.10.2025')
+  })
 })

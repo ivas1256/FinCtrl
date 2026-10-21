@@ -1,13 +1,8 @@
 ﻿using FinCtrl.Domain.PaymentsImport;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Domain
 {
-    public record Payment
+    public class Payment
     {
         public Payment()
         {
@@ -49,7 +44,7 @@ namespace FinCtrl.Domain
 
 
         /// <summary>
-        /// Категория платежа, заданная пользователем
+        /// Итоговая категория: своя категория платежа приоритетнее категории его источника.
         /// </summary>
         public Category? CalculatedCategory
         {
@@ -67,6 +62,18 @@ namespace FinCtrl.Domain
         public void Updated(DateTime now)
         {
             LastUpdatedAt = now;
+        }
+
+        /// <summary>
+        /// Приводит знак суммы к правилу «расход — отрицательная сумма»: у расхода (<see cref="PaymentTypeEnum.Spending"/>)
+        /// с положительной суммой знак меняется. Нужна при чтении: в БД есть расходы, сохранённые с положительной суммой.
+        /// </summary>
+        public void NormalizeSumSign()
+        {
+            if (PaymentType == PaymentTypeEnum.Spending && PaymentSum > 0)
+            {
+                PaymentSum = -PaymentSum;
+            }
         }
 
         public static Payment FromExcelPayment(ExcelPayment payment, PaymentSource paymentSource, Account? account, DateTime createdAt) => new Payment

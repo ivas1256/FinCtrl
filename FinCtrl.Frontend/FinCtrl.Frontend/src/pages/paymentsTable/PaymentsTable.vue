@@ -1,4 +1,6 @@
 <template>
+    <AlertMessage :message="error" @close="clearAlerts" />
+
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
             <form @submit.prevent="submitForm" class="d-flex flex-wrap gap-3 align-items-center">
@@ -48,7 +50,17 @@
             </div>
         </div>
         <div class="card-body p-0">
-            <div class="hm-wrap">
+            <div v-if="isLoadingTable" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+            </div>
+
+            <div v-else-if="paymentsTree.length === 0" class="text-center py-4 text-muted">
+                Нет данных
+            </div>
+
+            <div v-else class="hm-wrap">
                 <table id="payments-table" class="hm-table">
                     <thead>
                         <tr>
@@ -76,7 +88,7 @@
                         <tr class="hm-total-row">
                             <td class="hm-cat-cell hm-total-label">Итого</td>
                             <td class="hm-total-amt" v-for="period in periodHeaders" :key="period.key">
-                                {{ formatHeatCurrency(periodTotal(period.key)) }}
+                                {{ formatSignedCurrency(periodTotal(period.key)) }}
                             </td>
                         </tr>
                     </tfoot>
@@ -135,13 +147,14 @@
 
     <!-- Модальное окно редактирования платежа -->
     <div class="modal fade" id="editPaymentModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Редактировать платеж</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <AlertMessage :message="modalError" @close="modalError = null" />
                     <form v-if="editingPayment">
                         <div class="mb-3">
                             <label class="form-label">Сумма</label>
@@ -150,7 +163,7 @@
                         
                         <div class="mb-3">
                             <label class="form-label">Дата</label>
-                            <input type="text" class="form-control" :value="formatDate(editingPayment.paymentDate)" disabled>
+                            <input type="text" class="form-control" :value="toInputDate(editingPayment.paymentDate)" disabled>
                         </div>
                         
                         <div class="mb-3">
@@ -203,16 +216,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue' // Добавлен watch
+import { ref, reactive, onMounted, computed } from 'vue'
 import axios from 'axios'
-import { APP_CONFIG } from '../../../config'
+import { getErrorMessage } from '../../utils/apiError'
+import { APP_CONFIG } from '../../config'
 import PaymentCategoryRow from './PaymentCategoryRow.vue'
 import PaymentList from './PaymentList.vue'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
+import { Modal } from 'bootstrap'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
-import { computeMaxValue, formatHeatCurrency } from '../../utils/heatmap'
+import { computeMaxValue } from '../../utils/heatmap'
+import { formatCurrency, formatSignedCurrency, toInputDate } from '../../utils/format'
 import { formatPeriodHeader, GroupingType } from '../../utils/periodHeader'
+import AlertMessage from '../../components/AlertMessage.vue'
+import { useAlerts } from '../../composables/useAlerts'
 
 // Добавляем флаг для отслеживания загрузки категорий
 const categoriesLoaded = ref(false)
@@ -234,6 +252,7 @@ const loadCategories = async () => {
         categoryTree.value = []
         categoryOptions.value = []
         categoriesLoaded.value = true
+        showError('Ошибка загрузки категорий')
     }
 }
 
@@ -256,14 +275,6 @@ const flattenCategories = (categories) => {
     }
     flatten(categories)
     return result
-}
-
-// Локальная дата в формате YYYY-MM-DD (без сдвига через UTC, в отличие от toISOString)
-const toInputDate = (date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
 }
 
 // Функция для получения даты начала (первое число 3 месяца назад)
@@ -343,6 +354,12 @@ const selectedCellData = reactive({
 const selectedCategoryId = ref(null)
 const selectedPeriodKey = ref(null)
 const editingPayment = ref(null)
+const { error, showError, clearAlerts } = useAlerts()
+// Ошибка сохранения платежа показывается внутри модалки
+const modalError = ref(null)
+
+// Спиннер вместо таблицы: пока грузятся категории (до первого запроса) и во время запроса платежей
+const isLoadingTable = computed(() => loading.value || !categoriesLoaded.value)
 
 // Вычисляемое свойство для группировки платежей по дате
 const groupedPayments = computed(() => {
@@ -362,20 +379,6 @@ const availableCategories = computed(() => {
     return flattenCategories(categoryTree.value)
 })
 
-const formatDate = (dateString) => {
-    if (!dateString) return ''
-    const date = new Date(dateString)
-    return date.toISOString().split('T')[0] // Возвращаем в формате YYYY-MM-DD
-}
-
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
-        minimumFractionDigits: 2
-    }).format(value)
-}
-
 const fetchData = async (groupingType) => {
     const params = new URLSearchParams()
     params.append('from', formData.startDate)
@@ -385,7 +388,6 @@ const fetchData = async (groupingType) => {
     }
     selectedTagIds.value.forEach(id => params.append('tagIds', id))
 
-    console.log('Fetching data with params:', params.toString()) // Для отладки
     return await axios.get(APP_CONFIG.apiBaseUrl + '/api/PaymentsApi', { params })
 }
 
@@ -453,13 +455,13 @@ const loadTags = async () => {
 const openEditModal = (payment) => {
     editingPayment.value = {
         ...payment,
-        categoryId: payment.category?.categoryId || '',
+        categoryId: payment.effectiveCategory?.categoryId || '',
         accountId: payment.account?.accountId || '',
         tagIds: (payment.tags || []).map(t => t.tagId)
     }
+    modalError.value = null
 
-    const modal = new bootstrap.Modal(document.getElementById('editPaymentModal'))
-    modal.show()
+    Modal.getOrCreateInstance(document.getElementById('editPaymentModal')).show()
 }
 
 const savePayment = async () => {
@@ -469,10 +471,10 @@ const savePayment = async () => {
         const reselectCategoryId = selectedCategoryId.value
         const reselectPeriodKey = selectedPeriodKey.value
 
-        const response = await axios.put(
+        // PUT отвечает 204 без тела; ошибка (4xx/5xx) уходит в catch
+        await axios.put(
             `${APP_CONFIG.apiBaseUrl}/api/PaymentsApi/${editingPayment.value.paymentId}`,
             {
-                PaymentId: editingPayment.value.paymentId,
                 CategoryId: editingPayment.value.categoryId || null,
                 AccountId: editingPayment.value.accountId === '' ? 0 : editingPayment.value.accountId,
                 Description: editingPayment.value.paymentDescription,
@@ -480,52 +482,47 @@ const savePayment = async () => {
             }
         )
 
-        if (response.status === 200) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editPaymentModal'))
-            modal.hide()
+        Modal.getOrCreateInstance(document.getElementById('editPaymentModal')).hide()
 
-            // Перезагружаем данные
-            await submitForm()
+        // Перезагружаем данные
+        await submitForm()
 
-            // Повторно выбираем ту же ячейку по id категории и ключу периода
-            if (reselectCategoryId && reselectPeriodKey) {
-                const category = findCategoryById(paymentsTree.value, reselectCategoryId)
-                const periodData = category?.periods?.[reselectPeriodKey]
-                const period = periodHeaders.value.find(p => p.key === reselectPeriodKey)
-                if (category && periodData && period) {
-                    handleCellClick(
-                        periodData.payments || [],
-                        category.categoryName,
-                        period.name,
-                        periodData.totalSum || 0,
-                        category.categoryId,
-                        reselectPeriodKey
-                    )
-                }
+        // Повторно выбираем ту же ячейку по id категории и ключу периода
+        if (reselectCategoryId && reselectPeriodKey) {
+            const category = findCategoryById(paymentsTree.value, reselectCategoryId)
+            const periodData = category?.periods?.[reselectPeriodKey]
+            const period = periodHeaders.value.find(p => p.key === reselectPeriodKey)
+            if (category && periodData && period) {
+                handleCellClick(
+                    periodData.payments || [],
+                    category.categoryName,
+                    period.name,
+                    periodData.totalSum || 0,
+                    category.categoryId,
+                    reselectPeriodKey
+                )
             }
         }
     } catch (error) {
         console.error('Ошибка при обновлении платежа:', error)
-        alert('Произошла ошибка при обновлении платежа')
+        modalError.value = getErrorMessage(error, 'Произошла ошибка при обновлении платежа')
     }
 }
 
 const submitForm = async () => {
     // Проверяем, что категории загружены
     if (!categoriesLoaded.value) {
-        console.log('Категории еще не загружены, откладываем загрузку платежей')
         return
     }
     
     loading.value = true
-    console.log('Loading payments data...') // Для отладки
-    
+    clearAlerts()
+
     // Тип группировки фиксируем на момент запроса: select могут поменять, не нажав «Показать»
     const groupingType = Number(formData.groupingType)
 
     try {
         const response = await fetchData(groupingType)
-        console.log('Payments data received:', response.data) // Для отладки
         
         paymentsTree.value = response.data.paymentsTree || []
         maxValue.value = computeMaxValue(paymentsTree.value)
@@ -548,8 +545,6 @@ const submitForm = async () => {
                 label: item.label
             }))
         
-        console.log('Period headers:', periodHeaders.value) // Для отладки
-        
         // Очищаем выбранные платежи при обновлении данных
         clearSelection()
     } catch (err) {
@@ -557,10 +552,9 @@ const submitForm = async () => {
         paymentsTree.value = []
         periodHeaders.value = []
         maxValue.value = 0
-        alert('Произошла ошибка при загрузке платежей. Проверьте консоль для подробностей.')
+        showError('Ошибка загрузки платежей')
     } finally {
         loading.value = false
-        console.log('Loading finished') // Для отладки
     }
 }
 
@@ -569,11 +563,6 @@ onMounted(() => {
     loadAccounts()
     loadTags()
 })
-
-// Добавляем watcher для отладки
-watch(formData, (newValue) => {
-    console.log('Form data changed:', newValue)
-}, { deep: true })
 </script>
 
 <style scoped>

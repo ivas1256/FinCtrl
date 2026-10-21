@@ -1,11 +1,6 @@
 using FinCtrl.Application;
 using FinCtrl.Infrastructure;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using FinCtrl.Website.ErrorHandling;
 using Microsoft.OpenApi.Models;
 using NLog.Extensions.Logging;
 
@@ -13,6 +8,8 @@ namespace FinCtrl.Website
 {
     public class Startup
     {
+        private const string CorsPolicyName = "AllowVueApp";
+
         private readonly IConfiguration _configuration;
 
         public Startup(IConfiguration configuration)
@@ -23,22 +20,27 @@ namespace FinCtrl.Website
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllersWithViews();
+            services.AddControllers(options =>
+            {
+                // Nullable в Website включён, но контракт API не меняем: обязательность полей задаётся явно
+                // атрибутами ([Required]), а не неявно по non-nullable ссылочным типам
+                options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+            });
+            // Ошибки API — в формате ProblemDetails (RFC 7807): исключения приложения → 400/404/409, прочие → 500
+            services.AddProblemDetails();
+            services.AddExceptionHandler<ApiExceptionHandler>();
+
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "FinCtrl API", Version = "v1" });
             });
 
-            var allowedOrigins = new[] {
-                "http://localhost:3000",  // Vite
-                "http://localhost:5173",  // Vite default
-                "http://localhost:8080",  // Vue CLI
-                "http://localhost:5174"   // Vite alternate
-            };
+            // Адреса dev-серверов SPA, которым разрешены запросы к API (секция Cors:AllowedOrigins в appsettings)
+            var allowedOrigins = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 
             services.AddCors(options =>
             {
-                options.AddPolicy("AllowVueApp", policy =>
+                options.AddPolicy(CorsPolicyName, policy =>
                 {
                     policy.WithOrigins(allowedOrigins)
                           .AllowAnyHeader()
@@ -48,9 +50,6 @@ namespace FinCtrl.Website
 
             services.AddLogging(c =>
             {
-                c.AddConsole();
-                c.AddDebug();
-
                 c.ClearProviders();
                 c.AddNLog();
             });
@@ -61,29 +60,26 @@ namespace FinCtrl.Website
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // Вместо страницы исключения — ProblemDetails и в Development (фронтенд показывает detail пользователю).
+            app.UseExceptionHandler();
+            // Пустые 4xx/5xx (неизвестный маршрут, 405) — тоже ProblemDetails.
+            app.UseStatusCodePages();
+
             if (env.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "FinCtrl API V1");
                 });
             }
 
-            //app.UseHttpsRedirection();
-            app.UseStaticFiles();
             app.UseRouting();
-            //app.UseAuthorization();
-
-            // Then in the middleware pipeline
-            app.UseCors("AllowVueApp");
+            app.UseCors(CorsPolicyName);
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllerRoute(
-                    name: "default",
-                    pattern: "{controller=Home}/{action=Index}/{id?}");
+                endpoints.MapControllers();
             });
         }
     }

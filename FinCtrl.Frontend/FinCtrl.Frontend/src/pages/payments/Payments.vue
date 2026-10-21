@@ -1,9 +1,9 @@
 <template>
     <div class="payments-container">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">Операции</h5>
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2">
                     <input
                         type="file"
                         ref="fileInput"
@@ -27,6 +27,8 @@
                 </div>
             </div>
             <div class="card-body">
+                <AlertMessage :message="error" @close="clearAlerts" />
+                <AlertMessage :message="success" type="success" @close="clearAlerts" />
 
                 <!-- Фильтры -->
                 <div class="d-flex flex-wrap align-items-end gap-3 mb-3">
@@ -131,7 +133,7 @@
                                 :class="{ 'table-warning': hasChangesForPayment(payment) }"
                             >
                                 <td><span class="text-muted">{{ payment.paymentId }}</span></td>
-                                <td><small class="text-muted">{{ formatDate(payment.paymentDate) }}</small></td>
+                                <td><small class="text-muted">{{ formatDateTime(payment.paymentDate) }}</small></td>
                                 <td :class="payment.paymentSum >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">
                                     {{ formatCurrency(payment.paymentSum) }}
                                 </td>
@@ -271,13 +273,14 @@
 
         <!-- Модальное окно массового назначения тегов -->
         <div class="modal fade" id="bulkTagModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Назначить теги операциям</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                        <AlertMessage :message="bulkError" @close="bulkError = null" />
                         <div class="mb-3">
                             <label class="form-label">Период</label>
                             <div class="d-flex align-items-center gap-1">
@@ -326,10 +329,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
-import { APP_CONFIG } from '../../../config'
+import { getErrorMessage } from '../../utils/apiError'
+import { formatCurrency, formatDateTime } from '../../utils/format'
+import { APP_CONFIG } from '../../config'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import Multiselect from 'vue-multiselect'
+import { Modal } from 'bootstrap'
+import AlertMessage from '../../components/AlertMessage.vue'
+import { useAlerts } from '../../composables/useAlerts'
 
 const payments = ref([])
 const categories = ref([])
@@ -340,6 +348,7 @@ const loading = ref(false)
 const saving = ref(false)
 const uploading = ref(false)
 const fileInput = ref(null)
+const { error, success, showError, showSuccess, clearAlerts } = useAlerts()
 
 // Фильтры
 const dateFrom = ref('')
@@ -356,6 +365,8 @@ const bulkDateTo = ref('')
 const bulkSelectedCategories = ref([])
 const bulkTagIds = ref([])
 const bulkSubmitting = ref(false)
+// Ошибка валидации/запроса показывается внутри модалки
+const bulkError = ref(null)
 
 // Сортировка
 const sortColumn = ref('date')
@@ -465,21 +476,10 @@ const hasChangesForPayment = (payment) =>
 const hasChanges = computed(() => payments.value.some(hasChangesForPayment))
 const changedItemsCount = computed(() => payments.value.filter(hasChangesForPayment).length)
 
-// Форматирование
-const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    const date = new Date(dateString)
-    const datePart = date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    const timePart = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-    return `${datePart} ${timePart}`
-}
-
-const formatCurrency = (value) =>
-    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 2 }).format(value)
-
 // Загрузка данных
 const loadPayments = async () => {
     loading.value = true
+    clearAlerts()
     try {
         const params = new URLSearchParams()
         if (dateFrom.value) params.append('from', dateFrom.value)
@@ -508,7 +508,7 @@ const loadPayments = async () => {
         totalCount.value = response.data.totalCount
     } catch (error) {
         console.error('Ошибка загрузки операций:', error)
-        alert('Ошибка загрузки данных')
+        showError('Ошибка загрузки данных')
     } finally {
         loading.value = false
     }
@@ -558,7 +558,7 @@ const onFileSelected = async (event) => {
         })
         await loadPayments()
     } catch (error) {
-        alert(error.response?.data || 'Ошибка загрузки файла')
+        showError(getErrorMessage(error, 'Ошибка загрузки файла'))
     } finally {
         uploading.value = false
         event.target.value = ''
@@ -567,16 +567,16 @@ const onFileSelected = async (event) => {
 
 const saveSinglePayment = async (payment) => {
     saving.value = true
+    clearAlerts()
     try {
         let categoryIdToSave = payment.categoryId
         if (payment.categoryId === payment.paymentSource?.categoryId) {
             categoryIdToSave = null
         }
         await axios.put(`${APP_CONFIG.apiBaseUrl}/api/PaymentsApi/${payment.paymentId}`, {
-            paymentId: payment.paymentId,
             categoryId: categoryIdToSave,
             description: payment.paymentDescription,
-            excludeFromStatsStr: payment.excludeFromStats ? 'on' : null,
+            excludeFromStats: payment.excludeFromStats,
             tagIds: payment.tagIds,
         })
         payment.originalCategoryId = payment.categoryId
@@ -584,7 +584,7 @@ const saveSinglePayment = async (payment) => {
         payment.originalTagIds = [...payment.tagIds]
     } catch (error) {
         console.error('Ошибка сохранения:', error)
-        alert('Ошибка сохранения')
+        showError(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -592,6 +592,7 @@ const saveSinglePayment = async (payment) => {
 
 const saveAllChanges = async () => {
     saving.value = true
+    clearAlerts()
     try {
         const changed = payments.value.filter(hasChangesForPayment)
         await Promise.all(changed.map(payment => {
@@ -600,10 +601,9 @@ const saveAllChanges = async () => {
                 categoryIdToSave = null
             }
             return axios.put(`${APP_CONFIG.apiBaseUrl}/api/PaymentsApi/${payment.paymentId}`, {
-                paymentId: payment.paymentId,
                 categoryId: categoryIdToSave,
                 description: payment.paymentDescription,
-                excludeFromStatsStr: payment.excludeFromStats ? 'on' : null,
+                excludeFromStats: payment.excludeFromStats,
                 tagIds: payment.tagIds,
             })
         }))
@@ -612,10 +612,10 @@ const saveAllChanges = async () => {
             payment.originalDescription = payment.paymentDescription
             payment.originalTagIds = [...payment.tagIds]
         })
-        alert(`Успешно обновлено ${changed.length} операций!`)
+        showSuccess(`Успешно обновлено операций: ${changed.length}`)
     } catch (error) {
         console.error('Ошибка сохранения:', error)
-        alert('Ошибка сохранения некоторых операций')
+        showError(getErrorMessage(error, 'Ошибка сохранения некоторых операций'))
     } finally {
         saving.value = false
     }
@@ -634,26 +634,27 @@ const openBulkModal = () => {
     bulkDateTo.value = dateTo.value || ''
     bulkSelectedCategories.value = []
     bulkTagIds.value = []
+    bulkError.value = null
 
-    const modal = new bootstrap.Modal(document.getElementById('bulkTagModal'))
-    modal.show()
+    Modal.getOrCreateInstance(document.getElementById('bulkTagModal')).show()
 }
 
 const submitBulkAssign = async () => {
     if (!bulkDateFrom.value || !bulkDateTo.value) {
-        alert('Укажите период')
+        bulkError.value = 'Укажите период'
         return
     }
     if (bulkSelectedCategories.value.length === 0) {
-        alert('Выберите хотя бы одну категорию')
+        bulkError.value = 'Выберите хотя бы одну категорию'
         return
     }
     if (bulkTagIds.value.length === 0) {
-        alert('Выберите хотя бы один тег')
+        bulkError.value = 'Выберите хотя бы один тег'
         return
     }
 
     bulkSubmitting.value = true
+    bulkError.value = null
     try {
         const response = await axios.post(`${APP_CONFIG.apiBaseUrl}/api/PaymentsApi/bulk-tags`, {
             from: bulkDateFrom.value,
@@ -662,14 +663,13 @@ const submitBulkAssign = async () => {
             tagIds: bulkTagIds.value,
         })
 
-        const modal = bootstrap.Modal.getInstance(document.getElementById('bulkTagModal'))
-        modal.hide()
+        Modal.getOrCreateInstance(document.getElementById('bulkTagModal')).hide()
 
-        alert(`Тегами помечено операций: ${response.data.affectedCount}`)
         await loadPayments()
+        showSuccess(`Тегами помечено операций: ${response.data.affectedCount}`)
     } catch (error) {
         console.error('Ошибка массового назначения тегов:', error)
-        alert('Ошибка массового назначения тегов')
+        bulkError.value = getErrorMessage(error, 'Ошибка массового назначения тегов')
     } finally {
         bulkSubmitting.value = false
     }
@@ -717,6 +717,13 @@ textarea.form-control {
     z-index: 1050;
     max-height: 220px;
     overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Длинные названия источников переносятся, а не растягивают список вбок */
+.source-dropdown .dropdown-item {
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .sortable-th {

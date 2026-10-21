@@ -14,6 +14,8 @@
             </div>
 
             <div class="card-body">
+                <AlertMessage :message="error" @close="clearAlerts" />
+
                 <div v-if="loading" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Загрузка...</span>
@@ -102,20 +104,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import { APP_CONFIG } from '../../../config'
+import { getErrorMessage } from '../../utils/apiError'
+import { useAlerts } from '../../composables/useAlerts'
+import AlertMessage from '../../components/AlertMessage.vue'
+import { formatDate } from '../../utils/format'
+import { APP_CONFIG } from '../../config'
 
 const accounts = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const creating = ref(false)
 const newAccount = ref({ excelAccountName: '', displayName: '' })
-
-const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-        day: '2-digit', month: '2-digit', year: 'numeric'
-    })
-}
+const { error, showError, clearAlerts } = useAlerts()
 
 const hasChanges = (account) =>
     account.excelAccountName !== account.originalExcelAccountName ||
@@ -123,6 +123,7 @@ const hasChanges = (account) =>
 
 const loadAccounts = async () => {
     loading.value = true
+    clearAlerts()
     try {
         const response = await axios.get(APP_CONFIG.apiBaseUrl + '/api/AccountsApi')
         accounts.value = response.data.map(account => ({
@@ -132,7 +133,7 @@ const loadAccounts = async () => {
         }))
     } catch (error) {
         console.error('Ошибка загрузки счетов:', error)
-        alert('Ошибка загрузки данных')
+        showError('Ошибка загрузки данных')
     } finally {
         loading.value = false
     }
@@ -149,10 +150,11 @@ const cancelCreate = () => {
 
 const createAccount = async () => {
     if (!newAccount.value.excelAccountName.trim() || !newAccount.value.displayName.trim()) {
-        alert('Заполните оба поля')
+        showError('Заполните оба поля')
         return
     }
     saving.value = true
+    clearAlerts()
     try {
         await axios.post(APP_CONFIG.apiBaseUrl + '/api/AccountsApi', {
             excelAccountName: newAccount.value.excelAccountName.trim(),
@@ -162,7 +164,7 @@ const createAccount = async () => {
         await loadAccounts()
     } catch (error) {
         console.error('Ошибка создания счета:', error)
-        alert(error?.response?.data || 'Ошибка создания счета')
+        showError(getErrorMessage(error, 'Ошибка создания счета'))
     } finally {
         saving.value = false
     }
@@ -170,6 +172,7 @@ const createAccount = async () => {
 
 const saveAccount = async (account) => {
     saving.value = true
+    clearAlerts()
     try {
         await axios.put(`${APP_CONFIG.apiBaseUrl}/api/AccountsApi/${account.accountId}`, {
             excelAccountName: account.excelAccountName,
@@ -179,7 +182,7 @@ const saveAccount = async (account) => {
         account.originalDisplayName = account.displayName
     } catch (error) {
         console.error('Ошибка сохранения счета:', error)
-        alert(error?.response?.data || 'Ошибка сохранения')
+        showError(getErrorMessage(error, 'Ошибка сохранения'))
     } finally {
         saving.value = false
     }
@@ -188,12 +191,13 @@ const saveAccount = async (account) => {
 const deleteAccount = async (account) => {
     if (!confirm(`Удалить счет "${account.displayName}"?`)) return
     saving.value = true
+    clearAlerts()
     try {
         await axios.delete(`${APP_CONFIG.apiBaseUrl}/api/AccountsApi/${account.accountId}`)
         await loadAccounts()
     } catch (error) {
         console.error('Ошибка удаления счета:', error)
-        alert('Не удалось удалить счет — возможно, он используется в платежах')
+        showError(getErrorMessage(error, 'Не удалось удалить счет'))
     } finally {
         saving.value = false
     }

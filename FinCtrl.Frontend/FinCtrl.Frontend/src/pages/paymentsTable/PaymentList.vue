@@ -3,7 +3,7 @@
         <!-- Группировка по дате -->
         <div v-for="(payments, date) in groupedPayments" :key="date" class="payment-date-group mb-3">
             <h6 class="date-header border-bottom pb-2 mb-3">
-                {{ formatDisplayDate(date) }}
+                {{ formatLongDate(date) }}
                 <small class="text-muted ms-2">
                     {{ formatCurrency(getDateTotal(payments)) }}
                 </small>
@@ -15,7 +15,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-1" :data-id="payment.paymentId">
                     <div class="payment-source fw-medium">
                         {{ payment.paymentSource?.paymentSourceName || 'Не указан' }}
-                        {{ payment.paymentSource.description }}
+                        {{ payment.paymentSource?.description }}
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <span :class="['payment-amount', payment.paymentType === 1 ? 'text-danger' : 'text-success']">
@@ -34,7 +34,7 @@
                 <!-- Вторая строка: категория и описание -->
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="payment-category small text-muted">
-                        Категория: <strong>{{ getCategoryName(payment.category) }}</strong>
+                        Категория: <strong>{{ getCategoryName(payment.effectiveCategory) }}</strong>
                     </div>
                     <div class="payment-description small text-muted flex-grow-1 ms-3 text-end">
                         {{ payment.paymentDescription || 'Нет описания' }}
@@ -54,58 +54,39 @@
     </div>
 </template>
 
-<script>
-export default {
-    name: 'PaymentList',
-    props: {
-        payments: {
-            type: Array,
-            required: true
-        },
-        categories: {
-            type: Array,
-            default: () => []
-        }
+<script setup>
+import { computed } from 'vue'
+import { formatCurrency, formatLongDate } from '../../utils/format'
+
+const props = defineProps({
+    payments: {
+        type: Array,
+        required: true
     },
-    emits: ['edit-payment'],
-    computed: {
-        groupedPayments() {
-            const grouped = {}
-            this.payments.forEach(payment => {
-                const date = payment.paymentDate.split('T')[0]
-                if (!grouped[date]) {
-                    grouped[date] = []
-                }
-                grouped[date].push(payment)
-            })
-            return grouped
-        }
-    },
-    methods: {
-        formatDisplayDate(dateString) {
-            const date = new Date(dateString)
-            return date.toLocaleDateString('ru-RU', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            })
-        },
-        formatCurrency(value) {
-            return new Intl.NumberFormat('ru-RU', {
-                style: 'currency',
-                currency: 'RUB',
-                minimumFractionDigits: 2
-            }).format(value)
-        },
-        getCategoryName(category) {
-            return category?.categoryName || 'Без категории'
-        },
-        getDateTotal(payments) {
-            return payments.reduce((sum, payment) => sum + payment.paymentSum, 0)
-        }
+    categories: {
+        type: Array,
+        default: () => []
     }
-}
+})
+
+defineEmits(['edit-payment'])
+
+// Платежи по дням (YYYY-MM-DD) в порядке поступления
+const groupedPayments = computed(() => {
+    const grouped = {}
+    props.payments.forEach(payment => {
+        const date = payment.paymentDate.split('T')[0]
+        if (!grouped[date]) {
+            grouped[date] = []
+        }
+        grouped[date].push(payment)
+    })
+    return grouped
+})
+
+const getCategoryName = (category) => category?.categoryName || 'Без категории'
+
+const getDateTotal = (payments) => payments.reduce((sum, payment) => sum + payment.paymentSum, 0)
 </script>
 
 <style scoped>

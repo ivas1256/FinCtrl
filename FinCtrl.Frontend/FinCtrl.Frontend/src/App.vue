@@ -1,9 +1,3 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
-import PaymentsTable from './pages/paymentsTable/PaymentsTable.vue';
-</script>
-
 <template>
   <div class="container-fluid my-2">
     <div class="row">

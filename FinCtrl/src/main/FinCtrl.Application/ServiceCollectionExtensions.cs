@@ -1,15 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Application.Categories;
 using FinCtrl.Application.Payments;
 using FinCtrl.Application.PaymentsImport;
 using FinCtrl.Application.Statistic;
-using FinCtrl.Application.PaymentsImport.FileFormats;
 using FinCtrl.Application.Dashboard;
 using FinCtrl.Application.Accounts;
 using FinCtrl.Application.Tags;
@@ -32,7 +26,6 @@ namespace FinCtrl.Application
 
             services.AddScoped<IMainStatisticService, MainStatisticService>();
             services.AddScoped<IDashboardService, DashboardService>();
-            services.AddScoped<FileFormatFactory>();
 
             return services;
         }

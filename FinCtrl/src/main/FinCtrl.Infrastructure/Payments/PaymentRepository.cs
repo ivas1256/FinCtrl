@@ -1,13 +1,8 @@
-﻿using Dapper;
+﻿using FinCtrl.Application.Payments;
 using FinCtrl.Common;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
-using System;
-using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Infrastructure.Payments
 {
@@ -18,7 +13,12 @@ namespace FinCtrl.Infrastructure.Payments
         {
         }
 
-        private const string _selectPaymentInfo = @"SELECT
+        // SQL Server принимает не больше 2100 параметров в запросе, а `IN @Ids` разворачивается в параметр на каждый id.
+        private const int MaxIdsPerQuery = 2000;
+
+        // Единственный SELECT платежей: алиасы колонок совпадают со свойствами PaymentDto
+        // (соответствие проверяет PaymentRepositoryTests). internal — ради этого теста.
+        internal const string SelectPayment = @"SELECT
                 p.PaymentId,
                 p.PaymentType,
                 p.PaymentSum,
@@ -29,7 +29,7 @@ namespace FinCtrl.Infrastructure.Payments
                 p.PaymentDescription,
                 p.CreatedAt AS PaymentCreatedAt,
                 p.LastUpdatedAt AS PaymentLastUpdatedAt,
-                p.ExcludeFromStats AS ExcludeFromStats,
+                p.ExcludeFromStats,
 
                 ps.PaymentSourceId AS PaymentSource_PaymentSourceId,
                 ps.PaymentSourceName AS PaymentSource_PaymentSourceName,
@@ -51,45 +51,31 @@ namespace FinCtrl.Infrastructure.Payments
                 c.CreatedAt AS Category_CreatedAt,
                 c.LastUpdatedAt AS Category_LastUpdatedAt,
 
-                c_ps.CategoryId PaymentSourceCategory_CategoryId
-               ,c_ps.CategoryName PaymentSourceCategory_CategoryName
-               ,c_ps.CreatedAt PaymentSourceCategory_CreatedAt
-               ,c_ps.LastUpdatedAt PaymentSourceCategory_LastUpdatedAt
-               ,c_ps.ParentCategoryCategoryId PaymentSourceCategory_ParentCategoryCategoryId
-               ,c_ps.IsOnlyIncome PaymentSourceCategory_IsOnlyIncome
-               ,c_ps.OrderIndex PaymentSourceCategory_OrderIndex
-            FROM Payments p with(nolock)
+                c_ps.CategoryId AS PaymentSourceCategory_CategoryId,
+                c_ps.CategoryName AS PaymentSourceCategory_CategoryName,
+                c_ps.ParentCategoryCategoryId AS PaymentSourceCategory_ParentCategoryId,
+                c_ps.IsOnlyIncome AS PaymentSourceCategory_IsOnlyIncome,
+                c_ps.OrderIndex AS PaymentSourceCategory_OrderIndex,
+                c_ps.CreatedAt AS PaymentSourceCategory_CreatedAt,
+                c_ps.LastUpdatedAt AS PaymentSourceCategory_LastUpdatedAt
+            FROM Payments p
             LEFT JOIN PaymentSources ps ON p.PaymentSourceId = ps.PaymentSourceId
             LEFT JOIN Accounts a ON p.AccountId = a.AccountId
             LEFT JOIN Categories c ON p.PaymentCategoryCategoryId = c.CategoryId
-
             LEFT JOIN Categories c_ps ON c_ps.CategoryId = ps.CategoryId";
 
         public async Task<Payment?> Get(int paymentId)
         {
-            var connection = await _connectionFactory.GetConnectionAsync();
+            var sql = $"{SelectPayment} WHERE p.PaymentId = @PaymentId AND p.IsDeleted = 0";
 
-            var sql = $"{_selectPaymentInfo} WHERE p.PaymentId = @PaymentId AND p.IsDeleted = 0";
-
-            var paymentDto = await connection.QuerySingleOrDefaultAsync<PaymentDto>(sql, new { PaymentId = paymentId });
+            var paymentDto = await FirstOrDefault<PaymentDto>(sql, new { PaymentId = paymentId });
 
             return paymentDto?.MapToPayment();
         }
 
-
-        public async Task<List<Payment>> GetAll(Pagination pagination)
-        {
-            return (await Query<PaymentDto>(_selectPaymentInfo))
-                .Select(x => x.MapToPayment())
-                .OrderByDescending(x => x.PaymentDate)
-                .Skip(pagination.ToSkipAmount)
-                .Take(pagination.PageSize)
-                .ToList();
-        }
-
         public async Task<List<Payment>> GetByDateRange(DateRange dateRange, int[]? tagIds = null)
         {
-            var sql = @$"{_selectPaymentInfo}
+            var sql = @$"{SelectPayment}
                 WHERE p.PaymentDate >= @From
                     AND p.PaymentDate < @To
                     AND p.IsDeleted = 0
@@ -111,23 +97,20 @@ namespace FinCtrl.Infrastructure.Payments
 
         private async Task<Dictionary<int, List<Tag>>> GetTagsForPayments(IEnumerable<int> paymentIds)
         {
-            var ids = paymentIds.Distinct().ToList();
-            if (ids.Count == 0)
-                return new Dictionary<int, List<Tag>>();
-
             var sql = @"SELECT pt.PaymentId, t.TagId, t.TagName, t.CreatedAt, t.LastUpdatedAt
                 FROM PaymentTags pt
                 JOIN Tags t ON t.TagId = pt.TagId
                 WHERE pt.PaymentId IN @Ids";
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-            var rows = await conn.QueryAsync(sql, new { Ids = ids });
+            var rows = new List<PaymentTagRow>();
+            foreach (var chunk in paymentIds.Distinct().Chunk(MaxIdsPerQuery))
+            {
+                rows.AddRange(await Query<PaymentTagRow>(sql, new { Ids = chunk }));
+            }
 
             return rows
-                .GroupBy(x => (int)x.PaymentId)
-                .ToDictionary(
-                    g => g.Key,
-                    g => g.Select(x => new Tag(x.TagId, x.TagName, x.CreatedAt, x.LastUpdatedAt)).ToList());
+                .GroupBy(x => x.PaymentId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.MapToTag()).ToList());
         }
 
         private async Task AttachTags(IEnumerable<Payment> payments)
@@ -142,16 +125,19 @@ namespace FinCtrl.Infrastructure.Payments
 
         public async Task SetPaymentTags(int paymentId, IReadOnlyCollection<int> tagIds)
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
+            // DELETE + INSERT — в одной транзакции, иначе ошибка на вставке оставит платёж без тегов.
+            await using var transaction = await BeginTransaction();
 
             var sql = @"DELETE FROM dbo.PaymentTags WHERE PaymentId = @PaymentId;";
-            await conn.ExecuteAsync(sql, new { PaymentId = paymentId });
+            await Execute(sql, new { PaymentId = paymentId });
 
             if (tagIds.Count > 0)
             {
                 var insertSql = @"INSERT INTO dbo.PaymentTags (PaymentId, TagId) VALUES (@PaymentId, @TagId);";
-                await conn.ExecuteAsync(insertSql, tagIds.Select(tagId => new { PaymentId = paymentId, TagId = tagId }));
+                await Execute(insertSql, tagIds.Select(tagId => new { PaymentId = paymentId, TagId = tagId }));
             }
+
+            await transaction.Commit();
         }
 
         public async Task AddTagsToPayments(IEnumerable<int> paymentIds, IEnumerable<int> tagIds)
@@ -164,19 +150,12 @@ namespace FinCtrl.Infrastructure.Payments
             var sql = @"IF NOT EXISTS (SELECT 1 FROM dbo.PaymentTags WHERE PaymentId = @PaymentId AND TagId = @TagId)
                 INSERT INTO dbo.PaymentTags (PaymentId, TagId) VALUES (@PaymentId, @TagId);";
 
-            var conn = await _connectionFactory.GetConnectionAsync();
             var pairs = ids.SelectMany(paymentId => tags.Select(tagId => new { PaymentId = paymentId, TagId = tagId }));
-            await conn.ExecuteAsync(sql, pairs);
-        }
 
-        public async Task Delete(params int[] payments)
-        {
-            var sql = @"UPDATE dbo.Payments SET IsDeleted = 1 WHERE PaymentId = @PaymentId";
-
-            foreach (var paymentId in payments)
-            {
-                await Execute(sql, new { paymentId });
-            }
+            // Dapper выполняет команду по разу на пару — без транзакции при ошибке часть тегов осталась бы назначенной.
+            await using var transaction = await BeginTransaction();
+            await Execute(sql, pairs);
+            await transaction.Commit();
         }
 
         public async Task<int> Create(Payment payment)
@@ -191,6 +170,7 @@ namespace FinCtrl.Infrastructure.Payments
                   , CreatedAt
                   , LastUpdatedAt
                   , ExcludeFromStats)
+                  OUTPUT INSERTED.PaymentId
                   VALUES (@PaymentType
                   , @PaymentSum
                   , @PaymentDate
@@ -202,8 +182,7 @@ namespace FinCtrl.Infrastructure.Payments
                   , @LastUpdatedAt
                   , @ExcludeFromStats);";
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-            await conn.ExecuteAsync(sql, new
+            return await ExecuteScalar<int>(sql, new
             {
                 payment.PaymentType,
                 payment.PaymentSum,
@@ -216,8 +195,6 @@ namespace FinCtrl.Infrastructure.Payments
                 payment.LastUpdatedAt,
                 payment.ExcludeFromStats
             });
-
-            return await conn.ExecuteScalarAsync<int>("SELECT SCOPE_IDENTITY();");
         }
 
         public async Task Update(params Payment[] payments)
@@ -250,32 +227,18 @@ namespace FinCtrl.Infrastructure.Payments
             }
         }
 
-        public async Task<bool> Exists(decimal paymentSum, DateTime paymentDate)
-        {
-            var sql = @"SELECT
-                  1
-                  FROM Payments p
-                  WHERE p.PaymentSum = @paymentSum
-                    AND p.PaymentDate = @paymentDate
-                    AND p.IsDeleted = 0";
-
-            return (await FirstOrDefault<int?>(sql, new { paymentSum, paymentDate })) is not null;
-        }
-
         public async Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate)
         {
-            var sql = $"{_selectPaymentInfo} WHERE p.PaymentSum = @paymentSum AND p.PaymentDate = @paymentDate AND p.IsDeleted = 0";
+            var sql = $"{SelectPayment} WHERE p.PaymentSum = @paymentSum AND p.PaymentDate = @paymentDate AND p.IsDeleted = 0";
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            var dto = await conn.QueryFirstOrDefaultAsync<PaymentDto>(sql, new { paymentSum, paymentDate });
+            var dto = await FirstOrDefault<PaymentDto>(sql, new { paymentSum, paymentDate });
             return dto?.MapToPayment();
         }
 
         public async Task<List<Payment>> GetBySource(int PaymentSourceId)
         {
-            var sql = @$"{_selectPaymentInfo}
-                WHERE p.PaymentSourceId = @PaymentSourceId";
+            var sql = @$"{SelectPayment}
+                WHERE p.PaymentSourceId = @PaymentSourceId AND p.IsDeleted = 0";
 
             return (await Query<PaymentDto>(sql, new { PaymentSourceId }))
                 .Select(x => x.MapToPayment())
@@ -283,7 +246,8 @@ namespace FinCtrl.Infrastructure.Payments
         }
 
         public async Task<(List<Payment> Items, int TotalCount)> GetListPaged(
-            DateRange dateRange,
+            DateTime? from,
+            DateTime? to,
             int? sourceId,
             bool noCategoryOnly,
             string sortBy,
@@ -300,8 +264,11 @@ namespace FinCtrl.Infrastructure.Payments
             };
             var orderDir = sortDir == "asc" ? "ASC" : "DESC";
 
-            var whereClause = new StringBuilder(
-                " WHERE p.IsDeleted = 0 AND p.PaymentDate >= @From AND p.PaymentDate < @To");
+            var whereClause = new StringBuilder(" WHERE p.IsDeleted = 0");
+            if (from.HasValue)
+                whereClause.Append(" AND p.PaymentDate >= @From");
+            if (to.HasValue)
+                whereClause.Append(" AND p.PaymentDate < @To");
             if (sourceId.HasValue)
                 whereClause.Append(" AND p.PaymentSourceId = @SourceId");
             if (noCategoryOnly)
@@ -311,64 +278,29 @@ namespace FinCtrl.Infrastructure.Payments
 
             var queryParams = new
             {
-                dateRange.From,
-                dateRange.To,
+                From = from,
+                To = to,
                 SourceId = sourceId,
                 TagIds = tagIds,
                 Skip = (page - 1) * (pageSize ?? 0),
                 Take = pageSize
             };
 
-            var conn = await _connectionFactory.GetConnectionAsync();
-
             // Быстрый COUNT без сортировки и загрузки данных
             var countSql = $@"SELECT COUNT(*)
-                FROM Payments p WITH (NOLOCK)
+                FROM Payments p
                 LEFT JOIN PaymentSources ps ON p.PaymentSourceId = ps.PaymentSourceId
                 {whereClause}";
-            var totalCount = await conn.ExecuteScalarAsync<int>(countSql, queryParams);
+            var totalCount = await ExecuteScalar<int>(countSql, queryParams);
 
             // Данные: только нужная страница
-            var dataSql = new StringBuilder(@"SELECT
-                p.PaymentId, p.PaymentType, p.PaymentSum, p.PaymentDate, p.PaymentSourceId, p.AccountId,
-                p.PaymentCategoryCategoryId, p.PaymentDescription,
-                p.CreatedAt AS PaymentCreatedAt, p.LastUpdatedAt AS PaymentLastUpdatedAt,
-                p.ExcludeFromStats,
-                ps.PaymentSourceId AS PaymentSource_PaymentSourceId,
-                ps.PaymentSourceName AS PaymentSource_PaymentSourceName,
-                ps.Description AS PaymentSource_Description,
-                ps.CreatedAt AS PaymentSource_CreatedAt,
-                ps.LastUpdatedAt AS PaymentSource_LastUpdatedAt,
-                a.AccountId AS Account_AccountId,
-                a.ExcelAccountName AS Account_ExcelAccountName,
-                a.DisplayName AS Account_DisplayName,
-                a.CreatedAt AS Account_CreatedAt,
-                a.LastUpdatedAt AS Account_LastUpdatedAt,
-                c.CategoryId AS Category_CategoryId,
-                c.CategoryName AS Category_CategoryName,
-                c.ParentCategoryCategoryId AS Category_ParentCategoryId,
-                c.IsOnlyIncome AS Category_IsOnlyIncome,
-                c.OrderIndex AS Category_OrderIndex,
-                c.CreatedAt AS Category_CreatedAt,
-                c.LastUpdatedAt AS Category_LastUpdatedAt,
-                c_ps.CategoryId AS PaymentSourceCategory_CategoryId,
-                c_ps.CategoryName AS PaymentSourceCategory_CategoryName,
-                c_ps.CreatedAt AS PaymentSourceCategory_CreatedAt,
-                c_ps.LastUpdatedAt AS PaymentSourceCategory_LastUpdatedAt,
-                c_ps.ParentCategoryCategoryId AS PaymentSourceCategory_ParentCategoryId,
-                c_ps.IsOnlyIncome AS PaymentSourceCategory_IsOnlyIncome,
-                c_ps.OrderIndex AS PaymentSourceCategory_OrderIndex
-            FROM Payments p WITH (NOLOCK)
-            LEFT JOIN PaymentSources ps ON p.PaymentSourceId = ps.PaymentSourceId
-            LEFT JOIN Accounts a ON p.AccountId = a.AccountId
-            LEFT JOIN Categories c ON p.PaymentCategoryCategoryId = c.CategoryId
-            LEFT JOIN Categories c_ps ON c_ps.CategoryId = ps.CategoryId");
+            var dataSql = new StringBuilder(SelectPayment);
             dataSql.Append(whereClause);
             dataSql.Append($" ORDER BY {orderCol} {orderDir}");
             if (pageSize.HasValue)
                 dataSql.Append(" OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY");
 
-            var items = (await conn.QueryAsync<PaymentDto>(dataSql.ToString(), queryParams))
+            var items = (await Query<PaymentDto>(dataSql.ToString(), queryParams))
                 .Select(x => x.MapToPayment())
                 .ToList();
 

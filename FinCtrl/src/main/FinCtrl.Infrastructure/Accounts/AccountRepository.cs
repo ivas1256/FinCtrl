@@ -1,9 +1,6 @@
-using Dapper;
+using FinCtrl.Application.Accounts;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FinCtrl.Infrastructure.Accounts
 {
@@ -23,29 +20,17 @@ namespace FinCtrl.Infrastructure.Accounts
 
         public async Task<List<Account>> GetAll()
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync(_select + " ORDER BY a.AccountId DESC"))
-                .Select(x => new Account(x.AccountId, x.ExcelAccountName, x.DisplayName, x.CreatedAt, x.LastUpdatedAt))
-                .ToList();
+            return (await Query<Account>(_select + " ORDER BY a.AccountId DESC")).ToList();
         }
 
         public async Task<Account?> GetById(int accountId)
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync(_select + " WHERE a.AccountId = @accountId", new { accountId }))
-                .Select(x => new Account(x.AccountId, x.ExcelAccountName, x.DisplayName, x.CreatedAt, x.LastUpdatedAt))
-                .SingleOrDefault();
+            return await FirstOrDefault<Account>(_select + " WHERE a.AccountId = @accountId", new { accountId });
         }
 
         public async Task<Account?> GetByExcelName(string excelAccountName)
         {
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return (await conn.QueryAsync(_select + " WHERE a.ExcelAccountName = @excelAccountName", new { excelAccountName }))
-                .Select(x => new Account(x.AccountId, x.ExcelAccountName, x.DisplayName, x.CreatedAt, x.LastUpdatedAt))
-                .FirstOrDefault();
+            return await FirstOrDefault<Account>(_select + " WHERE a.ExcelAccountName = @excelAccountName", new { excelAccountName });
         }
 
         public async Task<bool> Exists(string excelAccountName)
@@ -53,22 +38,19 @@ namespace FinCtrl.Infrastructure.Accounts
             return await GetByExcelName(excelAccountName) is not null;
         }
 
+        public async Task<int> CountPayments(int accountId)
+        {
+            // Без фильтра IsDeleted: удалённые операции тоже держат внешний ключ FK_Payments_Accounts_AccountId
+            return await ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.Payments WHERE AccountId = @accountId", new { accountId });
+        }
+
         public async Task<int> Create(Account account)
         {
-            var sql = @"DECLARE @generated_keys table([Id] int)
+            var sql = @"INSERT INTO dbo.Accounts (ExcelAccountName, DisplayName, CreatedAt, LastUpdatedAt)
+                        OUTPUT INSERTED.AccountId
+                        VALUES (@ExcelAccountName, @DisplayName, @CreatedAt, @LastUpdatedAt);";
 
-INSERT INTO dbo.Accounts (ExcelAccountName
-                  , DisplayName
-                  , CreatedAt
-                  , LastUpdatedAt)
-  OUTPUT INSERTED.AccountId INTO @generated_keys
-                  VALUES (@ExcelAccountName, @DisplayName, @CreatedAt, @LastUpdatedAt);
-
-SELECT * FROM @generated_keys";
-
-            var conn = await _connectionFactory.GetConnectionAsync();
-
-            return conn.ExecuteScalar<int>(sql, new
+            return await ExecuteScalar<int>(sql, new
             {
                 account.ExcelAccountName,
                 account.DisplayName,

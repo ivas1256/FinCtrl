@@ -1,13 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FinCtrl.Common
+﻿namespace FinCtrl.Common
 {
+    /// <summary>Диапазон дат <c>[From, To)</c>: <see cref="To"/> — исключающая граница.</summary>
     public class DateRange : IComparable<DateRange>
     {
+        /// <summary>
+        /// Диапазон по датам «с … по …» включительно (как их выбирают в UI): время отбрасывается,
+        /// <see cref="To"/> = день после <paramref name="lastDay"/>.
+        /// </summary>
+        public static DateRange FromInclusiveDates(DateTime firstDay, DateTime lastDay)
+            => new(firstDay.Date, lastDay.Date.AddDays(1));
+
         public DateRange(DateTime from, DateTime to)
         {
             From = from;
@@ -16,11 +18,6 @@ namespace FinCtrl.Common
         public DateTime From { get; private set; }
         public DateTime To { get; private set; }
 
-
-        public bool Intersect(DateRange other)
-        {
-            throw new NotImplementedException();
-        }
 
         public override string ToString()
         {
