@@ -1,4 +1,5 @@
-﻿using FinCtrl.Common.Infrastructure;
+﻿using FinCtrl.Application.Categories;
+using FinCtrl.Common.Infrastructure;
 using FinCtrl.Domain;
 using System.Data;
 using Dapper;

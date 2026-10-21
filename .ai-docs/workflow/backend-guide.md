@@ -57,7 +57,7 @@ FinCtrl/
 ### Зависимости
 
 Правила:
-- **Целевое направление**: Application **не** ссылается на Infrastructure. Интерфейсы репозиториев для новых фич кладём в Application (`Application/<Фича>/I<Entity>Repository.cs`), реализацию — в Infrastructure. Сейчас интерфейсы лежат в Infrastructure (техдолг) — при переносе фичи переносить целиком.
+- Application **не** ссылается на Infrastructure (с задачи 0014). Интерфейсы репозиториев и других внешних зависимостей (например `IFileFormat`/`IFileFormatFactory` импорта) — в Application (`Application/<Фича>/I<Entity>Repository.cs`), реализации — в Infrastructure (`internal`), регистрация — в `AddInfrastructure()`. Парсинг файлов (EPPlus, `TextFieldParser`) — в Infrastructure.
 - Website ссылается на Infrastructure **только** ради `AddInfrastructure()` в `Startup`. Контроллеры работают только с сервисами Application, не с репозиториями.
 - Read-модели для отчётов/дашборда (`DashboardSummary`, `MainStatistic*`) — допустимы в Domain или Application; это не сущности, им не нужно поведение.
 
@@ -147,7 +147,7 @@ FinCtrl/
 
 Требования к покрытию — в `task-workflow.md`, раздел 3.
 
-- Тесты лежат в `FinCtrl/tests/`, отдельный xUnit-проект на каждый тестируемый проект: `FinCtrl.<Проект>.Tests` (`FinCtrl.Application.Tests` тестирует `FinCtrl.Application`). Все тестовые проекты входят в `FinCtrl.Backend.sln`.
+- Тесты лежат в `FinCtrl/tests/`, отдельный xUnit-проект на каждый тестируемый проект: `FinCtrl.<Проект>.Tests` (`FinCtrl.Application.Tests` тестирует `FinCtrl.Application`, `FinCtrl.Infrastructure.Tests` — `FinCtrl.Infrastructure`: парсеры импорта и прочая логика без БД). Все тестовые проекты входят в `FinCtrl.Backend.sln`.
 - **Namespace и путь теста повторяют тестируемый класс** с вставкой `.Tests` после имени проекта: `FinCtrl.Application.Tags.TagService` → `tests/FinCtrl.Application.Tests/Tags/TagServiceTests.cs`, namespace `FinCtrl.Application.Tests.Tags`.
 - Один тестовый класс `<Класс>Tests` на тестируемый класс; имя теста — `<Метод>_<Условие>_<ОжидаемыйРезультат>`; структура Arrange / Act / Assert.
 - Для доступа к `internal`-реализациям — `InternalsVisibleTo` на тестовый проект.
@@ -171,7 +171,6 @@ FinCtrl/
 ## 10. Известный техдолг (не повторять в новом коде)
 
 Зафиксировано анализом кода; исправляется отдельными задачами:
-- Application ссылается на Infrastructure, интерфейсы репозиториев лежат в Infrastructure.
 - `PaymentsApiController` содержит бизнес-логику (`BuildTree`, `ToPeriodKey`, эффективная категория, фейковые категории) и состояние в полях; `DashboardApiController` — расчёт процентов и периодов.
 - Проверки уникальности в `AccountsApiController`/`TagsApiController`; доменные сущности отдаются из `CategoriesApiController` и `PaymentsApiController.GetBySource`.
 - Синхронный Dapper внутри async (`RepositoryBase`, `PaymentSourceRepository`), `.Result` в `PaymentSourceService.MapCategories`.

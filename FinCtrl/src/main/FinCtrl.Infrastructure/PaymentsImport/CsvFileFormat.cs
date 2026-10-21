@@ -1,9 +1,10 @@
-﻿using FinCtrl.Domain.PaymentsImport;
+using FinCtrl.Application.PaymentsImport.FileFormats;
+using FinCtrl.Domain.PaymentsImport;
 using Microsoft.VisualBasic.FileIO;
 
-namespace FinCtrl.Application.PaymentsImport.FileFormats
+namespace FinCtrl.Infrastructure.PaymentsImport
 {
-    public class CsvFileFormat : IFileFormat
+    internal class CsvFileFormat : IFileFormat
     {
         public List<ExcelPayment> GetFileNodes(Stream fileStream)
         {

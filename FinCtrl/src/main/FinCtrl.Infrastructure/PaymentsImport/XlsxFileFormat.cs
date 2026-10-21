@@ -1,9 +1,10 @@
-﻿using FinCtrl.Domain.PaymentsImport;
+using FinCtrl.Application.PaymentsImport.FileFormats;
+using FinCtrl.Domain.PaymentsImport;
 using OfficeOpenXml;
 
-namespace FinCtrl.Application.PaymentsImport.FileFormats
+namespace FinCtrl.Infrastructure.PaymentsImport
 {
-    public class XlsxFileFormat : IFileFormat
+    internal class XlsxFileFormat : IFileFormat
     {
         public XlsxFileFormat()
         {

@@ -1,7 +1,7 @@
 using System.Text;
-using FinCtrl.Application.PaymentsImport.FileFormats;
+using FinCtrl.Infrastructure.PaymentsImport;
 
-namespace FinCtrl.Application.Tests.PaymentsImport.FileFormats;
+namespace FinCtrl.Infrastructure.Tests.PaymentsImport;
 
 public class CsvFileFormatTests
 {

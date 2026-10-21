@@ -1,6 +1,5 @@
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Domain;
-using FinCtrl.Infrastructure.PaymentSources;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 

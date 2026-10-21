@@ -1,5 +1,4 @@
 ﻿using FinCtrl.Domain;
-using FinCtrl.Infrastructure.PaymentSources;
 
 namespace FinCtrl.Application.PaymentSources
 {
