@@ -56,7 +56,14 @@
             >
                 {{ isEmpty(period.key) ? '—' : formatSignedCurrency(cellSum(period.key)) }}
             </td>
-            <DeltaCell v-if="showDelta" :node="category" :semantics="semantics" />
+            <DeltaCell
+                v-if="showDelta"
+                :node="category"
+                :semantics="semantics"
+                :labels="comparisonLabels"
+                :selected="selectedDeltaId === category.categoryId"
+                @select="emit('delta-click', category.categoryId)"
+            />
         </tr>
 
         <!-- Дочерние категории -->
@@ -74,7 +81,10 @@
                 :selected-period-key="selectedPeriodKey"
                 :show-delta="showDelta"
                 :in-savings="semantics === Semantics.Savings"
+                :comparison-labels="comparisonLabels"
+                :selected-delta-id="selectedDeltaId"
                 @cell-click="handleCellClick"
+                @delta-click="(id) => emit('delta-click', id)"
             />
         </template>
     </template>
@@ -132,10 +142,20 @@ const props = defineProps({
     inSavings: {
         type: Boolean,
         default: false
+    },
+    // Подписи пары периодов для кликабельной ячейки Δ: { phrase, title, cardId }
+    comparisonLabels: {
+        type: Object,
+        default: null
+    },
+    // categoryId, по Δ которого открыта карточка сравнения
+    selectedDeltaId: {
+        type: [Number, String],
+        default: null
     }
 })
 
-const emit = defineEmits(['cell-click'])
+const emit = defineEmits(['cell-click', 'delta-click'])
 
 const isExpanded = ref(true)
 

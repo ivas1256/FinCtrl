@@ -115,3 +115,13 @@ export const formatDeltaPercent = (pct) => {
     else tail = '\u2014'
     return `(${tail})`
 }
+
+// Изменение словами для скринридера (aria-label ячейки Δ): "6 550 ₽, минус 21 %", "50 ₽, менее 1 %", "3 800 ₽" (новая)
+export const formatDeltaSpoken = (deltaRub, pct) => {
+    const rub = `${integerFormat.format(Math.abs(roundHalfAwayFromZero(deltaRub || 0)))}${NBSP}₽`
+    if (pct === 'small') return `${rub}, менее 1${NBSP}%`
+    if (typeof pct !== 'number') return rub
+    const rounded = roundHalfAwayFromZero(pct)
+    const sign = rounded > 0 ? 'плюс ' : rounded < 0 ? 'минус ' : ''
+    return `${rub}, ${sign}${integerFormat.format(Math.abs(rounded))}${NBSP}%`
+}

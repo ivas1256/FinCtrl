@@ -4,6 +4,10 @@ import {
   formatComparisonHeader,
   formatComparisonCaption,
   formatComparisonTitle,
+  formatComparisonPhrase,
+  formatComparisonCellTitle,
+  formatComparisonPeriodNote,
+  formatComparisonTileLabels,
   GroupingType
 } from './periodHeader'
 
@@ -139,4 +143,50 @@ describe('подписи сравнения — заголовок карточ�
     expect(formatComparisonTitle(c, GroupingType.Week))
       .toBe('Неделя 28.12.2026–03.01.2027 против 21.12.2026–27.12.2026')
   })
+})
+
+const newYear = comparison({ asOf: '2027-01-15', cur: ['2027-01-01', '2027-01-16'], prev: ['2026-12-01', '2027-01-01'], curEnd: '2027-02-01' })
+const fullMonth = comparison({ asOf: '2026-10-31', cur: ['2026-10-01', '2026-11-01'], prev: ['2026-09-01', '2026-10-01'], curEnd: '2026-11-01', partial: false })
+
+describe('подписи карточки сравнения — подпись-период', () => {
+  it('месяц неполный', () =>
+    expect(formatComparisonPeriodNote(month, GroupingType.Month)).toBe('Октябрь — по 21 число, сентябрь — целиком'))
+  it('месяц полный', () => expect(formatComparisonPeriodNote(fullMonth, GroupingType.Month)).toBe('Оба месяца целиком'))
+  it('смена года — с годами', () =>
+    expect(formatComparisonPeriodNote(newYear, GroupingType.Month)).toBe('Январь 2027 — по 15 число, декабрь 2026 — целиком'))
+  it('неделя', () =>
+    expect(formatComparisonPeriodNote(week, GroupingType.Week)).toBe('Неделя 19.10–25.10 — по 21.10, неделя 12.10–18.10 — целиком'))
+  it('квартал', () =>
+    expect(formatComparisonPeriodNote(quarter, GroupingType.Quarter)).toBe('IV кв. 2026 — по 21 октября, III кв. 2026 — целиком'))
+  it('год', () => expect(formatComparisonPeriodNote(year, GroupingType.Year)).toBe('2026 — по 21 октября, 2025 — целиком'))
+  it('день — всегда целиком', () => expect(formatComparisonPeriodNote(day, GroupingType.Day)).toBe('Оба дня целиком'))
+  it('с тегами', () =>
+    expect(formatComparisonPeriodNote(fullMonth, GroupingType.Month, true)).toBe('Оба месяца целиком, с учётом выбранных тегов'))
+})
+
+describe('подписи карточки сравнения — плитки', () => {
+  it('месяц неполный', () =>
+    expect(formatComparisonTileLabels(month, GroupingType.Month)).toEqual({ current: 'Октябрь, по 21.10', previous: 'Сентябрь' }))
+  it('месяц полный — без «по»', () =>
+    expect(formatComparisonTileLabels(fullMonth, GroupingType.Month)).toEqual({ current: 'Октябрь', previous: 'Сентябрь' }))
+  it('смена года', () =>
+    expect(formatComparisonTileLabels(newYear, GroupingType.Month)).toEqual({ current: 'Январь 2027, по 15.01', previous: 'Декабрь 2026' }))
+  it('неделя', () =>
+    expect(formatComparisonTileLabels(week, GroupingType.Week))
+      .toEqual({ current: 'Неделя 19.10–25.10, по 21.10', previous: 'Неделя 12.10–18.10' }))
+  it('квартал', () =>
+    expect(formatComparisonTileLabels(quarter, GroupingType.Quarter)).toEqual({ current: 'IV кв. 2026, по 21.10', previous: 'III кв. 2026' }))
+  it('год', () => expect(formatComparisonTileLabels(year, GroupingType.Year)).toEqual({ current: '2026, по 21.10', previous: '2025' }))
+  it('день', () => expect(formatComparisonTileLabels(day, GroupingType.Day)).toEqual({ current: '21.10.2026', previous: '20.10.2026' }))
+})
+
+describe('подписи карточки сравнения — фраза и подсказка ячейки Δ', () => {
+  it('фраза месяца со строчной', () => expect(formatComparisonPhrase(month, GroupingType.Month)).toBe('октябрь против сентября'))
+  it('фраза квартала — без изменения регистра', () =>
+    expect(formatComparisonPhrase(quarter, GroupingType.Quarter)).toBe('IV кв. 2026 против III кв. 2026'))
+  it('подсказка месяца', () =>
+    expect(formatComparisonCellTitle(month, GroupingType.Month)).toBe('Сравнить октябрь и сентябрь по подкатегориям'))
+  it('подсказка недели — винительный падеж', () =>
+    expect(formatComparisonCellTitle(week, GroupingType.Week)).toBe('Сравнить неделю 19.10–25.10 и неделю 12.10–18.10 по подкатегориям'))
+  it('подсказка года', () => expect(formatComparisonCellTitle(year, GroupingType.Year)).toBe('Сравнить 2026 и 2025 по подкатегориям'))
 })

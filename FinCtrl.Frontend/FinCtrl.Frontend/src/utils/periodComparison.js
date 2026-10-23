@@ -1,7 +1,7 @@
 // Сравнение с прошлым периодом: величина строки и Δ (СР §5.3). Суммы Т и П приходят с backend
 // (узел.comparison.current/previous, знаковые: расход < 0, поступление > 0).
 
-import { roundHalfAwayFromZero } from './format'
+import { roundHalfAwayFromZero, formatDeltaSpoken } from './format'
 
 // id категории «Накопления» (CategoryIds.Savings на backend)
 export const SAVINGS_CATEGORY_ID = 33
@@ -107,4 +107,34 @@ export const deltaCellView = (node, semantics) => {
         tone,
         hiddenText: HIDDEN_TEXT[result.state]
     }
+}
+
+// Охват карточки сравнения по categoryId: { node, parent, semantics } или null.
+// parent — непосредственный родитель (для подписи «Родитель / Подкатегория»), у корня — null
+export const findComparisonScope = (tree, categoryId, parent = null, inSavings = false) => {
+    for (const node of tree || []) {
+        const semantics = getSemantics(node, inSavings)
+        if (node.categoryId === categoryId) return { node, parent, semantics }
+        const found = findComparisonScope(node.children, categoryId, node, semantics === Semantics.Savings)
+        if (found) return found
+    }
+    return null
+}
+
+// Ячейка Δ кликабельна, если есть данные хотя бы в одном периоде (СР §3.1)
+export const isDeltaInteractive = (view) => view.state !== ComparisonState.None
+
+const SPOKEN_STATE = {
+    [ComparisonState.Up]: 'рост на',
+    [ComparisonState.Down]: 'снижение на',
+    [ComparisonState.New]: 'новая трата на'
+}
+
+// aria-label ячейки Δ (СР §2.4): "Продукты: октябрь против сентября, снижение на 6 550 ₽, минус 21 %. Открыть сравнение".
+// phrase — formatComparisonPhrase из periodHeader
+export const deltaAriaLabel = (name, phrase, view) => {
+    const change = view.state === ComparisonState.Flat
+        ? 'без изменений'
+        : `${SPOKEN_STATE[view.state]} ${formatDeltaSpoken(view.rub, view.pct)}`
+    return `${name}: ${phrase}, ${change}. Открыть сравнение`
 }

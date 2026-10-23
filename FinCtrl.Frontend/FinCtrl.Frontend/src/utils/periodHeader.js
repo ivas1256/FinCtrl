@@ -185,3 +185,78 @@ export const formatComparisonCaption = (comparison, groupingType) => {
             return `Δ — ${names.cur} против ${names.prev}`
     }
 }
+
+// ---- Подписи карточки сравнения (СР §3.3, §4.2, §4.3) ----
+
+const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1)
+
+// Название периода в именительном падеже, с заглавной: "Сентябрь", "Неделя 12.10–18.10", "III кв. 2026", "2025", "20.10.2026"
+const nominativeNames = (c) => {
+    const { grouping, curFrom, prevFrom, withYears } = c
+    if (grouping === GroupingType.Month) {
+        const name = (d) => capitalize(MONTHS.nominative[d.month - 1]) + (withYears ? ` ${d.year}` : '')
+        return { cur: name(curFrom), prev: name(prevFrom) }
+    }
+    if (grouping === GroupingType.Week) {
+        const names = periodNames(c)
+        return { cur: names.cur, prev: `Неделя ${names.prev}` }
+    }
+    return periodNames(c)
+}
+
+// Слова-названия (месяц, неделя) внутри фразы пишутся со строчной; "IV кв.", годы и даты — как есть
+const inPhrase = (c, s) =>
+    c.grouping === GroupingType.Month || c.grouping === GroupingType.Week ? lowerFirst(s) : s
+
+// Заголовок карточки внутри фразы: "октябрь против сентября" (для aria-label ячейки Δ, СР §2.4)
+export const formatComparisonPhrase = (comparison, groupingType) => {
+    const c = describe(comparison, groupingType)
+    return inPhrase(c, formatComparisonTitle(comparison, groupingType))
+}
+
+// Подсказка ячейки Δ (СР §3.3): "Сравнить октябрь и сентябрь по подкатегориям"
+export const formatComparisonCellTitle = (comparison, groupingType) => {
+    const c = describe(comparison, groupingType)
+    const names = nominativeNames(c)
+    // винительный падеж «неделю»; у остальных названий он совпадает с именительным
+    const accusative = (s) => inPhrase(c, s).replace(/^неделя /, 'неделю ')
+    return `Сравнить ${accusative(names.cur)} и ${accusative(names.prev)} по подкатегориям`
+}
+
+const BOTH_FULL = {
+    [GroupingType.Month]: 'Оба месяца целиком',
+    [GroupingType.Week]: 'Обе недели целиком',
+    [GroupingType.Quarter]: 'Оба квартала целиком',
+    [GroupingType.Year]: 'Оба года целиком',
+    [GroupingType.Day]: 'Оба дня целиком'
+}
+
+// "по 21 число" для месяца, "по 21.10" для недели, "по 21 октября" для квартала и года
+const upToText = (c) => {
+    const { grouping, asOf } = c
+    if (grouping === GroupingType.Month) return `по ${asOf.day} число`
+    if (grouping === GroupingType.Week) return `по ${dayMonth(asOf)}`
+    return `по ${asOf.day} ${MONTHS.genitive[asOf.month - 1]}`
+}
+
+// Подпись-период под заголовком карточки (СР §4.2): "Октябрь — по 21 число, сентябрь — целиком" / "Оба месяца целиком";
+// withTags — в запросе были выбраны теги
+export const formatComparisonPeriodNote = (comparison, groupingType, withTags = false) => {
+    const c = describe(comparison, groupingType)
+    const names = nominativeNames(c)
+    const note = c.partial && c.grouping !== GroupingType.Day
+        ? `${names.cur} — ${upToText(c)}, ${inPhrase(c, names.prev)} — целиком`
+        : BOTH_FULL[c.grouping] || 'Оба периода целиком'
+    return withTags ? `${note}, с учётом выбранных тегов` : note
+}
+
+// Подписи плиток Т и П (СР §4.3): { current: "Октябрь, по 21.10", previous: "Сентябрь" }
+export const formatComparisonTileLabels = (comparison, groupingType) => {
+    const c = describe(comparison, groupingType)
+    const names = nominativeNames(c)
+    const partial = c.partial && c.grouping !== GroupingType.Day
+    return {
+        current: partial ? `${names.cur}, по ${dayMonth(c.asOf)}` : names.cur,
+        previous: names.prev
+    }
+}

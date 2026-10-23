@@ -102,3 +102,133 @@ describe('PaymentsTable: колонка Δ к прошлому периоду', 
         expect(wrapper.find('.hm-footnote').text()).not.toContain('Δ —')
     })
 })
+
+describe('PaymentsTable: карточка сравнения по клику на Δ (СР §3)', () => {
+    // jsdom не умеет прокручивать: handleCellClick и карточка вызывают scrollIntoView
+    Element.prototype.scrollIntoView = vi.fn()
+
+    const comparison = {
+        asOf: '2026-10-21T00:00:00',
+        current: { key: '102026', from: '2026-10-01T00:00:00', to: '2026-10-22T00:00:00' },
+        previous: { key: '092026', from: '2026-09-01T00:00:00', to: '2026-10-01T00:00:00' },
+        currentPeriodTo: '2026-11-01T00:00:00',
+        isCurrentPartial: true
+    }
+    const data = {
+        paymentsTree: [
+            { categoryId: 5, categoryName: 'Продукты', periods: { '102026': { totalSum: -24650, payments: [{ paymentId: 1, paymentDate: '2026-10-02T00:00:00', paymentSum: -24650 }] } },
+                children: [], comparison: { previous: -31200, current: -24650 } },
+            { categoryId: 6, categoryName: 'Транспорт', periods: { '102026': { totalSum: -3100, payments: [] } },
+                children: [], comparison: { previous: -4600, current: -3100 } },
+            { categoryId: 2147483647, categoryName: 'ВСЕГО потрачено:', periods: { '102026': { totalSum: -27750, payments: [] } },
+                children: [], comparison: { previous: -35800, current: -27750 } }
+        ],
+        periods: { '102026': { from: '2026-10-01T00:00:00', to: '2026-11-01T00:00:00' } },
+        comparison
+    }
+
+    const mountWith = async () => {
+        const axios = (await import('axios')).default
+        axios.get.mockImplementation(async (url) => ({ data: url.includes('/api/PaymentsApi') ? data : [] }))
+        const wrapper = mount(PaymentsTable, {
+            global: { stubs: { TagMultiSelect: true, CategoryTreeSelect: true, PaymentList: true, PaymentSourcesList: true } },
+            attachTo: document.body
+        })
+        await flushPromises()
+        return wrapper
+    }
+
+    const delta = (wrapper, key) => wrapper.find(`td.hm-delta[data-delta-key="${key}"]`)
+    const card = (wrapper) => wrapper.find('#comparison-card')
+    const paymentsBlock = (wrapper) => wrapper.findAll('h5').find(h => h.text().startsWith('Платежи:'))
+
+    it('клик по Δ открывает карточку, повторный — закрывает', async () => {
+        const wrapper = await mountWith()
+        expect(card(wrapper).exists()).toBe(false)
+
+        await delta(wrapper, 5).trigger('click')
+        await flushPromises()
+        expect(card(wrapper).find('h5').text()).toContain('Октябрь против сентября')
+        expect(card(wrapper).find('.cmp-scope').text()).toBe('Продукты')
+        expect(delta(wrapper, 5).attributes('aria-expanded')).toBe('true')
+        expect(delta(wrapper, 5).classes()).toContain('selected')
+        expect(document.activeElement).toBe(card(wrapper).find('h5').element)
+
+        await delta(wrapper, 5).trigger('click')
+        await flushPromises()
+        expect(card(wrapper).exists()).toBe(false)
+        expect(delta(wrapper, 5).attributes('aria-expanded')).toBe('false')
+        wrapper.unmount()
+    })
+
+    it('клик по Δ другой категории перестраивает карточку и переносит выделение', async () => {
+        const wrapper = await mountWith()
+        await delta(wrapper, 5).trigger('click')
+        await delta(wrapper, 6).trigger('click')
+        await flushPromises()
+        expect(card(wrapper).find('.cmp-scope').text()).toBe('Транспорт')
+        expect(delta(wrapper, 5).attributes('aria-expanded')).toBe('false')
+        expect(delta(wrapper, 6).attributes('aria-expanded')).toBe('true')
+        wrapper.unmount()
+    })
+
+    it('Δ и блок платежей взаимоисключают друг друга', async () => {
+        const wrapper = await mountWith()
+        const periodCell = wrapper.find('td.hm-cell.interactive')
+
+        await periodCell.trigger('click')
+        await flushPromises()
+        expect(paymentsBlock(wrapper)).toBeTruthy()
+
+        await delta(wrapper, 5).trigger('click')
+        await flushPromises()
+        expect(card(wrapper).exists()).toBe(true)
+        expect(paymentsBlock(wrapper)).toBeUndefined()
+        expect(wrapper.find('td.hm-cell.selected').exists()).toBe(false)
+
+        await wrapper.find('td.hm-cell.interactive').trigger('click')
+        await flushPromises()
+        expect(card(wrapper).exists()).toBe(false)
+        expect(paymentsBlock(wrapper)).toBeTruthy()
+        expect(wrapper.find('td.hm-delta.selected').exists()).toBe(false)
+        wrapper.unmount()
+    })
+
+    it('«Скрыть» и Esc закрывают карточку, фокус возвращается на Δ-ячейку', async () => {
+        const wrapper = await mountWith()
+        await delta(wrapper, 5).trigger('click')
+        await flushPromises()
+        await card(wrapper).find('button').trigger('click')
+        await flushPromises()
+        expect(card(wrapper).exists()).toBe(false)
+        expect(document.activeElement).toBe(delta(wrapper, 5).element)
+
+        await delta(wrapper, 6).trigger('keydown', { key: 'Enter' })
+        await flushPromises()
+        await card(wrapper).find('h5').trigger('keydown', { key: 'Escape' })
+        await flushPromises()
+        expect(card(wrapper).exists()).toBe(false)
+        expect(document.activeElement).toBe(delta(wrapper, 6).element)
+        wrapper.unmount()
+    })
+
+    it('Δ «Итого» открывает карточку «Все траты» по узлу «ВСЕГО»', async () => {
+        const wrapper = await mountWith()
+        await delta(wrapper, 'total').trigger('click')
+        await flushPromises()
+        expect(card(wrapper).find('.cmp-scope').text()).toBe('Все траты')
+        expect(card(wrapper).findAll('.cmp-tile .small + div')[1].text().replace(/\s/g, ' ')).toBe('35 800,00 ₽')
+        wrapper.unmount()
+    })
+
+    it('перезагрузка таблицы («Отправить») закрывает карточку', async () => {
+        const wrapper = await mountWith()
+        await delta(wrapper, 5).trigger('click')
+        await flushPromises()
+        await wrapper.find('form').trigger('submit')
+        await flushPromises()
+        expect(card(wrapper).exists()).toBe(false)
+        expect(wrapper.find('td.hm-delta.selected').exists()).toBe(false)
+        wrapper.unmount()
+    })
+})

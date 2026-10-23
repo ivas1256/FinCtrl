@@ -489,7 +489,7 @@ Characterization-тесты на места, не покрытые профил�
 Только frontend. Последняя колонка тепловой карты — изменение к прошлому периоду группировки (СР §2).
 - Колонка показывается, когда в ответе `GET api/PaymentsApi` есть `comparison` и таблица не пустая; группировка и признак «выбраны теги» фиксируются в `submitForm` на момент запроса. Шапка/`title` — `formatComparisonHeader`, подпись под таблицей — `formatComparisonCaption` (+ «, с учётом выбранных тегов») и легенда цветов.
 - Ячейка — `src/pages/paymentsTable/DeltaCell.vue` (вью-модель `deltaCellView` в `periodComparison.js`: стрелка ▲/▼/•, тон bad/good/neutral, скрытый текст для скринридера); процентная часть — `formatDeltaPercent` из `format.js`. Цвет: рост трат — `--fc-danger-text`, снижение — `--fc-success-text`; у доходных строк и «Накоплений» (`inSavings` передаётся потомкам в `PaymentCategoryRow`) инвертирован. «Итого» — Δ узла «ВСЕГО».
-- Δ-ячейки пока не кликабельны (карточка сравнения СР §3–§4 — отдельная задача).
+- Δ-ячейки стали кликабельными в задаче 0031 (карточка сравнения).
 - Знак «Накоплений»: на dev-базе месячные суммы положительные (поступления), поэтому `magnitude` для них `+v`, как для дохода (в 0027 было `−v`).
 
 ## Главная: ячейки сумм — «—», цвета, клавиатура (задача 0029, 2026-10-23)
@@ -497,3 +497,10 @@ Characterization-тесты на места, не покрытые профил�
 - Пустая ячейка (сумма 0/нет данных) — «—» цветом `--fc-text-secondary`, `aria-label="нет трат"`, без клика, фокуса, ховера и `title`. Непустая — `role="button"`, `tabindex="0"`, `aria-label` «категория, период: сумма», `aria-pressed`; Enter/Space вызывают клик.
 - Текст расходов — `--fc-text` (#212529), поступлений — `--fc-success-text`; класс `hm-hi` и токены `--fc-cell-text*` удалены, `heatClass` для расхода возвращает `''` (и при `maxV = 0`).
 - Ховер — рамка (`outline`), фокус и выбранная — `outline` 2px `--fc-accent-text`, выбранная — вес 600, выбранная + фокус — внутренняя тень.
+
+## Главная: карточка сравнения по клику на Δ (задача 0031, 2026-10-23)
+Только frontend; данные — те же `comparison` узлов ответа `GET api/PaymentsApi`, без нового запроса (СР §5.1).
+- Δ-ячейка с данными — кнопка (`role="button"`, `tabindex="0"`, Enter/Space, `aria-expanded`, `aria-controls="comparison-card"`, `aria-label` — `deltaAriaLabel`, `title` — `formatComparisonCellTitle`), ховер/фокус/выбранная — как у ячеек периода; «—» не интерактивна. `data-delta-key` (categoryId или `total`) — для возврата фокуса.
+- `PaymentsTable.vue`: `comparisonScopeKey` (categoryId или `'total'`); под таблицей либо блок платежей, либо карточка (`handleCellClick` закрывает карточку, `toggleComparison` — платежи), повторный клик — закрыть, `submitForm` — закрывает. «Скрыть»/Esc возвращают фокус на Δ-ячейку или (строка свёрнута) на заголовок «Расходы по категориям» (`h5 tabindex="-1"`). Охват ищет `findComparisonScope` (узел, родитель, семантика) — сворачивание родителя карточку не закрывает.
+- `ComparisonCard.vue`: заголовок `formatComparisonTitle` · охват (точка + «Родитель / Подкатегория», для «Итого» — «Все траты»), «Скрыть», подпись-период `formatComparisonPeriodNote`, плитки Т/П (`magnitude` по семантике строки, `formatCurrency`) и «Разница» (`deltaCellView`). `reveal()` — фокус на заголовок и `scrollIntoView({ block: 'nearest' })`, без плавности при `prefers-reduced-motion`. Топ-3 и таблица подкатегорий — задачи 0032–0033.
+- Новые функции: `periodHeader.js` — `formatComparisonPhrase`, `formatComparisonCellTitle`, `formatComparisonPeriodNote`, `formatComparisonTileLabels`; `periodComparison.js` — `findComparisonScope`, `isDeltaInteractive`, `deltaAriaLabel`; `format.js` — `formatDeltaSpoken`.

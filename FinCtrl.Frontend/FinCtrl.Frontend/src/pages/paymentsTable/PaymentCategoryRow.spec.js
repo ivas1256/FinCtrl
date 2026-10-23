@@ -150,4 +150,31 @@ describe('PaymentCategoryRow', () => {
         await wrapper.findAll('tr')[1].findAll('.hm-cell')[0].trigger('click')
         expect(wrapper.emitted('cell-click')).toHaveLength(1)
     })
+
+    describe('клик по Δ (СР §3)', () => {
+        const labels = { phrase: 'октябрь против сентября', title: 'Сравнить октябрь и сентябрь по подкатегориям', cardId: 'comparison-card' }
+        const withComparison = {
+            ...tree,
+            comparison: { previous: -4600, current: -3100 },
+            children: [{ ...tree.children[0], comparison: { previous: -3100, current: -2300 } }]
+        }
+
+        it('клик по Δ дочерней строки всплывает delta-click с её categoryId; Δ месяца не трогает', async () => {
+            const wrapper = mountRow({ category: withComparison, showDelta: true, comparisonLabels: labels })
+            await wrapper.findAll('.hm-delta')[1].trigger('click')
+            expect(wrapper.emitted('delta-click')).toEqual([[2]])
+            expect(wrapper.emitted('cell-click')).toBeUndefined()
+        })
+
+        it('выбранная Δ — только у строки с selectedDeltaId, в т.ч. у ребёнка', () => {
+            const wrapper = mountRow({ category: withComparison, showDelta: true, comparisonLabels: labels, selectedDeltaId: 2 })
+            const deltas = wrapper.findAll('.hm-delta')
+            expect(deltas.map(d => d.attributes('aria-expanded'))).toEqual(['false', 'true'])
+        })
+
+        it('без подписей сравнения Δ не кликабельна', () => {
+            const wrapper = mountRow({ category: withComparison, showDelta: true })
+            expect(wrapper.find('.hm-delta').attributes('role')).toBeUndefined()
+        })
+    })
 })
