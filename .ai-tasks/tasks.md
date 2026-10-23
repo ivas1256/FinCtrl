@@ -29,7 +29,7 @@
 | 0022 | `refactor/0022-frontend-styleguide` | `.ai-tasks/refactor/0022-frontend-styleguide/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/25 (стек поверх #24) |
 | 0023 | `chore/0023-unit-tests-current-features` | `.ai-tasks/chore/0023-unit-tests-current-features/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/26 (стек поверх #25) |
 | 0024 | `refactor/0024-heatmap-style-tokens` | `.ai-tasks/refactor/0024-heatmap-style-tokens/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/28 |
-| 0025 | `fix/0025-heatmap-total-from-backend` | `.ai-tasks/fix/0025-heatmap-total-from-backend/` | запланирована | — |
+| 0025 | `fix/0025-heatmap-total-from-backend` | `.ai-tasks/fix/0025-heatmap-total-from-backend/` | на ревью | PR_URL |
 | 0026 | `feature/0026-period-comparison-api` | `.ai-tasks/feature/0026-period-comparison-api/` | запланирована | — |
 | 0027 | `feature/0027-period-comparison-utils` | `.ai-tasks/feature/0027-period-comparison-utils/` | запланирована | — |
 | 0028 | `feature/0028-heatmap-delta-column` | `.ai-tasks/feature/0028-heatmap-delta-column/` | запланирована | — |

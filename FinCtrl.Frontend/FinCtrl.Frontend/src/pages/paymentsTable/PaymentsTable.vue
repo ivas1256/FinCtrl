@@ -57,7 +57,7 @@
                 </div>
             </div>
 
-            <div v-else-if="paymentsTree.length === 0" class="text-center py-4 text-muted">
+            <div v-else-if="!hasData" class="text-center py-4 text-muted">
                 Нет данных
             </div>
 
@@ -72,7 +72,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <template v-for="(category, index) in paymentsTree" :key="category.categoryId">
+                        <template v-for="(category, index) in treeRows" :key="category.categoryId">
                             <PaymentCategoryRow
                                 :category="category"
                                 :periods="periodHeaders"
@@ -85,15 +85,16 @@
                             />
                         </template>
                     </tbody>
-                    <tfoot v-if="paymentsTree.length > 0">
+                    <tfoot v-if="totalNode">
                         <tr class="hm-total-row">
                             <td class="hm-cat-cell hm-total-label">Итого</td>
                             <td class="hm-total-amt" v-for="period in periodHeaders" :key="period.key">
-                                {{ formatSignedCurrency(periodTotal(period.key)) }}
+                                {{ formatSignedCurrency(totalNode.periods?.[period.key]?.totalSum || 0) }}
                             </td>
                         </tr>
                     </tfoot>
                 </table>
+                <p class="text-muted small mb-0 px-3 py-2 hm-footnote">«Без категории» не входит в «Итого».</p>
             </div>
         </div>
     </div>
@@ -227,7 +228,7 @@ import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import { Modal } from 'bootstrap'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
-import { computeMaxValue } from '../../utils/heatmap'
+import { computeMaxValue, splitTotalNode, hasAnySum } from '../../utils/heatmap'
 import { formatCurrency, formatSignedCurrency, toInputDate } from '../../utils/format'
 import { formatPeriodHeader, GroupingType } from '../../utils/periodHeader'
 import AlertMessage from '../../components/AlertMessage.vue'
@@ -345,6 +346,9 @@ const selectedTagIds = ref([])
 const loading = ref(false)
 const paymentsTree = ref([])
 const periodHeaders = ref([])
+const treeRows = computed(() => splitTotalNode(paymentsTree.value).rows)
+const totalNode = computed(() => splitTotalNode(paymentsTree.value).totalNode)
+const hasData = computed(() => hasAnySum(treeRows.value))
 const maxValue = ref(0)
 const selectedPayments = ref([])
 const selectedCellData = reactive({
@@ -417,10 +421,6 @@ const clearSelection = () => {
     selectedPeriodKey.value = null
 }
 
-// Сумма по всем корневым категориям за период (для строки "Итого")
-const periodTotal = (periodKey) => {
-    return paymentsTree.value.reduce((sum, cat) => sum + (cat.periods?.[periodKey]?.totalSum || 0), 0)
-}
 
 const findCategoryById = (tree, categoryId) => {
     for (const cat of tree) {
@@ -526,7 +526,7 @@ const submitForm = async () => {
         const response = await fetchData(groupingType)
         
         paymentsTree.value = response.data.paymentsTree || []
-        maxValue.value = computeMaxValue(paymentsTree.value)
+        maxValue.value = computeMaxValue(treeRows.value)
 
         // Формируем заголовки периодов с правильной сортировкой
         const periods = response.data.periods || {}
