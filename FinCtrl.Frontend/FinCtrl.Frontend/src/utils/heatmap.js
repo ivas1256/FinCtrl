@@ -33,8 +33,8 @@ export const heatStyle = (value, maxV) => {
 export const heatClass = (value, maxV) => {
   if (!value) return 'hm-zero'
   if (value > 0) return 'hm-income'
-  // value < 0 — расход
-  return Math.abs(value) / maxV > 0.52 ? 'hm-hi' : ''
+  // value < 0 — расход: нейтральный текст, интенсивность передаёт только фон
+  return ''
 }
 
 // Пересчитывается каждый раз при загрузке данных, включает родительские и дочерние строки

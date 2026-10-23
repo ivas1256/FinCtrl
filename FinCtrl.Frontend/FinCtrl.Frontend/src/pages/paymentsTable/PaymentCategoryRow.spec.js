@@ -60,19 +60,36 @@ describe('PaymentCategoryRow', () => {
         ])
     })
 
-    it('ячейка без данных отдаёт пустой список и нулевую сумму', async () => {
+    it('пустая ячейка — «—», без клика, фокуса и роли кнопки', async () => {
         const wrapper = mountRow()
-        await wrapper.findAll('tr')[1].findAll('.hm-cell')[1].trigger('click')
-        expect(wrapper.emitted('cell-click')[0]).toEqual([[], 'Продукты', periods[1].name, 0, 2, 'p2'])
+        const cell = wrapper.findAll('tr')[1].findAll('.hm-cell')[1]
+        expect(cell.text()).toBe('—')
+        expect(cell.attributes('aria-label')).toBe('нет трат')
+        expect(cell.attributes('tabindex')).toBeUndefined()
+        expect(cell.attributes('role')).toBeUndefined()
+        expect(cell.attributes('title')).toBeUndefined()
+        await cell.trigger('click')
+        await cell.trigger('keydown', { key: 'Enter' })
+        expect(wrapper.emitted('cell-click')).toBeUndefined()
     })
 
-    it('подсвечивает выбранную ячейку и раскрашивает суммы', () => {
+    it('непустая ячейка — кнопка с aria-label и aria-pressed; Enter и Space открывают платежи', async () => {
+        const wrapper = mountRow()
+        const cell = wrapper.findAll('tr')[1].findAll('.hm-cell')[0]
+        expect(cell.attributes('tabindex')).toBe('0')
+        expect(cell.attributes('role')).toBe('button')
+        expect(cell.attributes('aria-pressed')).toBe('false')
+        expect(cell.attributes('aria-label').replace(/\s+/g, ' ')).toBe(`Продукты, ${periods[0].name}: -300,00 ₽`)
+        await cell.trigger('keydown', { key: 'Enter' })
+        await cell.trigger('keydown', { key: ' ' })
+        expect(wrapper.emitted('cell-click')).toHaveLength(2)
+    })
+
+    it('выбранная ячейка — aria-pressed="true"', () => {
         const wrapper = mountRow({ selectedCategoryId: 1, selectedPeriodKey: 'p2' })
         const cells = wrapper.findAll('tr')[0].findAll('.hm-cell')
-        expect(cells[0].classes()).not.toContain('selected')
-        expect(cells[1].classes()).toContain('selected')
-        expect(cells[0].classes()).toContain('hm-hi') // 300 из 300 — насыщенный расход
-        expect(cells[0].text().replace(/\s+/g, ' ')).toBe('-300,00 ₽')
+        expect(cells[0].attributes('aria-pressed')).toBe('false')
+        expect(cells[1].attributes('aria-pressed')).toBe('true')
     })
 
     it('«Без категории» выводится приглушённым именем обычного веса', () => {

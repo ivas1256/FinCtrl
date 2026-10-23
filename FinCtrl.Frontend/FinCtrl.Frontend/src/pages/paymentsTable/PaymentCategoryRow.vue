@@ -30,21 +30,23 @@
                 :key="period.key"
                 class="hm-cell"
                 :class="[
-                    heatClass(category.periods[period.key]?.totalSum, maxValue),
-                    { selected: isSelected(period.key) }
+                    heatClass(cellSum(period.key), maxValue),
+                    { selected: isSelected(period.key), interactive: !isEmpty(period.key) }
                 ]"
-                :style="heatStyle(category.periods[period.key]?.totalSum, maxValue)"
-                @click="handleCellClick(
+                :style="heatStyle(cellSum(period.key), maxValue)"
+                v-bind="cellAttrs(period)"
+                @click="!isEmpty(period.key) && handleCellClick(
                     category.periods[period.key]?.payments || [],
                     category.categoryName,
                     period.name,
-                    category.periods[period.key]?.totalSum || 0,
+                    cellSum(period.key),
                     category.categoryId,
                     period.key
                 )"
-                :title="`Кликните для просмотра ${(category.periods[period.key]?.payments || []).length} платежей`"
+                @keydown.enter.prevent="!isEmpty(period.key) && $event.currentTarget.click()"
+                @keydown.space.prevent="!isEmpty(period.key) && $event.currentTarget.click()"
             >
-                {{ formatSignedCurrency(category.periods[period.key]?.totalSum || 0) }}
+                {{ isEmpty(period.key) ? '—' : formatSignedCurrency(cellSum(period.key)) }}
             </td>
             <DeltaCell v-if="showDelta" :node="category" :semantics="semantics" />
         </tr>
@@ -147,6 +149,21 @@ const handleCellClick = (payments, categoryName, periodName, totalSum, categoryI
     emit('cell-click', payments, categoryName, periodName, totalSum, categoryId, periodKey)
 }
 
+const cellSum = (periodKey) => props.category.periods[periodKey]?.totalSum || 0
+
+const isEmpty = (periodKey) => !cellSum(periodKey)
+
+// Пустая ячейка не интерактивна; непустая — кнопка с доступным именем и состоянием «выбрана»
+const cellAttrs = (period) => {
+    if (isEmpty(period.key)) return { 'aria-label': 'нет трат' }
+    return {
+        tabindex: 0,
+        role: 'button',
+        'aria-label': `${props.category.categoryName}, ${period.name}: ${formatSignedCurrency(cellSum(period.key))}`,
+        'aria-pressed': isSelected(period.key) ? 'true' : 'false'
+    }
+}
+
 const isSelected = (periodKey) =>
     props.selectedCategoryId === props.category.categoryId && props.selectedPeriodKey === periodKey
 </script>
@@ -189,19 +206,24 @@ const isSelected = (periodKey) =>
     border-top: 1px solid var(--fc-border);
     vertical-align: middle;
     white-space: nowrap;
-    cursor: pointer;
-    transition: filter 0.1s;
+    color: var(--fc-text);
 }
-.hm-cell:hover { filter: brightness(0.90); }
-.hm-cell.hm-zero:hover { filter: none; }
+.hm-cell.interactive { cursor: pointer; }
+.hm-cell.interactive:hover { outline: 1px solid var(--fc-text-secondary); outline-offset: -1px; }
 
-.hm-cell.selected {
-    outline: 2px solid var(--fc-accent);
+.hm-cell.hm-zero   { color: var(--fc-text-secondary); cursor: default; }
+.hm-cell.hm-income { color: var(--fc-success-text); }
+
+.hm-cell.selected,
+.hm-cell.selected:hover {
+    outline: 2px solid var(--fc-accent-text);
+    outline-offset: -2px;
+    font-weight: 600;
+}
+.hm-cell.interactive:focus-visible {
+    outline: 2px solid var(--fc-accent-text);
     outline-offset: -2px;
 }
-
-.hm-cell          { color: var(--fc-cell-text); }
-.hm-cell.hm-zero  { color: var(--fc-cell-text-zero); cursor: default; }
-.hm-cell.hm-income { color: var(--fc-cell-text-income); }
-.hm-cell.hm-hi    { color: var(--fc-cell-text-hi); }
+/* выбранная + фокус: внутренняя тень отличает фокус от просто выбранной */
+.hm-cell.selected:focus-visible { box-shadow: inset 0 0 0 3px var(--fc-card-bg); }
 </style>

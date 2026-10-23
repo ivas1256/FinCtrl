@@ -23,9 +23,4 @@
     --fc-accent-text: #0a58ca;
     --fc-success-text: #146c43;
     --fc-danger-text: #b02a37;
-    /* текст сумм в ячейках — значения до задачи 0029, она заменит их на --fc-text/--fc-success-text */
-    --fc-cell-text: #c84c4e;
-    --fc-cell-text-hi: #6e1517;
-    --fc-cell-text-income: #198754;
-    --fc-cell-text-zero: #aab4c2;
 }

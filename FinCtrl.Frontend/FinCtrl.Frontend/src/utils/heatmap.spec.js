@@ -71,8 +71,8 @@ describe('heatClass', () => {
     expect(heatClass(10, 100)).toBe('hm-income')
   })
 
-  it('крупный расход (больше 52% максимума) — hm-hi, остальные без класса', () => {
-    expect(heatClass(-53, 100)).toBe('hm-hi')
+  it('расход любого размера — без класса (нейтральный текст)', () => {
+    expect(heatClass(-53, 100)).toBe('')
     expect(heatClass(-52, 100)).toBe('')
   })
 })
@@ -112,9 +112,8 @@ describe('граничные случаи шкалы', () => {
     expect(heatAlpha(-200, 100)).toBeCloseTo(0.68)
   })
 
-  it('heatClass: при нулевом максимуме расход — hm-hi (деление на 0 даёт Infinity)', () => {
-    // На практике maxV = 0 только когда все ячейки нулевые, и до расхода дело не доходит.
-    expect(heatClass(-1, 0)).toBe('hm-hi')
+  it('heatClass: при нулевом максимуме расход — без класса, ноль — hm-zero', () => {
+    expect(heatClass(-1, 0)).toBe('')
     expect(heatClass(0, 0)).toBe('hm-zero')
   })
 

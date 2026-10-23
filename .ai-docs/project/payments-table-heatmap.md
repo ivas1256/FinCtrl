@@ -99,17 +99,18 @@ const computeMaxValue = (tree) => {
 const heatClass = (value, maxV) => {
   if (!value) return 'hm-zero'
   if (value > 0) return 'hm-income'
-  // value < 0 — расход
-  return Math.abs(value) / maxV > 0.52 ? 'hm-hi' : ''
+  // value < 0 — расход: нейтральный текст, интенсивность передаёт только фон
+  return ''
 }
 ```
 
 ```css
-.hm-cell          { color: #c84c4e; }          /* расход, низкая интенсивность */
-.hm-cell.hm-zero  { color: #aab4c2; cursor: default; }
-.hm-cell.hm-income { color: #198754; }          /* Bootstrap success */
-.hm-cell.hm-hi    { color: #6e1517; }           /* расход, высокая интенсивность */
+.hm-cell           { color: var(--fc-text); }          /* расход: #212529 */
+.hm-cell.hm-zero   { color: var(--fc-text-secondary); cursor: default; }  /* «—», #6c757d */
+.hm-cell.hm-income { color: var(--fc-success-text); }  /* #146c43 */
 ```
+
+Пустая ячейка (ноль/нет данных) выводит «—» с `aria-label="нет трат"`: без ховера, фокуса, клика и `title`. Непустая — `role="button"`, `tabindex="0"`, `aria-label="{категория}, {период}: {сумма}"`, `aria-pressed`, Enter/Space = клик. Ховер — рамка 1px `#6c757d` (фон не меняется), фокус — 2px `#0a58ca`, выбранная — 2px `#0a58ca` и вес 600 (задача 0029).
 
 ---
 
