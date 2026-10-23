@@ -8,7 +8,11 @@ import {
   Semantics,
   ComparisonState,
   deltaCellView,
-  DeltaTone
+  DeltaTone,
+  findComparisonScope,
+  isDeltaInteractive,
+  deltaAriaLabel,
+  SAVINGS_CATEGORY_ID
 } from './periodComparison'
 import { formatDelta } from './format'
 
@@ -177,5 +181,55 @@ describe('deltaCellView', () => {
 
   it('«Накопления»: рост — зелёный', () => {
     expect(deltaCellView(node(1000, 2000), Semantics.Savings)).toMatchObject({ arrow: '▲', tone: DeltaTone.Good })
+  })
+})
+
+describe('findComparisonScope', () => {
+  const tree = [
+    { categoryId: 5, categoryName: 'Продукты', children: [{ categoryId: 51, categoryName: 'Рынок', children: [] }] },
+    { categoryId: SAVINGS_CATEGORY_ID, categoryName: 'Накопления', children: [{ categoryId: 331, categoryName: 'Вклад', children: [] }] },
+    { categoryId: 7, categoryName: 'Зарплата', isOnlyIncome: true, children: [] }
+  ]
+
+  it('корень — без родителя, семантика трат', () => {
+    expect(findComparisonScope(tree, 5)).toMatchObject({ node: tree[0], parent: null, semantics: Semantics.Expense })
+  })
+
+  it('дочерняя — с непосредственным родителем', () => {
+    const scope = findComparisonScope(tree, 51)
+    expect(scope.node.categoryName).toBe('Рынок')
+    expect(scope.parent).toBe(tree[0])
+  })
+
+  it('потомок «Накоплений» наследует семантику', () => {
+    expect(findComparisonScope(tree, 331).semantics).toBe(Semantics.Savings)
+  })
+
+  it('доходная категория', () => expect(findComparisonScope(tree, 7).semantics).toBe(Semantics.Income))
+
+  it('не найдено — null', () => expect(findComparisonScope(tree, 999)).toBeNull())
+})
+
+describe('ячейка Δ: интерактивность и aria-label', () => {
+  const view = (previous, current, semantics = Semantics.Expense) =>
+    deltaCellView({ categoryId: 5, comparison: { previous, current } }, semantics)
+  const phrase = 'октябрь против сентября'
+
+  it('«—» не кликабельна, остальные — кликабельны', () => {
+    expect(isDeltaInteractive(view(0, 0))).toBe(false)
+    expect(isDeltaInteractive(view(-1000, -1000))).toBe(true)
+    expect(isDeltaInteractive(view(0, -3800))).toBe(true)
+  })
+
+  it('снижение — пример СР §2.4', () => {
+    expect(deltaAriaLabel('Продукты', phrase, view(-31200, -24650)))
+      .toBe('Продукты: октябрь против сентября, снижение на 6\u00A0550\u00A0₽, минус 21\u00A0%. Открыть сравнение')
+  })
+
+  it('рост, новая, мелкое изменение, без изменений', () => {
+    expect(deltaAriaLabel('Кафе', phrase, view(-7400, -11900))).toContain('рост на 4\u00A0500\u00A0₽, плюс 61\u00A0%.')
+    expect(deltaAriaLabel('Подарки', phrase, view(0, -3800))).toContain('новая трата на 3\u00A0800\u00A0₽.')
+    expect(deltaAriaLabel('Рынок', phrase, view(-30000, -30050))).toContain('рост на 50\u00A0₽, менее 1\u00A0%.')
+    expect(deltaAriaLabel('Связь', phrase, view(-1000, -1000))).toBe('Связь: октябрь против сентября, без изменений. Открыть сравнение')
   })
 })
