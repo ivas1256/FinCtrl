@@ -232,3 +232,56 @@ describe('PaymentsTable: карточка сравнения по клику н�
         wrapper.unmount()
     })
 })
+
+describe('PaymentsTable: сортировка карточки сравнения (СР §4.5)', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+
+    const comparison = {
+        asOf: '2026-10-21T00:00:00',
+        current: { key: '102026', from: '2026-10-01T00:00:00', to: '2026-10-22T00:00:00' },
+        previous: { key: '092026', from: '2026-09-01T00:00:00', to: '2026-10-01T00:00:00' },
+        currentPeriodTo: '2026-11-01T00:00:00',
+        isCurrentPartial: true
+    }
+    const cat = (categoryId, categoryName, sPrev, sCur, children = []) => ({
+        categoryId,
+        categoryName,
+        periods: { '102026': { totalSum: -sCur, payments: [] } },
+        comparison: { previous: -sPrev, current: -sCur },
+        children
+    })
+    const data = {
+        paymentsTree: [
+            cat(1, 'Продукты', 31200, 24650, [cat(11, 'Супермаркеты', 27900, 21300), cat(12, 'Рынок', 3300, 3350)]),
+            cat(3, 'Транспорт', 4600, 3100, [cat(31, 'Такси', 3100, 2300), cat(32, 'Общественный транспорт', 1500, 800)]),
+            cat(2147483647, 'ВСЕГО потрачено:', 35800, 27750)
+        ],
+        periods: { '102026': { from: '2026-10-01T00:00:00', to: '2026-11-01T00:00:00' } },
+        comparison
+    }
+
+    it('выбор «По изменению» сохраняется при смене охвата', async () => {
+        const axios = (await import('axios')).default
+        axios.get.mockImplementation(async (url) => ({ data: url.includes('/api/PaymentsApi') ? data : [] }))
+        const wrapper = mount(PaymentsTable, {
+            global: { stubs: { TagMultiSelect: true, CategoryTreeSelect: true, PaymentList: true, PaymentSourcesList: true } },
+            attachTo: document.body
+        })
+        await flushPromises()
+        const card = () => wrapper.find('#comparison-card')
+        const names = () => card().findAll('.cmp-table tbody tr').map(tr => tr.find('[class^="cmp-name"]').text())
+
+        await wrapper.find('td.hm-delta[data-delta-key="1"]').trigger('click')
+        await flushPromises()
+        expect(names()).toEqual(['Супермаркеты', 'Рынок'])
+
+        await card().findAll('[aria-label="Сортировка"] button')[1].trigger('click')
+        expect(names()).toEqual(['Рынок', 'Супермаркеты'])
+
+        await wrapper.find('td.hm-delta[data-delta-key="3"]').trigger('click')
+        await flushPromises()
+        expect(card().findAll('[aria-label="Сортировка"] button')[1].attributes('aria-pressed')).toBe('true')
+        expect(names()).toEqual(['Общественный транспорт', 'Такси'])
+        wrapper.unmount()
+    })
+})

@@ -8,6 +8,7 @@ import {
   formatComparisonCellTitle,
   formatComparisonPeriodNote,
   formatComparisonTileLabels,
+  formatComparisonColumnLabels,
   GroupingType
 } from './periodHeader'
 
@@ -189,4 +190,17 @@ describe('подписи карточки сравнения — фраза и �
   it('подсказка недели — винительный падеж', () =>
     expect(formatComparisonCellTitle(week, GroupingType.Week)).toBe('Сравнить неделю 19.10–25.10 и неделю 12.10–18.10 по подкатегориям'))
   it('подсказка года', () => expect(formatComparisonCellTitle(year, GroupingType.Year)).toBe('Сравнить 2026 и 2025 по подкатегориям'))
+})
+
+describe('formatComparisonColumnLabels', () => {
+  it('месяц неполный — подсказка «по 21.10» у текущего', () =>
+    expect(formatComparisonColumnLabels(month, GroupingType.Month)).toEqual({ previous: 'Сентябрь', current: 'Октябрь', currentTitle: 'по 21.10' }))
+  it('месяц полный — без подсказки', () =>
+    expect(formatComparisonColumnLabels(fullMonth, GroupingType.Month)).toEqual({ previous: 'Сентябрь', current: 'Октябрь', currentTitle: null }))
+  it('неделя — без слова «Неделя»', () =>
+    expect(formatComparisonColumnLabels(week, GroupingType.Week)).toEqual({ previous: '12.10–18.10', current: '19.10–25.10', currentTitle: 'по 21.10' }))
+  it('квартал', () =>
+    expect(formatComparisonColumnLabels(quarter, GroupingType.Quarter)).toEqual({ previous: 'III кв. 2026', current: 'IV кв. 2026', currentTitle: 'по 21.10' }))
+  it('день — без подсказки', () =>
+    expect(formatComparisonColumnLabels(day, GroupingType.Day)).toEqual({ previous: '20.10.2026', current: '21.10.2026', currentTitle: null }))
 })

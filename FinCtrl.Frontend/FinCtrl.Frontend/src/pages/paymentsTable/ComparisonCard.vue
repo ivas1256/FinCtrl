@@ -56,16 +56,67 @@
                     </div>
                 </div>
             </div>
+
+            <p v-if="!hasRows" class="text-muted small py-2 mb-0 cmp-empty">
+                У категории нет подкатегорий — сравнение только по категории целиком.
+            </p>
+            <template v-else>
+                <!-- Топ-3 роста и снижения (СР §4.4) -->
+                <div class="row g-4 mb-4">
+                    <div v-for="block in topBlocks" :key="block.key" class="col-12 col-md-6">
+                        <div :id="`${id}-${block.key}`" class="small text-muted fw-semibold cmp-top-title">{{ block.title }}</div>
+                        <ul v-if="block.rows.length" class="list-unstyled mb-0" :aria-labelledby="`${id}-${block.key}`">
+                            <li v-for="row in block.rows" :key="row.key" class="d-flex justify-content-between gap-3 py-2 cmp-top-row">
+                                <span class="cmp-top-name">{{ row.name }}</span>
+                                <span class="cmp-top-delta" :class="`cmp-diff-${row.view.tone}`">
+                                    <span class="cmp-arrow" aria-hidden="true">{{ row.view.arrow }}</span>
+                                    <span class="visually-hidden">{{ row.view.hiddenText }} </span>
+                                    {{ formatSignedRoundedCurrency(row.view.rub) }} · {{ formatDeltaPercentPlain(row.view.pct) }}
+                                </span>
+                            </li>
+                        </ul>
+                        <div v-else class="small text-muted py-2">{{ block.empty }}</div>
+                    </div>
+                </div>
+
+                <!-- Таблица подкатегорий и сортировка (СР §4.5) -->
+                <div class="d-flex justify-content-end mb-2">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Сортировка">
+                        <button
+                            v-for="option in SORT_OPTIONS"
+                            :key="option.mode"
+                            type="button"
+                            class="btn"
+                            :class="sortMode === option.mode ? 'btn-primary' : 'btn-outline-secondary'"
+                            :aria-pressed="sortMode === option.mode ? 'true' : 'false'"
+                            @click="emit('update:sortMode', option.mode)"
+                        >
+                            {{ option.label }}
+                        </button>
+                    </div>
+                </div>
+                <ComparisonTable :key="scopeKey" :rows="sortedRows" :scale="scale" :labels="columnLabels" />
+                <p v-if="showUncategorizedNote" class="small text-muted mt-2 mb-0 cmp-note">
+                    «Без категории» не входит в итог трат — разберите эти платежи на странице «Операции».
+                </p>
+            </template>
         </div>
     </section>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { categoryColor } from '../../utils/heatmap'
-import { formatCurrency, formatSignedRoundedCurrency, formatDeltaPercent } from '../../utils/format'
-import { formatComparisonTitle, formatComparisonPeriodNote, formatComparisonTileLabels } from '../../utils/periodHeader'
+import { categoryColor, UNCATEGORIZED_ID } from '../../utils/heatmap'
+import { formatCurrency, formatSignedRoundedCurrency, formatDeltaPercent, formatDeltaPercentPlain } from '../../utils/format'
+import {
+    formatComparisonTitle,
+    formatComparisonPeriodNote,
+    formatComparisonTileLabels,
+    formatComparisonColumnLabels
+} from '../../utils/periodHeader'
 import { ComparisonState, deltaCellView, magnitude } from '../../utils/periodComparison'
+import { buildComparisonRows, topChanges, sortComparisonRows, barScale, SortMode } from '../../utils/comparisonCard'
+import ComparisonTable from './ComparisonTable.vue'
 
 // Карточка «{Т} против {П}» под таблицей (СР §4): заголовок с охватом, подпись-период и три плитки.
 // Охват — узел дерева ответа api/PaymentsApi (категория или «ВСЕГО» для «Итого»)
@@ -105,10 +156,25 @@ const props = defineProps({
     isTotal: {
         type: Boolean,
         default: false
+    },
+    // Корни дерева без «ВСЕГО» — строки таблицы для охвата «Итого» (СР §4.5)
+    treeRows: {
+        type: Array,
+        default: () => []
+    },
+    // SortMode; хранится на странице, чтобы выбор переживал смену охвата (v-model:sort-mode)
+    sortMode: {
+        type: String,
+        default: SortMode.ByCategory
     }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'update:sortMode'])
+
+const SORT_OPTIONS = [
+    { mode: SortMode.ByCategory, label: 'По категориям' },
+    { mode: SortMode.ByChange, label: 'По изменению' }
+]
 
 const root = ref(null)
 const heading = ref(null)
@@ -122,6 +188,28 @@ const scopeName = computed(() => (props.isTotal ? 'Все траты' : props.no
 const currentValue = computed(() => magnitude(props.semantics, props.node.comparison?.current))
 const previousValue = computed(() => magnitude(props.semantics, props.node.comparison?.previous))
 const delta = computed(() => deltaCellView(props.node, props.semantics))
+
+// Строки таблицы, топ-3 и масштаб полос (СР §4.4–4.5); модель — utils/comparisonCard
+const model = computed(() => buildComparisonRows(props.isTotal
+    ? { treeRows: props.treeRows }
+    : { node: props.node, semantics: props.semantics }))
+const hasRows = computed(() => model.value.hasSubcategories && model.value.rows.length > 0)
+const sortedRows = computed(() => sortComparisonRows(model.value.rows, props.sortMode))
+const scale = computed(() => barScale(model.value.rows))
+const columnLabels = computed(() => formatComparisonColumnLabels(props.comparison, props.groupingType))
+const scopeKey = computed(() => (props.isTotal ? 'total' : String(props.node.categoryId)))
+
+const topBlocks = computed(() => {
+    const top = topChanges(model.value.rows)
+    return [
+        { key: 'growth', title: 'Выросли сильнее всего', empty: 'Роста нет', rows: top.growth },
+        { key: 'decline', title: 'Снизились сильнее всего', empty: 'Снижения нет', rows: top.decline }
+    ]
+})
+
+// Сноска СР §4.6: «Без категории» есть среди строк «Итого»
+const showUncategorizedNote = computed(() =>
+    props.isTotal && model.value.rows.some(r => r.key === String(UNCATEGORIZED_ID)))
 
 // Фокус на заголовок и прокрутка карточки в зону видимости (СР §3.3, §3.4)
 const reveal = () => {
@@ -191,6 +279,15 @@ defineExpose({ reveal })
     font-weight: 600;
     white-space: nowrap;
 }
+.cmp-top-title { font-size: 13px; }
+.cmp-top-row { border-bottom: 1px solid var(--fc-border); font-size: 14px; }
+.cmp-top-name { color: var(--fc-text); }
+.cmp-top-delta {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 .cmp-diff-bad     { color: var(--fc-danger-text); }
 .cmp-diff-good    { color: var(--fc-success-text); }
 .cmp-diff-neutral { color: var(--fc-text-secondary-on-gray); }

@@ -260,3 +260,17 @@ export const formatComparisonTileLabels = (comparison, groupingType) => {
         previous: names.prev
     }
 }
+
+// Шапки колонок П и Т таблицы карточки (СР §4.5): { previous: "Сентябрь", current: "Октябрь", currentTitle: "по 21.10" };
+// у недели — без слова «Неделя» ("12.10–18.10"); currentTitle — null, если текущий период полный
+export const formatComparisonColumnLabels = (comparison, groupingType) => {
+    const c = describe(comparison, groupingType)
+    const names = nominativeNames(c)
+    const short = (s) => s.replace(/^Неделя /, '')
+    const partial = c.partial && c.grouping !== GroupingType.Day
+    return {
+        previous: short(names.prev),
+        current: short(names.cur),
+        currentTitle: partial ? `по ${dayMonth(c.asOf)}` : null
+    }
+}

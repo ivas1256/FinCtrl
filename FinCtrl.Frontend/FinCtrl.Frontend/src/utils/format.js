@@ -107,13 +107,16 @@ export const formatDelta = (deltaRub, pct) =>
     `${formatSignedRoundedCurrency(deltaRub)} ${formatDeltaPercent(pct)}`
 
 // Процентная часть изменения в скобках: "(+61 %)", "(новая)", "(<1 %)", "(—)"
-export const formatDeltaPercent = (pct) => {
+export const formatDeltaPercent = (pct) => `(${formatDeltaPercentPlain(pct)})`
+
+// Процентная часть изменения без скобок (топ-3 карточки сравнения): "+61 %", "новая", "<1 %", "—"
+export const formatDeltaPercentPlain = (pct) => {
     let tail
     if (typeof pct === 'number') tail = formatSignedPercent(pct)
     else if (pct === 'new') tail = 'новая'
     else if (pct === 'small') tail = `<1${NBSP}%`
     else tail = '\u2014'
-    return `(${tail})`
+    return tail
 }
 
 // Изменение словами для скринридера (aria-label ячейки Δ): "6 550 ₽, минус 21 %", "50 ₽, менее 1 %", "3 800 ₽" (новая)

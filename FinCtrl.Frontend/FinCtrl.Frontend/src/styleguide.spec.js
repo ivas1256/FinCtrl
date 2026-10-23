@@ -53,11 +53,13 @@ describe('стайлгайд frontend', () => {
     it('главная: цветовые токены --fc-* объявлены, в scoped-стилях нет литералов цвета', () => {
         const css = read('assets/main.css')
         for (const token of ['--fc-text', '--fc-text-secondary', '--fc-text-secondary-on-gray', '--fc-card-header-bg',
-            '--fc-border', '--fc-accent', '--fc-accent-text', '--fc-success-text', '--fc-danger-text']) {
+            '--fc-border', '--fc-accent', '--fc-accent-text', '--fc-success-text', '--fc-danger-text',
+            '--fc-bar-bad', '--fc-bar-good', '--fc-axis']) {
             expect(css, token).toMatch(new RegExp(`${token}:\\s*#[0-9a-f]{6}`, 'i'))
         }
         for (const file of ['pages/paymentsTable/PaymentsTable.vue', 'pages/paymentsTable/PaymentCategoryRow.vue',
-            'pages/paymentsTable/DeltaCell.vue', 'pages/paymentsTable/ComparisonCard.vue']) {
+            'pages/paymentsTable/DeltaCell.vue', 'pages/paymentsTable/ComparisonCard.vue',
+            'pages/paymentsTable/ComparisonTable.vue']) {
             const source = read(file)
             const styles = source.slice(source.indexOf('<style'))
             // тепловая шкала rgba(200, 76, 78, …) — единственное исключение
