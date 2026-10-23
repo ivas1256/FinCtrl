@@ -30,7 +30,7 @@ const mountRow = (props = {}) =>
     })
 
 const categoryNames = (wrapper) =>
-    wrapper.findAll('.hm-cat-cell').map(cell => cell.text().replace(/[+−]/g, '').trim())
+    wrapper.findAll('.hm-cat-cell').map(cell => cell.text().replace(/[▸▾]/g, '').trim())
 
 describe('PaymentCategoryRow', () => {
     it('рендерит строку категории и, рекурсивно, развёрнутых детей', () => {
@@ -39,17 +39,28 @@ describe('PaymentCategoryRow', () => {
         expect(wrapper.findAll('tr')[0].findAll('.hm-cell')).toHaveLength(2)
     })
 
-    it('кнопка сворачивает и разворачивает детей', async () => {
+    it('по умолчанию раскрыто; клик по имени сворачивает и разворачивает детей, шеврон и aria-expanded меняются', async () => {
         const wrapper = mountRow()
-        const toggle = wrapper.find('.expand-btn')
-        expect(toggle.text()).toBe('−')
+        const toggle = wrapper.find('.hm-cat-toggle')
+        expect(toggle.attributes('aria-expanded')).toBe('true')
+        expect(toggle.find('.hm-chevron').text()).toBe('▾')
+        expect(toggle.text()).toContain('Еда')
 
         await toggle.trigger('click')
         expect(categoryNames(wrapper)).toEqual(['Еда'])
-        expect(toggle.text()).toBe('+')
+        expect(toggle.attributes('aria-expanded')).toBe('false')
+        expect(toggle.find('.hm-chevron').text()).toBe('▸')
 
         await toggle.trigger('click')
         expect(categoryNames(wrapper)).toEqual(['Еда', 'Продукты'])
+    })
+
+    it('у листа нет кнопки, есть пустой плейсхолдер шеврона', () => {
+        const wrapper = mountRow()
+        const leafCell = wrapper.findAll('tr')[1].find('.hm-cat-cell')
+        expect(leafCell.find('button').exists()).toBe(false)
+        expect(leafCell.find('.hm-chevron').text()).toBe('')
+        expect(leafCell.find('.hm-chevron').attributes('aria-hidden')).toBe('true')
     })
 
     it('клик по ячейке дочерней строки всплывает cell-click с данными ячейки', async () => {
@@ -118,7 +129,7 @@ describe('PaymentCategoryRow', () => {
 
     it('свёрнутый родитель показывает свою Δ', async () => {
         const wrapper = mountRow({ category: { ...tree, comparison: { previous: -4600, current: -3100 } }, showDelta: true })
-        await wrapper.find('.expand-btn').trigger('click')
+        await wrapper.find('.hm-cat-toggle').trigger('click')
         expect(wrapper.findAll('.hm-delta')).toHaveLength(1)
         expect(wrapper.find('.hm-delta-rub').text()).toBe('−1 500 ₽')
     })
