@@ -478,3 +478,9 @@ Characterization-тесты на места, не покрытые профил�
 - Фильтр дат влияет на сравнение только через D (СР-О13): Т — с начала периода, даже если «с» внутри Т, поэтому сумма Т может отличаться от ячейки колонки Т.
 - Т без платежей добавляется в `periods`, если пересекается с фильтром (пустые ячейки).
 - Ключи периодов в JSON-объекте `periods` вида `102026` — целочисленные, поэтому в JS-объекте они идут раньше ключей с ведущим нулём (`092026`); порядок колонок строить по `from`, а не по порядку ключей.
+
+## Сравнение с прошлым периодом: расчёт Δ и форматтеры (задача 0027, 2026-10-23)
+Только frontend, чистые функции без UI (колонка — задача 0028).
+- `src/utils/periodComparison.js`: `getSemantics(node, inSavings)` (расход/доход/«Накопления» — id 33, потомки наследуют), `magnitude` (доход `+v`, траты и «Накопления» `−v`), `isIncomeSemantics` (цвет: у доходов и «Накоплений» рост — хорошо), `compare(sПрев, sТек)` → `{ state, direction, deltaRub, pct }` (`pct`: целое со знаком Δ₽ | `'new'` | `'small'` (<1 %) | `null`), `compareNode`. Знаменатель процента — `|S_П|`.
+- `src/utils/format.js`: `formatSignedRoundedCurrency`, `formatSignedPercent`, `formatDelta` (минус U+2212, NBSP перед «₽» и «%», округление половины от нуля — `roundHalfAwayFromZero`).
+- `src/utils/periodHeader.js`: `formatComparisonHeader` (`{ text, title }`), `formatComparisonCaption`, `formatComparisonTitle` по таблице СР §2.1 для 5 группировок; год добавляется, когда Т и П в разных годах.

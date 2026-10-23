@@ -1,17 +1,17 @@
 # План: [0027] Сравнение с прошлым периодом: расчёт Δ и форматтеры на фронте
 
-> Статус: `запланирована`.
+> Статус: `на ревью`.
 
 ## Затрагиваемые части
 - БД, backend: нет
 - Frontend: `src/utils/periodComparison.js` (+ `.spec.js`, новый), `src/utils/format.js` (+ `format.spec.js`), `src/utils/periodHeader.js` (+ `periodHeader.spec.js`)
 
 ## Шаги
-- [ ] 1. `formatSignedRoundedCurrency`, `formatSignedPercent`, `formatDelta` + тесты
-- [ ] 2. `periodComparison.js`: `magnitude(node, value)`, `compare(sPrev, sCur)` → `{ deltaRub, deltaPct, state }`, `isIncomeSemantics(node)` + тесты на СР §7
-- [ ] 3. Подписи периодов (шапка «Δ к …», подпись под таблицей, `title`) для 5 группировок + тесты
-- [ ] Сборка + тесты (Definition of Done; UI не меняется, ручная проверка не нужна)
-- [ ] PR
+- [x] 1. `formatSignedRoundedCurrency`, `formatSignedPercent`, `formatDelta` + тесты
+- [x] 2. `periodComparison.js`: `magnitude(node, value)`, `compare(sPrev, sCur)` → `{ deltaRub, deltaPct, state }`, `isIncomeSemantics(node)` + тесты на СР §7
+- [x] 3. Подписи периодов (шапка «Δ к …», подпись под таблицей, `title`) для 5 группировок + тесты
+- [x] Сборка + тесты (Definition of Done; UI не меняется, ручная проверка не нужна)
+- [x] PR
 
 ## Тесты
 | Что тестируем | Сценарии |
@@ -28,10 +28,13 @@
 - Знак величины «Накоплений» (СР §5.3) — уточнить по данным dev-базы; решение записать в журнал.
 
 ## Журнал решений
+- 2026-10-23: знак «Накоплений» — `S = −v` (перевод в накопления — отрицательный платёж), цвет как у дохода; по данным dev-базы не проверялось, меняется одной строкой в `magnitude`.
+- 2026-10-23: `compare` отдаёт `pct` в виде для `formatDelta`; «без изменений» проверяется раньше «новая».
+- 2026-10-23: подписи — `formatComparison{Header,Caption,Title}` в `periodHeader.js`; `title` шапки везде «Изменение трат: …».
 - 2026-10-23: задача заведена по декомпозиции. СР-О14 (подписи для недели/квартала/года/дня) и СР-О11 («Δ к сентябрю» + `title`) решены исполнителем по рекомендации документа.
 
 ## Вне объёма (найдено попутно)
 -
 
 ## Итог
-Заполняется по завершении.
+Сделано: форматтеры, `periodComparison.js`, подписи периодов + тесты (166 тестов, `npm run build` ок). UI не менялся. Не проверено: знак «Накоплений» на данных dev-базы.
