@@ -6,6 +6,9 @@ import {
     formatCurrency,
     formatSignedCurrency,
     formatShortAmount,
+    formatSignedRoundedCurrency,
+    formatSignedPercent,
+    formatDelta,
     parseDate,
     formatDate,
     formatShortDate,
@@ -131,4 +134,32 @@ describe('toInputDate', () => {
         expect(toInputDate(null)).toBe('')
         expect(toInputDate('')).toBe('')
     })
+})
+
+describe('форматтеры сравнения периодов', () => {
+  it('formatSignedRoundedCurrency: знак, U+2212, NBSP, ноль без знака', () => {
+    expect(formatSignedRoundedCurrency(4500)).toBe('+4\u00A0500\u00A0₽')
+    expect(formatSignedRoundedCurrency(-6550)).toBe('\u22126\u00A0550\u00A0₽')
+    expect(formatSignedRoundedCurrency(0)).toBe('0\u00A0₽')
+    expect(formatSignedRoundedCurrency(-0.2)).toBe('0\u00A0₽')
+  })
+
+  it('formatSignedRoundedCurrency: половина округляется от нуля', () => {
+    expect(formatSignedRoundedCurrency(2.5)).toBe('+3\u00A0₽')
+    expect(formatSignedRoundedCurrency(-2.5)).toBe('\u22123\u00A0₽')
+  })
+
+  it('formatSignedPercent: NBSP перед «%», U+2212', () => {
+    expect(formatSignedPercent(61)).toBe('+61\u00A0%')
+    expect(formatSignedPercent(-21)).toBe('\u221221\u00A0%')
+    expect(formatSignedPercent(0)).toBe('0\u00A0%')
+    expect(formatSignedPercent(-100)).toBe('\u2212100\u00A0%')
+  })
+
+  it('formatDelta: процент, «новая», «<1 %», прочерк', () => {
+    expect(formatDelta(4500, 61)).toBe('+4\u00A0500\u00A0₽ (+61\u00A0%)')
+    expect(formatDelta(3800, 'new')).toBe('+3\u00A0800\u00A0₽ (новая)')
+    expect(formatDelta(50, 'small')).toBe('+50\u00A0₽ (<1\u00A0%)')
+    expect(formatDelta(1200, null)).toBe('+1\u00A0200\u00A0₽ (\u2014)')
+  })
 })
