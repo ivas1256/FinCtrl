@@ -46,6 +46,7 @@
             >
                 {{ formatSignedCurrency(category.periods[period.key]?.totalSum || 0) }}
             </td>
+            <DeltaCell v-if="showDelta" :node="category" :semantics="semantics" />
         </tr>
 
         <!-- Дочерние категории -->
@@ -61,6 +62,8 @@
                 :cat-index="catIndex"
                 :selected-category-id="selectedCategoryId"
                 :selected-period-key="selectedPeriodKey"
+                :show-delta="showDelta"
+                :in-savings="semantics === Semantics.Savings"
                 @cell-click="handleCellClick"
             />
         </template>
@@ -71,6 +74,8 @@
 import { ref, computed } from 'vue'
 import { categoryColor, heatClass, heatStyle, UNCATEGORIZED_ID } from '../../utils/heatmap'
 import { formatSignedCurrency } from '../../utils/format'
+import { getSemantics, Semantics } from '../../utils/periodComparison'
+import DeltaCell from './DeltaCell.vue'
 
 // Компонент рекурсивный: в шаблоне ссылается сам на себя по имени
 defineOptions({ name: 'PaymentCategoryRow' })
@@ -107,12 +112,24 @@ const props = defineProps({
     selectedPeriodKey: {
         type: String,
         default: null
+    },
+    // Колонка «Δ к прошлому периоду»: в ответе есть comparison
+    showDelta: {
+        type: Boolean,
+        default: false
+    },
+    // Строка внутри ветки «Накоплений» — семантика Δ как у дохода
+    inSavings: {
+        type: Boolean,
+        default: false
     }
 })
 
 const emit = defineEmits(['cell-click'])
 
 const isExpanded = ref(true)
+
+const semantics = computed(() => getSemantics(props.category, props.inSavings))
 
 const shouldShow = computed(() => props.level === 0 || props.parentExpanded)
 

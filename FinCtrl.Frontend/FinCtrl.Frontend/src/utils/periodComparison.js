@@ -70,3 +70,40 @@ export const compareNode = (node, semantics) => {
     const { current, previous } = node.comparison || {}
     return compare(magnitude(semantics, previous), magnitude(semantics, current))
 }
+
+// Тон цвета ячейки Δ: bad — красный (траты выросли / доход упал), good — зелёный, neutral — серый
+export const DeltaTone = Object.freeze({
+    Bad: 'bad',
+    Good: 'good',
+    Neutral: 'neutral'
+})
+
+const HIDDEN_TEXT = {
+    [ComparisonState.Up]: 'рост',
+    [ComparisonState.Down]: 'снижение',
+    [ComparisonState.Flat]: 'без изменений',
+    [ComparisonState.New]: 'новая трата',
+    [ComparisonState.None]: 'нет данных в обоих периодах'
+}
+
+// Представление ячейки Δ (СР §2.4): { state, arrow, rub, pct, tone, hiddenText }.
+// rub/pct — для formatSignedRoundedCurrency/formatDeltaPercent; при state = none показывается «—»
+export const deltaCellView = (node, semantics) => {
+    const result = compareNode(node, semantics)
+    const arrow = result.state === ComparisonState.None
+        ? ''
+        : result.direction > 0 ? '▲' : result.direction < 0 ? '▼' : '•'
+    let tone = DeltaTone.Neutral
+    if (result.direction !== 0) {
+        const grew = result.direction > 0
+        tone = grew !== isIncomeSemantics(semantics) ? DeltaTone.Bad : DeltaTone.Good
+    }
+    return {
+        state: result.state,
+        arrow,
+        rub: result.deltaRub,
+        pct: result.pct,
+        tone,
+        hiddenText: HIDDEN_TEXT[result.state]
+    }
+}

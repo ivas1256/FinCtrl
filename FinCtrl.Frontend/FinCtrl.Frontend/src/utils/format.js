@@ -103,11 +103,15 @@ export const formatSignedPercent = (value) => {
 
 // Изменение для ячейки/плитки: "+4 500 ₽ (+61 %)". pct — число (проценты), 'new' → "(новая)",
 // 'small' → "(<1 %)", иначе "(—)"
-export const formatDelta = (deltaRub, pct) => {
+export const formatDelta = (deltaRub, pct) =>
+    `${formatSignedRoundedCurrency(deltaRub)} ${formatDeltaPercent(pct)}`
+
+// Процентная часть изменения в скобках: "(+61 %)", "(новая)", "(<1 %)", "(—)"
+export const formatDeltaPercent = (pct) => {
     let tail
     if (typeof pct === 'number') tail = formatSignedPercent(pct)
     else if (pct === 'new') tail = 'новая'
     else if (pct === 'small') tail = `<1${NBSP}%`
     else tail = '\u2014'
-    return `${formatSignedRoundedCurrency(deltaRub)} (${tail})`
+    return `(${tail})`
 }
