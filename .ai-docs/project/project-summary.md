@@ -458,3 +458,10 @@ Characterization-тесты на места, не покрытые профил�
 - Website (`FinCtrl.Website.Tests`, добавлены NSubstitute и `FakeTimeProvider`): `ApiExceptionHandler` (400/404/409/500, 499 при отмене клиентом, запись JSON при отказе писателя ProblemDetails); контроллеры — даты «по включительно» (`PaymentsApi.Get`/`GetList`/`BulkAssignTags`, `DashboardApi.GetChart`), id из роута/тела, создание счёта/тега; DTO `DashboardSummaryDto`, `PaymentSourceDto`.
 - Frontend: `CategoryTreeSelect.spec.js`, `pages/categories/CategoryNode.spec.js`, граничные случаи `heatmap.spec.js`/`periodHeader.spec.js`.
 - **Грабли, зафиксированные тестами (не исправлены, см. «Вне объёма» в `plan.md` 0023):** строка XLSX с пустой ячейкой источника роняет импорт `ArgumentNullException` (500) вместо 400; пустое имя источника (CSV) создаёт источник с пустым именем; `heatClass(v, 0)` для расхода даёт `hm-hi`.
+
+## Главная: цветовые токены и панель фильтров (задача 0024, 2026-10-23)
+Только frontend. Цвета главной вынесены в CSS-переменные `--fc-*` (`src/assets/main.css`, светлая тема); `PaymentsTable.vue`/`PaymentCategoryRow.vue` ссылаются на них, литералов цвета в scoped-стилях нет (кроме тепловой шкалы; страж — `styleguide.spec.js`).
+- Текст `th` — `#5c636a` + `scope="col"`, «Итого» — `#0a58ca`, легенда-градиент 0.04→0.36 (как `heatAlpha`), карточка таблицы `mb-4`, «Без категории» — серое имя веса 400 (`UNCATEGORIZED_ID` в `heatmap.js`), промежутки в ячейке категории только `gap`.
+- Панель фильтров: `TagMultiSelect` подогнан под `sm` (31px, рамка `--fc-border`, радиус 4px, 14px), «Отправить» справа (`ms-auto`), у быстрых периодов `aria-pressed`, ручная смена даты снимает активный быстрый период.
+- Токены `--fc-cell-text*` сохраняют текущие цвета сумм в ячейках — их заменит задача 0029.
+- Документы: `payments-table-heatmap.md` приведён к коду (формула тепла, легенда, точки, размеры), в §11 добавлено исключение для зелёного «снижения трат» (В5).

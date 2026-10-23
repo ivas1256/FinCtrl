@@ -6,4 +6,26 @@
 :root {
     /* 15px вместо 16px Bootstrap — плотность текста, как было в шаблонных стилях create-vue */
     --bs-body-font-size: 0.9375rem;
+
+    /* Токены главной (тепловая карта): .ai-docs/project/payments-table-design-requirements.md §3 */
+    --fc-text: #212529;
+    --fc-text-secondary: #6c757d;
+    /* вторичный текст на сером фоне (#f8f9fa): контраст 5.78:1 */
+    --fc-text-secondary-on-gray: #5c636a;
+    --fc-page-bg: #ffffff;
+    --fc-card-bg: #ffffff;
+    --fc-card-header-bg: #f8f9fa;
+    --fc-border: #dee2e6;
+    --fc-row-parent-bg: #ffffff;
+    --fc-row-child-bg: #ffffff;
+    --fc-accent: #0d6efd;
+    /* акцентный текст на сером фоне: контраст 6.11:1 */
+    --fc-accent-text: #0a58ca;
+    --fc-success-text: #146c43;
+    --fc-danger-text: #b02a37;
+    /* текст сумм в ячейках — значения до задачи 0029, она заменит их на --fc-text/--fc-success-text */
+    --fc-cell-text: #c84c4e;
+    --fc-cell-text-hi: #6e1517;
+    --fc-cell-text-income: #198754;
+    --fc-cell-text-zero: #aab4c2;
 }

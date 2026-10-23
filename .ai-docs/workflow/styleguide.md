@@ -19,6 +19,8 @@
 
 ### Смысловые цвета (Bootstrap-семантика)
 
+Цвета главной (тепловая карта) заданы CSS-переменными `--fc-*` в `src/assets/main.css` (тема только светлая); в scoped-стилях `PaymentsTable.vue` / `PaymentCategoryRow.vue` литералов цвета нет, кроме тепловой шкалы `rgba(200, 76, 78, …)`. Значения — `.ai-docs/project/payments-table-design-requirements.md` §3; страж — `src/styleguide.spec.js`.
+
 | Роль | Класс Bootstrap | Hex | Применение |
 |---|---|---|---|
 | Основное действие | `btn-primary` | Bootstrap blue | Активная вкладка/режим |

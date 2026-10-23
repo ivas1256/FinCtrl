@@ -2,6 +2,8 @@
 
 Компонент для отображения расходов по категориям в разрезе временных периодов. Принятое дизайн-решение: **тепловая карта**, где интенсивность фона ячейки кодирует размер расхода.
 
+> Актуальные значения цветов, отступов и состояний — в `payments-table-design-requirements.md`; цвета вынесены в CSS-переменные `--fc-*` (`src/assets/main.css`), scoped-стили главной ссылаются на них. Код в этом документе — иллюстрация, где он расходится с реальным кодом, прав код.
+
 ---
 
 ## 1. Концепция
@@ -38,19 +40,19 @@
 // v    — значение конкретной ячейки (может быть отрицательным)
 
 function heatAlpha(v, maxV) {
-  if (!v || !maxV) return 0
-  return 0.06 + (Math.abs(v) / maxV) * 0.70  // диапазон: 0.06 – 0.76
+  if (!v || v > 0 || !maxV) return 0 // поступления в шкалу не входят
+  return 0.04 + (Math.abs(v) / maxV) * 0.32  // диапазон: 0.04 – 0.36
 }
 
 // Inline-стиль на <td>
 const heatStyle = (value, maxV) => {
-  if (!value || !maxV) return {}
-  const alpha = (0.06 + (Math.abs(value) / maxV) * 0.70).toFixed(2)
-  return { background: `rgba(200, 76, 78, ${alpha})` }
+  const alpha = heatAlpha(value, maxV)
+  if (!alpha) return {}
+  return { background: `rgba(200, 76, 78, ${alpha.toFixed(2)})` }
 }
 ```
 
-**Минимум 0.06:** сохраняется для любого ненулевого значения — полностью прозрачная ячейка читалась бы как «нет данных», а не «маленькая трата».
+**Минимум 0.04:** сохраняется для любого ненулевого значения — полностью прозрачная ячейка читалась бы как «нет данных», а не «маленькая трата».
 
 ### Максимум выборки
 
@@ -113,16 +115,7 @@ const heatClass = (value, maxV) => {
 
 ## 5. Цвета категорий (точки)
 
-Точка перед именем категории берётся из стандартной палитры графиков (см. основной стайлгайд, раздел 2):
-
-```js
-const PALETTE = [
-  '#4e79a7', '#f28e2b', '#e15759', '#76b7b2',
-  '#59a14f', '#edc948', '#b07aa1', '#ff9da7',
-  '#9c755f', '#bab0ac'
-]
-const catColor = (index) => PALETTE[index % PALETTE.length]
-```
+Точка перед именем категории — `categoryColor(category)` (`src/utils/heatmap.js`): цвет, заданный категории на странице «Категории», иначе серый `#808080`. Палитра по индексу больше не используется для точек.
 
 Дочерние категории используют тот же цвет, что и родительская, но с `opacity: 0.35` на точке.
 
@@ -203,7 +196,7 @@ const catColor = (index) => PALETTE[index % PALETTE.length]
 
 /* Таблица */
 .hm-table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums; /* обязательно: выравнивание цифр */
   font-size: 12.5px;
@@ -216,28 +209,28 @@ const catColor = (index) => PALETTE[index % PALETTE.length]
 
 /* Шапка */
 .hm-table thead th {
-  background-color: #f8f9fa;
+  background-color: var(--fc-card-header-bg);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #6c757d;
+  color: var(--fc-text-secondary-on-gray); /* #5c636a: контраст на сером фоне */
   padding: 9px 14px;
   border-bottom: 1px solid #dee2e6;
   white-space: nowrap;
 }
 .hm-col-cat    { text-align: left; min-width: 180px; }
-.hm-col-period { text-align: right; min-width: 100px; }
+.hm-col-period { text-align: right; width: 132px; }
 
 /* Колонка категории */
 .hm-cat-cell { padding: 7px 14px; }
 .hm-cat-root  { display: flex; align-items: center; gap: 8px; }
-.hm-cat-child { display: flex; align-items: center; gap: 8px; padding-left: 15px; }
+.hm-cat-child { display: flex; align-items: center; gap: 8px; } /* отступ — 15px на уровень, inline-стилем */
 
 /* Цветная точка */
 .hm-dot {
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -245,7 +238,8 @@ const catColor = (index) => PALETTE[index % PALETTE.length]
 
 /* Имена категорий */
 .hm-cat-name-root  { font-size: 13px; font-weight: 600; white-space: nowrap; }
-.hm-cat-name-child { font-size: 12.5px; color: #6c757d; white-space: nowrap; }
+.hm-cat-name-child { font-size: 12.5px; color: var(--fc-text-secondary); white-space: nowrap; }
+.hm-cat-name-muted { font-size: 13px; font-weight: 400; color: var(--fc-text-secondary); white-space: nowrap; } /* «Без категории» */
 
 /* Ячейка суммы */
 .hm-cell {
@@ -259,24 +253,24 @@ const catColor = (index) => PALETTE[index % PALETTE.length]
 
 /* Выделенная ячейка (после клика) */
 .hm-cell.selected {
-  outline: 2px solid #0d6efd;
+  outline: 2px solid var(--fc-accent);
   outline-offset: -2px;
 }
 
 /* Строка итогов */
 .hm-total-row td {
-  background-color: #f8f9fa;
-  border-top: 2px solid #0d6efd !important;
+  background-color: var(--fc-card-header-bg);
+  border-top: 2px solid var(--fc-accent) !important;
 }
 .hm-total-label {
   font-weight: 700;
   font-size: 13px;
-  color: #0d6efd;
+  color: var(--fc-accent-text); /* #0a58ca: контраст на сером фоне */
 }
 .hm-total-amt {
   text-align: right;
   font-weight: 700;
-  color: #0d6efd;
+  color: var(--fc-accent-text);
   padding: 9px 12px;
 }
 ```
@@ -312,13 +306,14 @@ const catColor = (index) => PALETTE[index % PALETTE.length]
   align-items: center;
   gap: 7px;
   font-size: 11px;
-  color: #6c757d;
+  color: var(--fc-text-secondary);
 }
 .hm-legend-bar {
   width: 72px;
   height: 7px;
   border-radius: 4px;
-  background: linear-gradient(to right, rgba(200, 76, 78, 0.07), rgba(200, 76, 78, 0.78));
+  /* совпадает с диапазоном heatAlpha: 0.04 – 0.36 */
+  background: linear-gradient(to right, rgba(200, 76, 78, 0.04), rgba(200, 76, 78, 0.36));
 }
 ```
 
@@ -394,4 +389,4 @@ maxValue.value = computeMaxValue(paymentsTree.value)
 - **Не** менять базовый цвет тепловой карты с красного на другой — красный = расходы, это семантика, согласованная с остальным приложением (`text-danger`).
 - **Не** устанавливать `maxV` статически — максимум должен пересчитываться при каждой смене диапазона или фильтра, иначе шкала теряет смысл.
 - **Не** убирать `font-variant-numeric: tabular-nums` — без него цифры разной ширины «прыгают» в столбцах.
-- **Не** использовать зелёный где-либо кроме поступлений — `text-success` зарезервирован для дохода и действия «Сохранить» (Bootstrap success).
+- **Не** использовать зелёный где-либо кроме поступлений — `text-success` зарезервирован для дохода и действия «Сохранить» (Bootstrap success). **Исключение (решение В5, 2026-10-23):** зелёный `#146c43` (`--fc-success-text`) с `▼` допустим для «снижения трат» в колонке сравнения Δ и в карточке сравнения; в ячейках сумм тепловой карты зелёный по-прежнему только для поступлений.

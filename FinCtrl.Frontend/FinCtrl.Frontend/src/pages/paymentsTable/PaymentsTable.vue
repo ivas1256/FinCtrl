@@ -5,9 +5,9 @@
         <div class="card-body">
             <form @submit.prevent="submitForm" class="d-flex flex-wrap gap-3 align-items-center">
                 <div class="d-flex align-items-center gap-1">
-                    <input type="date" class="form-control form-control-sm date-input" v-model="formData.startDate">
+                    <input type="date" class="form-control form-control-sm date-input" v-model="formData.startDate" @input="quickPeriod = null">
                     <span class="text-muted small">—</span>
-                    <input type="date" class="form-control form-control-sm date-input" v-model="formData.endDate">
+                    <input type="date" class="form-control form-control-sm date-input" v-model="formData.endDate" @input="quickPeriod = null">
                 </div>
 
                 <select class="form-select form-select-sm w-auto" v-model="formData.groupingType">
@@ -21,7 +21,7 @@
                     <TagMultiSelect v-model="selectedTagIds" :tags="tags" @created="loadTags" @update:model-value="submitForm" />
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-sm" :disabled="loading">
+                <button type="submit" class="btn btn-primary btn-sm ms-auto" :disabled="loading">
                     {{ loading ? 'Загрузка...' : 'Отправить' }}
                 </button>
             </form>
@@ -33,6 +33,7 @@
                     type="button"
                     class="btn"
                     :class="quickPeriod === qp.key ? 'btn-primary' : 'btn-outline-secondary'"
+                    :aria-pressed="quickPeriod === qp.key"
                     @click="setQuickPeriod(qp.key)"
                 >{{ qp.label }}</button>
             </div>
@@ -40,7 +41,7 @@
     </div>
 
     <!-- Таблица платежей — тепловая карта -->
-    <div class="card border-0 shadow-sm mt-4">
+    <div class="card border-0 shadow-sm mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Расходы по категориям</h5>
             <div class="hm-legend">
@@ -64,8 +65,8 @@
                 <table id="payments-table" class="hm-table">
                     <thead>
                         <tr>
-                            <th class="hm-col-cat">Категория</th>
-                            <th class="hm-col-period" v-for="period in periodHeaders" :key="period.key">
+                            <th class="hm-col-cat" scope="col">Категория</th>
+                            <th class="hm-col-period" scope="col" v-for="period in periodHeaders" :key="period.key">
                                 {{ period.label }}
                             </th>
                         </tr>
@@ -575,12 +576,12 @@ onMounted(() => {
 }
 
 .card {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    box-shadow: var(--bs-box-shadow-sm);
 }
 
 .card-header {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
+    background-color: var(--fc-card-header-bg);
+    border-bottom: 1px solid var(--fc-border);
 }
 
 /* Тепловая карта — см. .ai-docs/project/payments-table-heatmap.md */
@@ -595,20 +596,20 @@ onMounted(() => {
     font-size: 12.5px;
 }
 .hm-table td {
-    border-top: 1px solid #dee2e6;
+    border-top: 1px solid var(--fc-border);
     padding: 7px 12px;
     vertical-align: middle;
 }
 
 .hm-table thead th {
-    background-color: #f8f9fa;
+    background-color: var(--fc-card-header-bg);
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #6c757d;
+    color: var(--fc-text-secondary-on-gray);
     padding: 9px 14px;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--fc-border);
     white-space: nowrap;
 }
 .hm-col-cat    { text-align: left; min-width: 180px; }
@@ -617,18 +618,18 @@ onMounted(() => {
 .hm-cat-cell { padding: 7px 14px; }
 
 .hm-total-row td {
-    background-color: #f8f9fa;
-    border-top: 2px solid #0d6efd !important;
+    background-color: var(--fc-card-header-bg);
+    border-top: 2px solid var(--fc-accent) !important;
 }
 .hm-total-label {
     font-weight: 700;
     font-size: 13px;
-    color: #0d6efd;
+    color: var(--fc-accent-text);
 }
 .hm-total-amt {
     text-align: right;
     font-weight: 700;
-    color: #0d6efd;
+    color: var(--fc-accent-text);
     white-space: nowrap;
     padding: 9px 12px;
 }
@@ -638,12 +639,12 @@ onMounted(() => {
     align-items: center;
     gap: 7px;
     font-size: 11px;
-    color: #6c757d;
+    color: var(--fc-text-secondary);
 }
 .hm-legend-bar {
     width: 72px;
     height: 7px;
     border-radius: 4px;
-    background: linear-gradient(to right, rgba(200, 76, 78, 0.07), rgba(200, 76, 78, 0.78));
+    background: linear-gradient(to right, rgba(200, 76, 78, 0.04), rgba(200, 76, 78, 0.36));
 }
 </style>

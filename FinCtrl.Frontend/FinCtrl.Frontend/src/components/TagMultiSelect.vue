@@ -77,4 +77,34 @@ const onCreateTag = async (tagName) => {
 :deep(.multiselect) {
     min-width: 220px;
 }
+
+/* Под размер sm Bootstrap-контролов: высота 31px, рамка #dee2e6, радиус 4px, шрифт 14px */
+:deep(.multiselect),
+:deep(.multiselect__input),
+:deep(.multiselect__single) {
+    font-size: 14px;
+}
+:deep(.multiselect__tags) {
+    min-height: 31px;
+    padding: 3px 32px 0 6px;
+    border: 1px solid var(--fc-border);
+    border-radius: 4px;
+}
+:deep(.multiselect__select) {
+    height: 29px;
+    top: 0;
+}
+:deep(.multiselect__placeholder) {
+    margin-bottom: 0;
+    padding-top: 2px;
+}
+:deep(.multiselect__tag) {
+    margin-bottom: 0;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+:deep(.multiselect__input) {
+    margin-bottom: 0;
+    padding: 0;
+}
 </style>

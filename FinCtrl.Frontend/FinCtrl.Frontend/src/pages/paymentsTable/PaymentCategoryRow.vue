@@ -10,17 +10,17 @@
                     <button
                         v-if="category.children && category.children.length > 0"
                         @click="toggleExpand"
-                        class="btn btn-sm btn-outline-secondary me-1 expand-btn"
+                        class="btn btn-sm btn-outline-secondary expand-btn"
                     >
                         {{ isExpanded ? '−' : '+' }}
                     </button>
-                    <span v-else class="expand-btn-placeholder me-1"></span>
+                    <span v-else class="expand-btn-placeholder"></span>
                     <span
                         class="hm-dot"
                         :class="{ 'hm-dot-dim': level > 0 }"
                         :style="{ background: categoryColor(category) }"
                     ></span>
-                    <span :class="level === 0 ? 'hm-cat-name-root' : 'hm-cat-name-child'">
+                    <span :class="nameClass">
                         {{ category.categoryName }}
                     </span>
                 </div>
@@ -69,7 +69,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { categoryColor, heatClass, heatStyle } from '../../utils/heatmap'
+import { categoryColor, heatClass, heatStyle, UNCATEGORIZED_ID } from '../../utils/heatmap'
 import { formatSignedCurrency } from '../../utils/format'
 
 // Компонент рекурсивный: в шаблоне ссылается сам на себя по имени
@@ -116,6 +116,12 @@ const isExpanded = ref(true)
 
 const shouldShow = computed(() => props.level === 0 || props.parentExpanded)
 
+// «Без категории» — приглушённое имя обычного веса
+const nameClass = computed(() => {
+    if (props.category.categoryId === UNCATEGORIZED_ID) return 'hm-cat-name-muted'
+    return props.level === 0 ? 'hm-cat-name-root' : 'hm-cat-name-child'
+})
+
 const toggleExpand = () => {
     isExpanded.value = !isExpanded.value
 }
@@ -144,7 +150,7 @@ const isSelected = (periodKey) =>
     flex-shrink: 0;
 }
 
-.hm-cat-cell { padding: 7px 14px; border-top: 1px solid #dee2e6; vertical-align: middle; }
+.hm-cat-cell { padding: 7px 14px; border-top: 1px solid var(--fc-border); vertical-align: middle; }
 .hm-cat-root  { display: flex; align-items: center; gap: 8px; }
 .hm-cat-child { display: flex; align-items: center; gap: 8px; }
 
@@ -157,12 +163,13 @@ const isSelected = (periodKey) =>
 .hm-dot-dim { opacity: 0.35; }
 
 .hm-cat-name-root  { font-size: 13px; font-weight: 600; white-space: nowrap; }
-.hm-cat-name-child { font-size: 12.5px; color: #6c757d; white-space: nowrap; }
+.hm-cat-name-child { font-size: 12.5px; color: var(--fc-text-secondary); white-space: nowrap; }
+.hm-cat-name-muted { font-size: 13px; font-weight: 400; color: var(--fc-text-secondary); white-space: nowrap; }
 
 .hm-cell {
     text-align: right;
     padding: 7px 12px;
-    border-top: 1px solid #dee2e6;
+    border-top: 1px solid var(--fc-border);
     vertical-align: middle;
     white-space: nowrap;
     cursor: pointer;
@@ -172,12 +179,12 @@ const isSelected = (periodKey) =>
 .hm-cell.hm-zero:hover { filter: none; }
 
 .hm-cell.selected {
-    outline: 2px solid #0d6efd;
+    outline: 2px solid var(--fc-accent);
     outline-offset: -2px;
 }
 
-.hm-cell          { color: #c84c4e; }
-.hm-cell.hm-zero  { color: #aab4c2; cursor: default; }
-.hm-cell.hm-income { color: #198754; }
-.hm-cell.hm-hi    { color: #6e1517; }
+.hm-cell          { color: var(--fc-cell-text); }
+.hm-cell.hm-zero  { color: var(--fc-cell-text-zero); cursor: default; }
+.hm-cell.hm-income { color: var(--fc-cell-text-income); }
+.hm-cell.hm-hi    { color: var(--fc-cell-text-hi); }
 </style>
