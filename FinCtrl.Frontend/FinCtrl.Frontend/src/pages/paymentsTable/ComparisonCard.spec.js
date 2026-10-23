@@ -114,3 +114,103 @@ describe('ComparisonCard', () => {
         wrapper.unmount()
     })
 })
+
+describe('ComparisonCard: топ-3, таблица, сортировка (СР §4.4–4.7)', () => {
+    // Узел дерева; суммы знаковые (расход < 0). Данные СР §7
+    const tree = (categoryId, categoryName, sPrev, sCur, children = []) => ({
+        categoryId, categoryName, comparison: { current: -sCur, previous: -sPrev }, children
+    })
+    const productsTree = tree(1, 'Продукты', 31200, 24650, [tree(11, 'Супермаркеты', 27900, 21300), tree(12, 'Рынок', 3300, 3350)])
+    const treeRows = [
+        productsTree,
+        tree(2, 'Кафе и рестораны', 7400, 11900),
+        tree(3, 'Транспорт', 4600, 3100, [tree(31, 'Такси', 3100, 2300), tree(32, 'Общественный транспорт', 1500, 800)]),
+        tree(4, 'Спорт', 6500, 9000),
+        tree(5, 'Подарки', 0, 3800),
+        tree(6, 'Здоровье', 1900, 0),
+        tree(2147483646, 'Без категории', 800, 1500)
+    ]
+    const total = { categoryId: 2147483647, categoryName: 'ВСЕГО потрачено:', comparison: { previous: -51600, current: -52450 } }
+
+    // Колонки топ-3: [заголовок, [[имя, изменение], …] | текст пустого состояния]
+    const top = (wrapper) => wrapper.findAll('.row.g-4 > div').map(col => [
+        col.find('.cmp-top-title').text(),
+        col.find('ul').exists()
+            ? col.findAll('li').map(li => [li.find('.cmp-top-name').text(), normalize(li.find('.cmp-top-delta').text())])
+            : col.find('.small.py-2').text()
+    ])
+    const sortButtons = (wrapper) => wrapper.findAll('[aria-label="Сортировка"] button')
+    const tableRootNames = (wrapper) => wrapper.findAll('.cmp-name-root, .cmp-name-muted').map(n => n.text())
+
+    it('«Продукты»: топ роста — Рынок, снижения — Супермаркеты (СР 25)', () => {
+        const wrapper = mountCard({ node: productsTree })
+        expect(top(wrapper)).toEqual([
+            ['Выросли сильнее всего', [['Рынок', '▲рост +50 ₽ · +2 %']]],
+            ['Снизились сильнее всего', [['Супермаркеты', '▼снижение −6 600 ₽ · −24 %']]]
+        ])
+        expect(wrapper.find('.cmp-top-delta').classes()).toContain('cmp-diff-bad')
+        expect(wrapper.find('.cmp-top-delta .cmp-arrow').attributes('aria-hidden')).toBe('true')
+        expect(wrapper.findAll('.row.g-4 > div').every(c => c.classes().includes('col-12') && c.classes().includes('col-md-6'))).toBe(true)
+        expect(wrapper.findAll('.cmp-table tbody tr')).toHaveLength(2)
+        expect(wrapper.find('.cmp-note').exists()).toBe(false)
+        wrapper.unmount()
+    })
+
+    it('«Итого»: топ-3 по СР 26, «Без категории» в таблице и сноска', () => {
+        const wrapper = mountCard({ node: total, isTotal: true, treeRows })
+        const [growth, decline] = top(wrapper)
+        expect(growth[1].map(r => r[0])).toEqual(['Кафе и рестораны', 'Подарки', 'Спорт'])
+        expect(decline[1].map(r => r[0])).toEqual(['Продукты', 'Здоровье', 'Транспорт'])
+        expect(tableRootNames(wrapper)).toContain('Без категории')
+        expect(wrapper.find('.cmp-note').text())
+            .toBe('«Без категории» не входит в итог трат — разберите эти платежи на странице «Операции».')
+        wrapper.unmount()
+    })
+
+    it('нет снижения — «Снижения нет»', () => {
+        const node = tree(1, 'Дом', 100, 300, [tree(11, 'Ремонт', 100, 300)])
+        const wrapper = mountCard({ node })
+        expect(top(wrapper)[1]).toEqual(['Снизились сильнее всего', 'Снижения нет'])
+        wrapper.unmount()
+    })
+
+    it('лист — только плитки и текст «нет подкатегорий» (СР 30)', () => {
+        const wrapper = mountCard({ node: { ...products, categoryName: 'Спорт', children: [] } })
+        expect(wrapper.find('.cmp-empty').text()).toBe('У категории нет подкатегорий — сравнение только по категории целиком.')
+        expect(wrapper.findAll('.cmp-tile')).toHaveLength(3)
+        expect(wrapper.find('.row.g-4').exists()).toBe(false)
+        expect(wrapper.find('table').exists()).toBe(false)
+        expect(wrapper.find('[aria-label="Сортировка"]').exists()).toBe(false)
+        wrapper.unmount()
+    })
+
+    it('сортировка: «По категориям» по умолчанию, клик эмитит update:sortMode, порядок по пропу (СР 28)', async () => {
+        const wrapper = mountCard({ node: total, isTotal: true, treeRows })
+        const [byCategory, byChange] = sortButtons(wrapper)
+        expect(byCategory.text()).toBe('По категориям')
+        expect(byCategory.attributes('aria-pressed')).toBe('true')
+        expect(byCategory.classes()).toContain('btn-primary')
+        expect(byChange.attributes('aria-pressed')).toBe('false')
+        expect(byChange.classes()).toContain('btn-outline-secondary')
+        expect(tableRootNames(wrapper)).toEqual(['Продукты', 'Кафе и рестораны', 'Транспорт', 'Спорт', 'Подарки', 'Здоровье', 'Без категории'])
+
+        await byChange.trigger('click')
+        expect(wrapper.emitted('update:sortMode')).toEqual([['change']])
+
+        await wrapper.setProps({ sortMode: 'change' })
+        expect(sortButtons(wrapper)[1].attributes('aria-pressed')).toBe('true')
+        expect(tableRootNames(wrapper)).toEqual(['Кафе и рестораны', 'Подарки', 'Спорт', 'Без категории', 'Транспорт', 'Здоровье', 'Продукты'])
+        wrapper.unmount()
+    })
+
+    it('смена охвата сбрасывает свёрнутость внуков', async () => {
+        const wrapper = mountCard({ node: total, isTotal: true, treeRows })
+        await wrapper.find('.cmp-table button[aria-expanded="true"]').trigger('click')
+        expect(wrapper.find('.cmp-table button[aria-expanded="false"]').exists()).toBe(true)
+
+        await wrapper.setProps({ node: treeRows[2], isTotal: false })
+        await wrapper.setProps({ node: total, isTotal: true })
+        expect(wrapper.find('.cmp-table button[aria-expanded="false"]').exists()).toBe(false)
+        wrapper.unmount()
+    })
+})

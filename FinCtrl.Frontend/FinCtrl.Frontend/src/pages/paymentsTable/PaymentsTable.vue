@@ -137,6 +137,8 @@
         :parent="comparisonCard.parent"
         :semantics="comparisonCard.semantics"
         :is-total="comparisonCard.isTotal"
+        :tree-rows="treeRows"
+        v-model:sort-mode="comparisonSortMode"
         @close="closeComparison"
     />
 
@@ -282,6 +284,7 @@ import {
 import { Semantics, findComparisonScope } from '../../utils/periodComparison'
 import DeltaCell from './DeltaCell.vue'
 import ComparisonCard from './ComparisonCard.vue'
+import { SortMode } from '../../utils/comparisonCard'
 import AlertMessage from '../../components/AlertMessage.vue'
 import { useAlerts } from '../../composables/useAlerts'
 
@@ -418,6 +421,8 @@ const COMPARISON_CARD_ID = 'comparison-card'
 const TOTAL_SCOPE = 'total'
 const comparisonScopeKey = ref(null)
 const comparisonCardRef = ref(null)
+// Сортировка таблицы карточки: живёт, пока открыта страница, переживает смену охвата (СР §4.5)
+const comparisonSortMode = ref(SortMode.ByCategory)
 const tableHeading = ref(null)
 const comparisonLabels = computed(() => deltaHeader.value
     ? {
@@ -699,7 +704,9 @@ onMounted(() => {
 }
 
 /* Тепловая карта — см. .ai-docs/project/payments-table-heatmap.md */
+/* relative — visually-hidden (absolute) в Δ-ячейках не выходит за контейнер прокрутки и не расширяет страницу */
 .hm-wrap {
+    position: relative;
     overflow-x: auto;
 }
 

@@ -10,6 +10,7 @@ import {
     formatSignedPercent,
     formatDelta,
     formatDeltaPercent,
+    formatDeltaPercentPlain,
     formatDeltaSpoken,
     parseDate,
     formatDate,
@@ -169,6 +170,14 @@ describe('форматтеры сравнения периодов', () => {
     expect(formatDeltaPercent(-21)).toBe('(−21 %)')
     expect(formatDeltaPercent('new')).toBe('(новая)')
     expect(formatDeltaPercent('small')).toBe('(<1 %)')
+  })
+
+  it('formatDeltaPercentPlain: без скобок', () => {
+    expect(formatDeltaPercentPlain(2)).toBe('+2 %')
+    expect(formatDeltaPercentPlain(-24)).toBe('−24 %')
+    expect(formatDeltaPercentPlain('new')).toBe('новая')
+    expect(formatDeltaPercentPlain('small')).toBe('<1 %')
+    expect(formatDeltaPercentPlain(null)).toBe('—')
   })
 })
 
