@@ -29,9 +29,9 @@
 | 0022 | `refactor/0022-frontend-styleguide` | `.ai-tasks/refactor/0022-frontend-styleguide/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/25 (стек поверх #24) |
 | 0023 | `chore/0023-unit-tests-current-features` | `.ai-tasks/chore/0023-unit-tests-current-features/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/26 (стек поверх #25) |
 | 0024 | `refactor/0024-heatmap-style-tokens` | `.ai-tasks/refactor/0024-heatmap-style-tokens/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/28 |
-| 0025 | `fix/0025-heatmap-total-from-backend` | `.ai-tasks/fix/0025-heatmap-total-from-backend/` | запланирована | — |
-| 0026 | `feature/0026-period-comparison-api` | `.ai-tasks/feature/0026-period-comparison-api/` | запланирована | — |
-| 0027 | `feature/0027-period-comparison-utils` | `.ai-tasks/feature/0027-period-comparison-utils/` | запланирована | — |
-| 0028 | `feature/0028-heatmap-delta-column` | `.ai-tasks/feature/0028-heatmap-delta-column/` | запланирована | — |
-| 0029 | `feature/0029-heatmap-cells-a11y` | `.ai-tasks/feature/0029-heatmap-cells-a11y/` | запланирована | — |
-| 0030 | `feature/0030-heatmap-expand-chevron` | `.ai-tasks/feature/0030-heatmap-expand-chevron/` | запланирована | — |
+| 0025 | `fix/0025-heatmap-total-from-backend` | `.ai-tasks/fix/0025-heatmap-total-from-backend/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/29 (стек поверх #28) |
+| 0026 | `feature/0026-period-comparison-api` | `.ai-tasks/feature/0026-period-comparison-api/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/30 (стек поверх #29) |
+| 0027 | `feature/0027-period-comparison-utils` | `.ai-tasks/feature/0027-period-comparison-utils/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/31 (стек поверх #30) |
+| 0028 | `feature/0028-heatmap-delta-column` | `.ai-tasks/feature/0028-heatmap-delta-column/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/32 (стек поверх #31) |
+| 0029 | `feature/0029-heatmap-cells-a11y` | `.ai-tasks/feature/0029-heatmap-cells-a11y/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/33 (стек поверх #32) |
+| 0030 | `feature/0030-heatmap-expand-chevron` | `.ai-tasks/feature/0030-heatmap-expand-chevron/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/34 (стек поверх #33) |

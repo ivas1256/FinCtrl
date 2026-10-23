@@ -56,7 +56,8 @@ describe('стайлгайд frontend', () => {
             '--fc-border', '--fc-accent', '--fc-accent-text', '--fc-success-text', '--fc-danger-text']) {
             expect(css, token).toMatch(new RegExp(`${token}:\\s*#[0-9a-f]{6}`, 'i'))
         }
-        for (const file of ['pages/paymentsTable/PaymentsTable.vue', 'pages/paymentsTable/PaymentCategoryRow.vue']) {
+        for (const file of ['pages/paymentsTable/PaymentsTable.vue', 'pages/paymentsTable/PaymentCategoryRow.vue',
+            'pages/paymentsTable/DeltaCell.vue']) {
             const source = read(file)
             const styles = source.slice(source.indexOf('<style'))
             // тепловая шкала rgba(200, 76, 78, …) — единственное исключение

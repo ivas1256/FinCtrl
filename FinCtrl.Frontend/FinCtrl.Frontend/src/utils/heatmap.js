@@ -33,8 +33,8 @@ export const heatStyle = (value, maxV) => {
 export const heatClass = (value, maxV) => {
   if (!value) return 'hm-zero'
   if (value > 0) return 'hm-income'
-  // value < 0 — расход
-  return Math.abs(value) / maxV > 0.52 ? 'hm-hi' : ''
+  // value < 0 — расход: нейтральный текст, интенсивность передаёт только фон
+  return ''
 }
 
 // Пересчитывается каждый раз при загрузке данных, включает родительские и дочерние строки
@@ -50,3 +50,20 @@ export const computeMaxValue = (tree) => {
   traverse(tree)
   return max
 }
+
+// Id фейковой категории «ВСЕГО» (CategoryIds.FakeTotal на backend = int.MaxValue)
+export const TOTAL_CATEGORY_ID = 2147483647
+
+// «ВСЕГО» считает backend: в тело таблицы и в шкалу тепла оно не входит, из него берётся «Итого»
+export const splitTotalNode = (tree) => {
+  const nodes = tree || []
+  return {
+    rows: nodes.filter(n => n.categoryId !== TOTAL_CATEGORY_ID),
+    totalNode: nodes.find(n => n.categoryId === TOTAL_CATEGORY_ID) || null
+  }
+}
+
+// Есть ли хоть одна ненулевая сумма в узлах и их потомках
+export const hasAnySum = (tree) => (tree || []).some(node =>
+  Object.values(node.periods || {}).some(p => p.totalSum) || hasAnySum(node.children)
+)

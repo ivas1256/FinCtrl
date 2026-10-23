@@ -13,6 +13,9 @@ public class CategoryTreeDto
     public Dictionary<string, PeriodDto> Periods { get; set; } = new();
     public List<CategoryTreeDto> Children { get; set; } = new();
 
+    /// <summary>Суммы строки за периоды <see cref="GetPaymentsTableResponse.Comparison"/>.</summary>
+    public NodeComparisonDto? Comparison { get; set; }
+
     public static CategoryTreeDto FromModel(PaymentsTableNode node) => new()
     {
         CategoryId = node.Category.CategoryId,
@@ -21,6 +24,7 @@ public class CategoryTreeDto
         IsOnlyIncome = node.Category.IsOnlyIncome,
         Color = node.Category.ColorOrDefault,
         Periods = node.Cells.ToDictionary(x => x.Key, x => PeriodDto.FromModel(x.Value)),
-        Children = node.Children.Select(FromModel).ToList()
+        Children = node.Children.Select(FromModel).ToList(),
+        Comparison = node.Comparison is null ? null : NodeComparisonDto.FromModel(node.Comparison)
     };
 }

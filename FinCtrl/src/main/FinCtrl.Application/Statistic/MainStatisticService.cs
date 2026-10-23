@@ -24,22 +24,38 @@ namespace FinCtrl.Application.Statistic
 
         public async Task<PaymentsTable> GetPaymentsTable(DateRange? dateRange, GroupingType groupingType, int[]? tagIds = null)
         {
-            var items = await Calculate(dateRange ?? GetDefaultRange(), groupingType, tagIds);
+            var range = dateRange ?? GetDefaultRange();
+            var items = await Calculate(range, groupingType, tagIds);
+
+            // П часто лежит вне фильтра дат, поэтому суммы сравнения — отдельной выборкой за [начало П, D + 1).
+            var comparison = GetComparison(range, groupingType);
+            var comparisonItems = await Calculate(
+                new DateRange(comparison.Previous.Range.From, comparison.Current.Range.To), groupingType, tagIds);
 
             var tree = await _categoryService.GetCategoriesTree();
             tree.Add(Category.CreateFakeEmpty());
             tree.Add(Category.CreateFakeTotal());
 
-            var periods = items.Select(x => x.Period)
+            var periodRanges = items.Select(x => x.Period).ToList();
+            // Т без платежей всё равно получает колонку, если пересекается с фильтром: колонка Δ стоит сразу после неё.
+            var currentPeriod = new DateRange(comparison.Current.Range.From, comparison.CurrentPeriodTo);
+            if (currentPeriod.From < range.To && range.From < currentPeriod.To)
+            {
+                periodRanges.Add(currentPeriod);
+            }
+
+            var periods = periodRanges
                 .Distinct()
                 .Order()
                 .Select(x => new PaymentsTablePeriod { Key = ToPeriodKey(x, groupingType), Range = x })
                 .ToList();
 
+            var context = new TableContext(tree, items, periods, comparisonItems, comparison);
             return new PaymentsTable
             {
                 Periods = periods,
-                Tree = tree.Select(x => BuildNode(x, tree, items, periods)).ToList()
+                Tree = tree.Select(x => BuildNode(x, context)).ToList(),
+                Comparison = comparison
             };
         }
 
@@ -90,20 +106,30 @@ namespace FinCtrl.Application.Statistic
         }
 
         // Ячейка категории = её собственные платежи + платежи всех потомков; ячейки есть для всех периодов.
-        private PaymentsTableNode BuildNode(Category category, List<Category> tree, List<MainStatisticGroupItem> items, List<PaymentsTablePeriod> periods)
+        // Суммы сравнения — по тому же правилу, без списков платежей.
+        private PaymentsTableNode BuildNode(Category category, TableContext context)
         {
-            var descendants = _categoryService.GetAllChildCategories(category.CategoryId, tree);
+            var descendants = _categoryService.GetAllChildCategories(category.CategoryId, context.Tree);
+
+            decimal SumOf(List<MainStatisticGroupItem> items, DateTime periodStart) => items
+                .Where(x => (x.Category.Equals(category) || descendants.Contains(x.Category)) && x.Period.From == periodStart)
+                .Sum(x => x.TotalSum);
 
             var node = new PaymentsTableNode
             {
                 Category = category,
-                Children = category.Children.Select(x => BuildNode(x, tree, items, periods)).ToList()
+                Children = category.Children.Select(x => BuildNode(x, context)).ToList(),
+                Comparison = new PaymentsTableNodeComparison
+                {
+                    Current = SumOf(context.ComparisonItems, context.Comparison.Current.Range.From),
+                    Previous = SumOf(context.ComparisonItems, context.Comparison.Previous.Range.From)
+                }
             };
 
-            foreach (var period in periods)
+            foreach (var period in context.Periods)
             {
-                var own = items.FirstOrDefault(x => x.Category.Equals(category) && x.Period.Equals(period.Range));
-                var ofDescendants = items
+                var own = context.Items.FirstOrDefault(x => x.Category.Equals(category) && x.Period.Equals(period.Range));
+                var ofDescendants = context.Items
                     .Where(x => descendants.Contains(x.Category) && x.Period.Equals(period.Range))
                     .ToList();
 
@@ -122,6 +148,34 @@ namespace FinCtrl.Application.Statistic
 
             return node;
         }
+
+        // D = min(сегодня, последний день фильтра); Т — период группировки, содержащий D, по D включительно; П — предыдущий целиком.
+        private PaymentsTableComparison GetComparison(DateRange range, GroupingType groupingType)
+        {
+            var today = _timeProvider.GetLocalNow().Date;
+            var lastFilterDay = range.To.AddDays(-1).Date;
+            var asOf = today < lastFilterDay ? today : lastFilterDay;
+
+            var currentStart = GetDateForGrouping(asOf, groupingType);
+            var currentPeriodTo = GetEndOfPeriod(currentStart, groupingType);
+            var current = new DateRange(currentStart, asOf.AddDays(1));
+            var previous = new DateRange(GetDateForGrouping(currentStart.AddDays(-1), groupingType), currentStart);
+
+            return new PaymentsTableComparison
+            {
+                AsOf = asOf,
+                Current = new PaymentsTablePeriod { Key = ToPeriodKey(current, groupingType), Range = current },
+                Previous = new PaymentsTablePeriod { Key = ToPeriodKey(previous, groupingType), Range = previous },
+                CurrentPeriodTo = currentPeriodTo
+            };
+        }
+
+        private record TableContext(
+            List<Category> Tree,
+            List<MainStatisticGroupItem> Items,
+            List<PaymentsTablePeriod> Periods,
+            List<MainStatisticGroupItem> ComparisonItems,
+            PaymentsTableComparison Comparison);
 
         private DateRange GetDefaultRange()
         {

@@ -57,7 +57,7 @@
                 </div>
             </div>
 
-            <div v-else-if="paymentsTree.length === 0" class="text-center py-4 text-muted">
+            <div v-else-if="!hasData" class="text-center py-4 text-muted">
                 Нет данных
             </div>
 
@@ -69,10 +69,13 @@
                             <th class="hm-col-period" scope="col" v-for="period in periodHeaders" :key="period.key">
                                 {{ period.label }}
                             </th>
+                            <th v-if="deltaHeader" class="hm-col-delta" scope="col" :title="deltaHeader.title">
+                                {{ deltaHeader.text }}
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        <template v-for="(category, index) in paymentsTree" :key="category.categoryId">
+                        <template v-for="(category, index) in treeRows" :key="category.categoryId">
                             <PaymentCategoryRow
                                 :category="category"
                                 :periods="periodHeaders"
@@ -81,19 +84,31 @@
                                 :cat-index="index"
                                 :selected-category-id="selectedCategoryId"
                                 :selected-period-key="selectedPeriodKey"
+                                :show-delta="!!deltaHeader"
                                 @cell-click="handleCellClick"
                             />
                         </template>
                     </tbody>
-                    <tfoot v-if="paymentsTree.length > 0">
+                    <tfoot v-if="totalNode">
                         <tr class="hm-total-row">
                             <td class="hm-cat-cell hm-total-label">Итого</td>
                             <td class="hm-total-amt" v-for="period in periodHeaders" :key="period.key">
-                                {{ formatSignedCurrency(periodTotal(period.key)) }}
+                                {{ formatSignedCurrency(totalNode.periods?.[period.key]?.totalSum || 0) }}
                             </td>
+                            <DeltaCell v-if="deltaHeader" :node="totalNode" :semantics="Semantics.Expense" total />
                         </tr>
                     </tfoot>
                 </table>
+                <div class="text-muted small px-3 py-2 hm-footnote">
+                    <template v-if="deltaCaption">
+                        <p class="mb-1">{{ deltaCaption }}</p>
+                        <p class="mb-1">
+                            ▲ красным — тратите больше, ▼ зелёным — меньше; для доходных строк и «Накоплений» —
+                            наоборот: ▲ зелёным — поступило больше. «новая» — в прошлом периоде сумм по категории не было.
+                        </p>
+                    </template>
+                    <p class="mb-0">«Без категории» не входит в «Итого».</p>
+                </div>
             </div>
         </div>
     </div>
@@ -227,9 +242,11 @@ import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import { Modal } from 'bootstrap'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
-import { computeMaxValue } from '../../utils/heatmap'
+import { computeMaxValue, splitTotalNode, hasAnySum } from '../../utils/heatmap'
 import { formatCurrency, formatSignedCurrency, toInputDate } from '../../utils/format'
-import { formatPeriodHeader, GroupingType } from '../../utils/periodHeader'
+import { formatPeriodHeader, formatComparisonHeader, formatComparisonCaption, GroupingType } from '../../utils/periodHeader'
+import { Semantics } from '../../utils/periodComparison'
+import DeltaCell from './DeltaCell.vue'
 import AlertMessage from '../../components/AlertMessage.vue'
 import { useAlerts } from '../../composables/useAlerts'
 
@@ -345,7 +362,22 @@ const selectedTagIds = ref([])
 const loading = ref(false)
 const paymentsTree = ref([])
 const periodHeaders = ref([])
+const treeRows = computed(() => splitTotalNode(paymentsTree.value).rows)
+const totalNode = computed(() => splitTotalNode(paymentsTree.value).totalNode)
+const hasData = computed(() => hasAnySum(treeRows.value))
 const maxValue = ref(0)
+// Сравнение с прошлым периодом (СР §2): блок comparison ответа, группировка и теги на момент запроса
+const comparison = ref(null)
+const comparisonRequest = ref({ groupingType: GroupingType.NotSelected, withTags: false })
+const deltaHeader = computed(() =>
+    comparison.value && hasData.value
+        ? formatComparisonHeader(comparison.value, comparisonRequest.value.groupingType)
+        : null)
+const deltaCaption = computed(() => {
+    if (!deltaHeader.value) return null
+    const caption = formatComparisonCaption(comparison.value, comparisonRequest.value.groupingType)
+    return comparisonRequest.value.withTags ? `${caption}, с учётом выбранных тегов` : caption
+})
 const selectedPayments = ref([])
 const selectedCellData = reactive({
     categoryName: '',
@@ -417,10 +449,6 @@ const clearSelection = () => {
     selectedPeriodKey.value = null
 }
 
-// Сумма по всем корневым категориям за период (для строки "Итого")
-const periodTotal = (periodKey) => {
-    return paymentsTree.value.reduce((sum, cat) => sum + (cat.periods?.[periodKey]?.totalSum || 0), 0)
-}
 
 const findCategoryById = (tree, categoryId) => {
     for (const cat of tree) {
@@ -521,12 +549,15 @@ const submitForm = async () => {
 
     // Тип группировки фиксируем на момент запроса: select могут поменять, не нажав «Показать»
     const groupingType = Number(formData.groupingType)
+    const withTags = selectedTagIds.value.length > 0
 
     try {
         const response = await fetchData(groupingType)
-        
+
         paymentsTree.value = response.data.paymentsTree || []
-        maxValue.value = computeMaxValue(paymentsTree.value)
+        comparison.value = response.data.comparison || null
+        comparisonRequest.value = { groupingType, withTags }
+        maxValue.value = computeMaxValue(treeRows.value)
 
         // Формируем заголовки периодов с правильной сортировкой
         const periods = response.data.periods || {}
@@ -551,6 +582,7 @@ const submitForm = async () => {
     } catch (err) {
         console.error('Ошибка загрузки платежей:', err)
         paymentsTree.value = []
+        comparison.value = null
         periodHeaders.value = []
         maxValue.value = 0
         showError('Ошибка загрузки платежей')
@@ -614,6 +646,7 @@ onMounted(() => {
 }
 .hm-col-cat    { text-align: left; min-width: 180px; }
 .hm-col-period { text-align: right; width: 132px; }
+.hm-col-delta  { text-align: right; width: 176px; border-left: 1px solid var(--fc-border); }
 
 .hm-cat-cell { padding: 7px 14px; }
 

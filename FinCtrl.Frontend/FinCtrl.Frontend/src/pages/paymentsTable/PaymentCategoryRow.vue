@@ -8,21 +8,29 @@
                     :style="level > 0 ? { paddingLeft: (level * 15) + 'px' } : {}"
                 >
                     <button
-                        v-if="category.children && category.children.length > 0"
+                        v-if="hasChildren"
+                        type="button"
+                        class="hm-cat-toggle"
+                        :aria-expanded="isExpanded ? 'true' : 'false'"
                         @click="toggleExpand"
-                        class="btn btn-sm btn-outline-secondary expand-btn"
                     >
-                        {{ isExpanded ? '−' : '+' }}
+                        <span class="hm-chevron" aria-hidden="true">{{ isExpanded ? '▾' : '▸' }}</span>
+                        <span
+                            class="hm-dot"
+                            :class="{ 'hm-dot-dim': level > 0 }"
+                            :style="{ background: categoryColor(category) }"
+                        ></span>
+                        <span :class="nameClass">{{ category.categoryName }}</span>
                     </button>
-                    <span v-else class="expand-btn-placeholder"></span>
-                    <span
-                        class="hm-dot"
-                        :class="{ 'hm-dot-dim': level > 0 }"
-                        :style="{ background: categoryColor(category) }"
-                    ></span>
-                    <span :class="nameClass">
-                        {{ category.categoryName }}
-                    </span>
+                    <template v-else>
+                        <span class="hm-chevron" aria-hidden="true"></span>
+                        <span
+                            class="hm-dot"
+                            :class="{ 'hm-dot-dim': level > 0 }"
+                            :style="{ background: categoryColor(category) }"
+                        ></span>
+                        <span :class="nameClass">{{ category.categoryName }}</span>
+                    </template>
                 </div>
             </td>
             <td
@@ -30,26 +38,29 @@
                 :key="period.key"
                 class="hm-cell"
                 :class="[
-                    heatClass(category.periods[period.key]?.totalSum, maxValue),
-                    { selected: isSelected(period.key) }
+                    heatClass(cellSum(period.key), maxValue),
+                    { selected: isSelected(period.key), interactive: !isEmpty(period.key) }
                 ]"
-                :style="heatStyle(category.periods[period.key]?.totalSum, maxValue)"
-                @click="handleCellClick(
+                :style="heatStyle(cellSum(period.key), maxValue)"
+                v-bind="cellAttrs(period)"
+                @click="!isEmpty(period.key) && handleCellClick(
                     category.periods[period.key]?.payments || [],
                     category.categoryName,
                     period.name,
-                    category.periods[period.key]?.totalSum || 0,
+                    cellSum(period.key),
                     category.categoryId,
                     period.key
                 )"
-                :title="`Кликните для просмотра ${(category.periods[period.key]?.payments || []).length} платежей`"
+                @keydown.enter.prevent="!isEmpty(period.key) && $event.currentTarget.click()"
+                @keydown.space.prevent="!isEmpty(period.key) && $event.currentTarget.click()"
             >
-                {{ formatSignedCurrency(category.periods[period.key]?.totalSum || 0) }}
+                {{ isEmpty(period.key) ? '—' : formatSignedCurrency(cellSum(period.key)) }}
             </td>
+            <DeltaCell v-if="showDelta" :node="category" :semantics="semantics" />
         </tr>
 
         <!-- Дочерние категории -->
-        <template v-if="category.children && category.children.length > 0 && isExpanded">
+        <template v-if="hasChildren && isExpanded">
             <PaymentCategoryRow
                 v-for="child in category.children"
                 :key="child.categoryId"
@@ -61,6 +72,8 @@
                 :cat-index="catIndex"
                 :selected-category-id="selectedCategoryId"
                 :selected-period-key="selectedPeriodKey"
+                :show-delta="showDelta"
+                :in-savings="semantics === Semantics.Savings"
                 @cell-click="handleCellClick"
             />
         </template>
@@ -71,6 +84,8 @@
 import { ref, computed } from 'vue'
 import { categoryColor, heatClass, heatStyle, UNCATEGORIZED_ID } from '../../utils/heatmap'
 import { formatSignedCurrency } from '../../utils/format'
+import { getSemantics, Semantics } from '../../utils/periodComparison'
+import DeltaCell from './DeltaCell.vue'
 
 // Компонент рекурсивный: в шаблоне ссылается сам на себя по имени
 defineOptions({ name: 'PaymentCategoryRow' })
@@ -107,12 +122,26 @@ const props = defineProps({
     selectedPeriodKey: {
         type: String,
         default: null
+    },
+    // Колонка «Δ к прошлому периоду»: в ответе есть comparison
+    showDelta: {
+        type: Boolean,
+        default: false
+    },
+    // Строка внутри ветки «Накоплений» — семантика Δ как у дохода
+    inSavings: {
+        type: Boolean,
+        default: false
     }
 })
 
 const emit = defineEmits(['cell-click'])
 
 const isExpanded = ref(true)
+
+const hasChildren = computed(() => !!props.category.children && props.category.children.length > 0)
+
+const semantics = computed(() => getSemantics(props.category, props.inSavings))
 
 const shouldShow = computed(() => props.level === 0 || props.parentExpanded)
 
@@ -130,24 +159,55 @@ const handleCellClick = (payments, categoryName, periodName, totalSum, categoryI
     emit('cell-click', payments, categoryName, periodName, totalSum, categoryId, periodKey)
 }
 
+const cellSum = (periodKey) => props.category.periods[periodKey]?.totalSum || 0
+
+const isEmpty = (periodKey) => !cellSum(periodKey)
+
+// Пустая ячейка не интерактивна; непустая — кнопка с доступным именем и состоянием «выбрана»
+const cellAttrs = (period) => {
+    if (isEmpty(period.key)) return { 'aria-label': 'нет трат' }
+    return {
+        tabindex: 0,
+        role: 'button',
+        'aria-label': `${props.category.categoryName}, ${period.name}: ${formatSignedCurrency(cellSum(period.key))}`,
+        'aria-pressed': isSelected(period.key) ? 'true' : 'false'
+    }
+}
+
 const isSelected = (periodKey) =>
     props.selectedCategoryId === props.category.categoryId && props.selectedPeriodKey === periodKey
 </script>
 
 <style scoped>
-.expand-btn {
-    width: 22px;
-    height: 22px;
+/* Имя родителя — кнопка со сброшенными стилями; шеврон показывает состояние */
+.hm-cat-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 22px;
     padding: 0;
-    font-size: 12px;
-    line-height: 1;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
 }
-
-.expand-btn-placeholder {
+.hm-cat-toggle:focus-visible {
+    outline: 2px solid var(--fc-accent-text);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+/* колонка шеврона: у листьев пустая, чтобы имена одного уровня стояли на одной линии */
+.hm-chevron {
     display: inline-block;
     width: 22px;
-    height: 22px;
     flex-shrink: 0;
+    font-size: 12px;
+    line-height: 1;
+    text-align: center;
+    color: var(--fc-text-secondary);
 }
 
 .hm-cat-cell { padding: 7px 14px; border-top: 1px solid var(--fc-border); vertical-align: middle; }
@@ -172,19 +232,24 @@ const isSelected = (periodKey) =>
     border-top: 1px solid var(--fc-border);
     vertical-align: middle;
     white-space: nowrap;
-    cursor: pointer;
-    transition: filter 0.1s;
+    color: var(--fc-text);
 }
-.hm-cell:hover { filter: brightness(0.90); }
-.hm-cell.hm-zero:hover { filter: none; }
+.hm-cell.interactive { cursor: pointer; }
+.hm-cell.interactive:hover { outline: 1px solid var(--fc-text-secondary); outline-offset: -1px; }
 
-.hm-cell.selected {
-    outline: 2px solid var(--fc-accent);
+.hm-cell.hm-zero   { color: var(--fc-text-secondary); cursor: default; }
+.hm-cell.hm-income { color: var(--fc-success-text); }
+
+.hm-cell.selected,
+.hm-cell.selected:hover {
+    outline: 2px solid var(--fc-accent-text);
+    outline-offset: -2px;
+    font-weight: 600;
+}
+.hm-cell.interactive:focus-visible {
+    outline: 2px solid var(--fc-accent-text);
     outline-offset: -2px;
 }
-
-.hm-cell          { color: var(--fc-cell-text); }
-.hm-cell.hm-zero  { color: var(--fc-cell-text-zero); cursor: default; }
-.hm-cell.hm-income { color: var(--fc-cell-text-income); }
-.hm-cell.hm-hi    { color: var(--fc-cell-text-hi); }
+/* выбранная + фокус: внутренняя тень отличает фокус от просто выбранной */
+.hm-cell.selected:focus-visible { box-shadow: inset 0 0 0 3px var(--fc-card-bg); }
 </style>

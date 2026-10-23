@@ -78,3 +78,40 @@ export const toInputDate = (value) => {
     if (!date) return ''
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+const MINUS = '\u2212'
+const NBSP = '\u00A0'
+
+const integerFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0, useGrouping: true })
+
+// Округление до целого, половина — от нуля (Math.round округляет отрицательные половины к нулю)
+export const roundHalfAwayFromZero = (value) => Math.sign(value) * Math.round(Math.abs(value))
+
+const signOf = (rounded) => (rounded > 0 ? '+' : rounded < 0 ? MINUS : '')
+
+// Целые рубли со знаком: "+4 500 ₽", "−6 550 ₽", "0 ₽" (минус — U+2212, разделитель тысяч и пробел перед ₽ — неразрывные)
+export const formatSignedRoundedCurrency = (value) => {
+    const rounded = roundHalfAwayFromZero(value || 0)
+    return `${signOf(rounded)}${integerFormat.format(Math.abs(rounded))}${NBSP}₽`
+}
+
+// Целые проценты со знаком: "+61 %", "−21 %", "0 %" (неразрывный пробел перед %)
+export const formatSignedPercent = (value) => {
+    const rounded = roundHalfAwayFromZero(value || 0)
+    return `${signOf(rounded)}${integerFormat.format(Math.abs(rounded))}${NBSP}%`
+}
+
+// Изменение для ячейки/плитки: "+4 500 ₽ (+61 %)". pct — число (проценты), 'new' → "(новая)",
+// 'small' → "(<1 %)", иначе "(—)"
+export const formatDelta = (deltaRub, pct) =>
+    `${formatSignedRoundedCurrency(deltaRub)} ${formatDeltaPercent(pct)}`
+
+// Процентная часть изменения в скобках: "(+61 %)", "(новая)", "(<1 %)", "(—)"
+export const formatDeltaPercent = (pct) => {
+    let tail
+    if (typeof pct === 'number') tail = formatSignedPercent(pct)
+    else if (pct === 'new') tail = 'новая'
+    else if (pct === 'small') tail = `<1${NBSP}%`
+    else tail = '\u2014'
+    return `(${tail})`
+}
