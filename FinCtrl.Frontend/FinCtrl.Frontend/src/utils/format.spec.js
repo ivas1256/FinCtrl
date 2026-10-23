@@ -9,6 +9,7 @@ import {
     formatSignedRoundedCurrency,
     formatSignedPercent,
     formatDelta,
+    formatDeltaPercent,
     parseDate,
     formatDate,
     formatShortDate,
@@ -161,5 +162,11 @@ describe('форматтеры сравнения периодов', () => {
     expect(formatDelta(3800, 'new')).toBe('+3\u00A0800\u00A0₽ (новая)')
     expect(formatDelta(50, 'small')).toBe('+50\u00A0₽ (<1\u00A0%)')
     expect(formatDelta(1200, null)).toBe('+1\u00A0200\u00A0₽ (\u2014)')
+  })
+
+  it('formatDeltaPercent: часть в скобках', () => {
+    expect(formatDeltaPercent(-21)).toBe('(−21 %)')
+    expect(formatDeltaPercent('new')).toBe('(новая)')
+    expect(formatDeltaPercent('small')).toBe('(<1 %)')
   })
 })

@@ -481,6 +481,13 @@ Characterization-тесты на места, не покрытые профил�
 
 ## Сравнение с прошлым периодом: расчёт Δ и форматтеры (задача 0027, 2026-10-23)
 Только frontend, чистые функции без UI (колонка — задача 0028).
-- `src/utils/periodComparison.js`: `getSemantics(node, inSavings)` (расход/доход/«Накопления» — id 33, потомки наследуют), `magnitude` (доход `+v`, траты и «Накопления» `−v`), `isIncomeSemantics` (цвет: у доходов и «Накоплений» рост — хорошо), `compare(sПрев, sТек)` → `{ state, direction, deltaRub, pct }` (`pct`: целое со знаком Δ₽ | `'new'` | `'small'` (<1 %) | `null`), `compareNode`. Знаменатель процента — `|S_П|`.
+- `src/utils/periodComparison.js`: `getSemantics(node, inSavings)` (расход/доход/«Накопления» — id 33, потомки наследуют), `magnitude` (доход и «Накопления» `+v`, траты `−v`; знак «Накоплений» уточнён в 0028), `isIncomeSemantics` (цвет: у доходов и «Накоплений» рост — хорошо), `compare(sПрев, sТек)` → `{ state, direction, deltaRub, pct }` (`pct`: целое со знаком Δ₽ | `'new'` | `'small'` (<1 %) | `null`), `compareNode`. Знаменатель процента — `|S_П|`.
 - `src/utils/format.js`: `formatSignedRoundedCurrency`, `formatSignedPercent`, `formatDelta` (минус U+2212, NBSP перед «₽» и «%», округление половины от нуля — `roundHalfAwayFromZero`).
 - `src/utils/periodHeader.js`: `formatComparisonHeader` (`{ text, title }`), `formatComparisonCaption`, `formatComparisonTitle` по таблице СР §2.1 для 5 группировок; год добавляется, когда Т и П в разных годах.
+
+## Главная: колонка «Δ к прошлому периоду» (задача 0028, 2026-10-23)
+Только frontend. Последняя колонка тепловой карты — изменение к прошлому периоду группировки (СР §2).
+- Колонка показывается, когда в ответе `GET api/PaymentsApi` есть `comparison` и таблица не пустая; группировка и признак «выбраны теги» фиксируются в `submitForm` на момент запроса. Шапка/`title` — `formatComparisonHeader`, подпись под таблицей — `formatComparisonCaption` (+ «, с учётом выбранных тегов») и легенда цветов.
+- Ячейка — `src/pages/paymentsTable/DeltaCell.vue` (вью-модель `deltaCellView` в `periodComparison.js`: стрелка ▲/▼/•, тон bad/good/neutral, скрытый текст для скринридера); процентная часть — `formatDeltaPercent` из `format.js`. Цвет: рост трат — `--fc-danger-text`, снижение — `--fc-success-text`; у доходных строк и «Накоплений» (`inSavings` передаётся потомкам в `PaymentCategoryRow`) инвертирован. «Итого» — Δ узла «ВСЕГО».
+- Δ-ячейки пока не кликабельны (карточка сравнения СР §3–§4 — отдельная задача).
+- Знак «Накоплений»: на dev-базе месячные суммы положительные (поступления), поэтому `magnitude` для них `+v`, как для дохода (в 0027 было `−v`).

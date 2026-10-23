@@ -81,4 +81,45 @@ describe('PaymentCategoryRow', () => {
         expect(wrapper.find('.hm-cat-name-muted').text()).toBe('Без категории')
         expect(wrapper.find('.hm-cat-name-root').exists()).toBe(false)
     })
+
+    it('без comparison колонки Δ нет', () => {
+        expect(mountRow().find('.hm-delta').exists()).toBe(false)
+    })
+
+    it('колонка Δ есть у родителя и ребёнка, родитель — по своим суммам', () => {
+        const withComparison = {
+            ...tree,
+            comparison: { previous: -4600, current: -3100 },
+            children: [{ ...tree.children[0], comparison: { previous: -3100, current: -2300 } }]
+        }
+        const wrapper = mountRow({ category: withComparison, showDelta: true })
+        const deltas = wrapper.findAll('.hm-delta')
+        expect(deltas).toHaveLength(2)
+        expect(deltas[0].find('.hm-delta-rub').text()).toBe('−1 500 ₽')
+        expect(deltas[1].find('.hm-delta-rub').text()).toBe('−800 ₽')
+    })
+
+    it('свёрнутый родитель показывает свою Δ', async () => {
+        const wrapper = mountRow({ category: { ...tree, comparison: { previous: -4600, current: -3100 } }, showDelta: true })
+        await wrapper.find('.expand-btn').trigger('click')
+        expect(wrapper.findAll('.hm-delta')).toHaveLength(1)
+        expect(wrapper.find('.hm-delta-rub').text()).toBe('−1 500 ₽')
+    })
+
+    it('доходная строка и потомки «Накоплений» — инвертированный цвет Δ', () => {
+        const income = { categoryId: 9, categoryName: 'Зарплата', isOnlyIncome: true, periods: {}, children: [],
+            comparison: { previous: 100000, current: 110000 } }
+        expect(mountRow({ category: income, showDelta: true }).find('.hm-delta').classes()).toContain('hm-delta-good')
+
+        const savings = { categoryId: 33, categoryName: 'Накопления', periods: {}, comparison: { previous: 1000, current: 2000 },
+            children: [{ categoryId: 34, categoryName: 'Вклад', periods: {}, children: [], comparison: { previous: 1000, current: 2000 } }] }
+        const deltas = mountRow({ category: savings, showDelta: true }).findAll('.hm-delta')
+        expect(deltas.map(d => d.classes().includes('hm-delta-good'))).toEqual([true, true])
+    })
+
+    it('клик по ячейке месяца по-прежнему открывает платежи при колонке Δ', async () => {
+        const wrapper = mountRow({ showDelta: true })
+        await wrapper.findAll('tr')[1].findAll('.hm-cell')[0].trigger('click')
+        expect(wrapper.emitted('cell-click')).toHaveLength(1)
+    })
 })

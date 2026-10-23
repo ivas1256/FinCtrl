@@ -22,10 +22,11 @@ export const getSemantics = (node, inSavings = false) => {
 export const isIncomeSemantics = (semantics) =>
     semantics === Semantics.Income || semantics === Semantics.Savings
 
-// Величина S: положительное число «в основную сторону» строки. Доходы — +v, траты и «Накопления» — −v
+// Величина S: положительное число «в основную сторону» строки. Доходы и «Накопления» — +v, траты — −v
+// («Накопления» на dev-базе приходят поступлениями, v > 0 — проверено в задаче 0028)
 export const magnitude = (semantics, value) => {
     const v = value || 0
-    return semantics === Semantics.Income ? v : -v
+    return isIncomeSemantics(semantics) ? v : -v
 }
 
 const ZERO = 1e-9
@@ -69,4 +70,41 @@ export const compare = (sPrev, sCur) => {
 export const compareNode = (node, semantics) => {
     const { current, previous } = node.comparison || {}
     return compare(magnitude(semantics, previous), magnitude(semantics, current))
+}
+
+// Тон цвета ячейки Δ: bad — красный (траты выросли / доход упал), good — зелёный, neutral — серый
+export const DeltaTone = Object.freeze({
+    Bad: 'bad',
+    Good: 'good',
+    Neutral: 'neutral'
+})
+
+const HIDDEN_TEXT = {
+    [ComparisonState.Up]: 'рост',
+    [ComparisonState.Down]: 'снижение',
+    [ComparisonState.Flat]: 'без изменений',
+    [ComparisonState.New]: 'новая трата',
+    [ComparisonState.None]: 'нет данных в обоих периодах'
+}
+
+// Представление ячейки Δ (СР §2.4): { state, arrow, rub, pct, tone, hiddenText }.
+// rub/pct — для formatSignedRoundedCurrency/formatDeltaPercent; при state = none показывается «—»
+export const deltaCellView = (node, semantics) => {
+    const result = compareNode(node, semantics)
+    const arrow = result.state === ComparisonState.None
+        ? ''
+        : result.direction > 0 ? '▲' : result.direction < 0 ? '▼' : '•'
+    let tone = DeltaTone.Neutral
+    if (result.direction !== 0) {
+        const grew = result.direction > 0
+        tone = grew !== isIncomeSemantics(semantics) ? DeltaTone.Bad : DeltaTone.Good
+    }
+    return {
+        state: result.state,
+        arrow,
+        rub: result.deltaRub,
+        pct: result.pct,
+        tone,
+        hiddenText: HIDDEN_TEXT[result.state]
+    }
 }

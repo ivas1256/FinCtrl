@@ -6,7 +6,9 @@ import {
   isIncomeSemantics,
   magnitude,
   Semantics,
-  ComparisonState
+  ComparisonState,
+  deltaCellView,
+  DeltaTone
 } from './periodComparison'
 import { formatDelta } from './format'
 
@@ -99,8 +101,8 @@ describe('magnitude / семантика', () => {
     expect(magnitude(Semantics.Income, 100000)).toBe(100000)
   })
 
-  it('«Накопления»: S = −v', () => {
-    expect(magnitude(Semantics.Savings, -20000)).toBe(20000)
+  it('«Накопления»: S = +v (перевод в накопления — поступление)', () => {
+    expect(magnitude(Semantics.Savings, 20000)).toBe(20000)
   })
 
   it('getSemantics: доход, «Накопления» (id 33) и потомки накоплений', () => {
@@ -130,5 +132,50 @@ describe('compareNode', () => {
 
   it('нет блока comparison — нет данных', () => {
     expect(compareNode({}, Semantics.Expense).state).toBe(ComparisonState.None)
+  })
+})
+
+describe('deltaCellView', () => {
+  const node = (previous, current, extra = {}) => ({ categoryId: 5, isOnlyIncome: false, comparison: { previous, current }, ...extra })
+
+  it('рост трат — ▲, красный, «рост»', () => {
+    const v = deltaCellView(node(-7400, -11900), Semantics.Expense)
+    expect(v).toMatchObject({ arrow: '▲', tone: DeltaTone.Bad, hiddenText: 'рост', rub: 4500, pct: 61 })
+  })
+
+  it('снижение трат — ▼, зелёный, «снижение»', () => {
+    const v = deltaCellView(node(-31200, -24650), Semantics.Expense)
+    expect(v).toMatchObject({ arrow: '▼', tone: DeltaTone.Good, hiddenText: 'снижение', rub: -6550, pct: -21 })
+  })
+
+  it('новая — ▲, красный, «новая трата»', () => {
+    expect(deltaCellView(node(0, -3800), Semantics.Expense))
+      .toMatchObject({ arrow: '▲', tone: DeltaTone.Bad, hiddenText: 'новая трата', pct: 'new' })
+  })
+
+  it('исчезнувшая — ▼, зелёный, −100 %', () => {
+    expect(deltaCellView(node(-1900, 0), Semantics.Expense))
+      .toMatchObject({ arrow: '▼', tone: DeltaTone.Good, pct: -100 })
+  })
+
+  it('без изменений — •, серый', () => {
+    expect(deltaCellView(node(-1000, -1000.3), Semantics.Expense))
+      .toMatchObject({ arrow: '•', tone: DeltaTone.Neutral, hiddenText: 'без изменений', pct: 0 })
+  })
+
+  it('нет данных — без стрелки, серый, прочерк', () => {
+    const v = deltaCellView({ categoryId: 5 }, Semantics.Expense)
+    expect(v).toMatchObject({ state: ComparisonState.None, arrow: '', tone: DeltaTone.Neutral, pct: null })
+  })
+
+  it('доходная строка: рост — зелёный ▲, падение — красный ▼', () => {
+    expect(deltaCellView(node(100000, 110000, { isOnlyIncome: true }), Semantics.Income))
+      .toMatchObject({ arrow: '▲', tone: DeltaTone.Good, rub: 10000, pct: 10 })
+    expect(deltaCellView(node(100000, 90000, { isOnlyIncome: true }), Semantics.Income))
+      .toMatchObject({ arrow: '▼', tone: DeltaTone.Bad })
+  })
+
+  it('«Накопления»: рост — зелёный', () => {
+    expect(deltaCellView(node(1000, 2000), Semantics.Savings)).toMatchObject({ arrow: '▲', tone: DeltaTone.Good })
   })
 })
