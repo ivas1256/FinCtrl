@@ -35,6 +35,6 @@
 | 0028 | `feature/0028-heatmap-delta-column` | `.ai-tasks/feature/0028-heatmap-delta-column/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/32 (стек поверх #31) |
 | 0029 | `feature/0029-heatmap-cells-a11y` | `.ai-tasks/feature/0029-heatmap-cells-a11y/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/33 (стек поверх #32) |
 | 0030 | `feature/0030-heatmap-expand-chevron` | `.ai-tasks/feature/0030-heatmap-expand-chevron/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/34 (стек поверх #33) |
-| 0031 | `feature/0031-comparison-card-open` | `.ai-tasks/feature/0031-comparison-card-open/` | запланирована | — |
+| 0031 | `feature/0031-comparison-card-open` | `.ai-tasks/feature/0031-comparison-card-open/` | в работе | — |
 | 0032 | `feature/0032-comparison-card-rows` | `.ai-tasks/feature/0032-comparison-card-rows/` | запланирована | — |
 | 0033 | `feature/0033-comparison-card-content` | `.ai-tasks/feature/0033-comparison-card-content/` | запланирована | — |
