@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
+  TOTAL_CATEGORY_ID as TOTAL_ID,
+  UNCATEGORIZED_ID,
+  splitTotalNode,
+  hasAnySum,
   PALETTE,
   catColor,
   categoryColor,
@@ -116,5 +120,39 @@ describe('граничные случаи шкалы', () => {
 
   it('heatStyle округляет прозрачность до сотых', () => {
     expect(heatStyle(-1, 3)).toEqual({ background: 'rgba(200, 76, 78, 0.15)' })
+  })
+})
+
+describe('«ВСЕГО» отдельно от тела таблицы', () => {
+  const total = { categoryId: TOTAL_ID, periods: { p1: { totalSum: -1000 } } }
+  const food = { categoryId: 1, periods: { p1: { totalSum: -300 } }, children: [] }
+  const empty = { categoryId: UNCATEGORIZED_ID, periods: { p1: { totalSum: -50 } } }
+
+  it('TOTAL_CATEGORY_ID совпадает с CategoryIds.FakeTotal на backend (int.MaxValue)', () => {
+    expect(TOTAL_ID).toBe(2147483647)
+  })
+
+  it('splitTotalNode вынимает «ВСЕГО» из дерева', () => {
+    const { rows, totalNode } = splitTotalNode([food, empty, total])
+    expect(rows).toEqual([food, empty])
+    expect(totalNode).toBe(total)
+  })
+
+  it('splitTotalNode без узла «ВСЕГО» — totalNode = null', () => {
+    const { rows, totalNode } = splitTotalNode([food])
+    expect(rows).toEqual([food])
+    expect(totalNode).toBeNull()
+  })
+
+  it('computeMaxValue по телу не берёт значение «ВСЕГО» (двойной учёт)', () => {
+    expect(computeMaxValue([food, empty, total])).toBe(1000)
+    expect(computeMaxValue(splitTotalNode([food, empty, total]).rows)).toBe(300)
+  })
+
+  it('hasAnySum: пусто, если у всех узлов нет сумм', () => {
+    const zero = { categoryId: UNCATEGORIZED_ID, periods: { p1: { totalSum: 0 } } }
+    expect(hasAnySum([zero])).toBe(false)
+    expect(hasAnySum([])).toBe(false)
+    expect(hasAnySum([zero, { categoryId: 1, periods: {}, children: [{ periods: { p1: { totalSum: 5 } } }] }])).toBe(true)
   })
 })
