@@ -132,7 +132,9 @@ const deltaNode = (row) => ({
 </script>
 
 <style scoped>
+/* relative — visually-hidden (absolute) в Δ-ячейках не выходит за контейнер прокрутки и не расширяет страницу */
 .cmp-wrap {
+    position: relative;
     overflow-x: auto;
 }
 

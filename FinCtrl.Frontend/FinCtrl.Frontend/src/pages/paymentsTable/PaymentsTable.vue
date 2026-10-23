@@ -704,7 +704,9 @@ onMounted(() => {
 }
 
 /* Тепловая карта — см. .ai-docs/project/payments-table-heatmap.md */
+/* relative — visually-hidden (absolute) в Δ-ячейках не выходит за контейнер прокрутки и не расширяет страницу */
 .hm-wrap {
+    position: relative;
     overflow-x: auto;
 }
 
