@@ -49,4 +49,19 @@ describe('стайлгайд frontend', () => {
     it('на главной есть спиннер загрузки по стайлгайду', () => {
         expect(read('pages/paymentsTable/PaymentsTable.vue')).toMatch(/class="spinner-border text-primary" role="status"/)
     })
+
+    it('главная: цветовые токены --fc-* объявлены, в scoped-стилях нет литералов цвета', () => {
+        const css = read('assets/main.css')
+        for (const token of ['--fc-text', '--fc-text-secondary', '--fc-text-secondary-on-gray', '--fc-card-header-bg',
+            '--fc-border', '--fc-accent', '--fc-accent-text', '--fc-success-text', '--fc-danger-text']) {
+            expect(css, token).toMatch(new RegExp(`${token}:\\s*#[0-9a-f]{6}`, 'i'))
+        }
+        for (const file of ['pages/paymentsTable/PaymentsTable.vue', 'pages/paymentsTable/PaymentCategoryRow.vue']) {
+            const source = read(file)
+            const styles = source.slice(source.indexOf('<style'))
+            // тепловая шкала rgba(200, 76, 78, …) — единственное исключение
+            const literals = styles.replace(/rgba\(200, 76, 78, [\d.]+\)/g, '').match(/#[0-9a-f]{3,8}\b|rgba?\(/gi)
+            expect(literals, file).toBeNull()
+        }
+    })
 })

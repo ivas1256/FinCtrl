@@ -74,4 +74,11 @@ describe('PaymentCategoryRow', () => {
         expect(cells[0].classes()).toContain('hm-hi') // 300 из 300 — насыщенный расход
         expect(cells[0].text().replace(/\s+/g, ' ')).toBe('-300,00 ₽')
     })
+
+    it('«Без категории» выводится приглушённым именем обычного веса', () => {
+        const uncategorized = { categoryId: 2147483646, categoryName: 'Без категории', periods: {}, children: [] }
+        const wrapper = mountRow({ category: uncategorized })
+        expect(wrapper.find('.hm-cat-name-muted').text()).toBe('Без категории')
+        expect(wrapper.find('.hm-cat-name-root').exists()).toBe(false)
+    })
 })
