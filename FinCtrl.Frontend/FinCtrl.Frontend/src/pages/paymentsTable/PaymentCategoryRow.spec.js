@@ -111,8 +111,8 @@ describe('PaymentCategoryRow', () => {
             comparison: { previous: 100000, current: 110000 } }
         expect(mountRow({ category: income, showDelta: true }).find('.hm-delta').classes()).toContain('hm-delta-good')
 
-        const savings = { categoryId: 33, categoryName: 'Накопления', periods: {}, comparison: { previous: -1000, current: -2000 },
-            children: [{ categoryId: 34, categoryName: 'Вклад', periods: {}, children: [], comparison: { previous: -1000, current: -2000 } }] }
+        const savings = { categoryId: 33, categoryName: 'Накопления', periods: {}, comparison: { previous: 1000, current: 2000 },
+            children: [{ categoryId: 34, categoryName: 'Вклад', periods: {}, children: [], comparison: { previous: 1000, current: 2000 } }] }
         const deltas = mountRow({ category: savings, showDelta: true }).findAll('.hm-delta')
         expect(deltas.map(d => d.classes().includes('hm-delta-good'))).toEqual([true, true])
     })

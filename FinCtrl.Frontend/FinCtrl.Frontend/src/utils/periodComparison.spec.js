@@ -101,8 +101,8 @@ describe('magnitude / семантика', () => {
     expect(magnitude(Semantics.Income, 100000)).toBe(100000)
   })
 
-  it('«Накопления»: S = −v', () => {
-    expect(magnitude(Semantics.Savings, -20000)).toBe(20000)
+  it('«Накопления»: S = +v (перевод в накопления — поступление)', () => {
+    expect(magnitude(Semantics.Savings, 20000)).toBe(20000)
   })
 
   it('getSemantics: доход, «Накопления» (id 33) и потомки накоплений', () => {
@@ -176,6 +176,6 @@ describe('deltaCellView', () => {
   })
 
   it('«Накопления»: рост — зелёный', () => {
-    expect(deltaCellView(node(-1000, -2000), Semantics.Savings)).toMatchObject({ arrow: '▲', tone: DeltaTone.Good })
+    expect(deltaCellView(node(1000, 2000), Semantics.Savings)).toMatchObject({ arrow: '▲', tone: DeltaTone.Good })
   })
 })

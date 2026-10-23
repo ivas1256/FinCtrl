@@ -22,10 +22,11 @@ export const getSemantics = (node, inSavings = false) => {
 export const isIncomeSemantics = (semantics) =>
     semantics === Semantics.Income || semantics === Semantics.Savings
 
-// Величина S: положительное число «в основную сторону» строки. Доходы — +v, траты и «Накопления» — −v
+// Величина S: положительное число «в основную сторону» строки. Доходы и «Накопления» — +v, траты — −v
+// («Накопления» на dev-базе приходят поступлениями, v > 0 — проверено в задаче 0028)
 export const magnitude = (semantics, value) => {
     const v = value || 0
-    return semantics === Semantics.Income ? v : -v
+    return isIncomeSemantics(semantics) ? v : -v
 }
 
 const ZERO = 1e-9

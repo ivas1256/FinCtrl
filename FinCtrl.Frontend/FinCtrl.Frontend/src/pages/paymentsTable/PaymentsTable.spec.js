@@ -81,6 +81,20 @@ describe('PaymentsTable: колонка Δ к прошлому периоду', 
         expect(wrapper.find('.hm-footnote').text()).not.toContain('с учётом выбранных тегов')
     })
 
+    it('при выбранных тегах они уходят в запрос, подпись дополнена «с учётом выбранных тегов»', async () => {
+        const wrapper = await mountWith(response(true))
+        const axios = (await import('axios')).default
+        axios.get.mockClear()
+
+        wrapper.findComponent({ name: 'TagMultiSelect' }).vm.$emit('update:modelValue', [7])
+        await flushPromises()
+
+        const [, config] = axios.get.mock.calls.find(([url]) => url.endsWith('/api/PaymentsApi'))
+        expect(config.params.getAll('tagIds')).toEqual(['7'])
+        expect(wrapper.find('.hm-footnote').text())
+            .toContain('Δ — октябрь по 21 число против всего сентября, с учётом выбранных тегов')
+    })
+
     it('без comparison в ответе колонки и подписи нет', async () => {
         const wrapper = await mountWith(response(false))
         expect(wrapper.find('th.hm-col-delta').exists()).toBe(false)
