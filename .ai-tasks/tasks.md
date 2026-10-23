@@ -30,7 +30,7 @@
 | 0023 | `chore/0023-unit-tests-current-features` | `.ai-tasks/chore/0023-unit-tests-current-features/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/26 (стек поверх #25) |
 | 0024 | `refactor/0024-heatmap-style-tokens` | `.ai-tasks/refactor/0024-heatmap-style-tokens/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/28 |
 | 0025 | `fix/0025-heatmap-total-from-backend` | `.ai-tasks/fix/0025-heatmap-total-from-backend/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/29 (стек поверх #28) |
-| 0026 | `feature/0026-period-comparison-api` | `.ai-tasks/feature/0026-period-comparison-api/` | запланирована | — |
+| 0026 | `feature/0026-period-comparison-api` | `.ai-tasks/feature/0026-period-comparison-api/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/30 (стек поверх #29) |
 | 0027 | `feature/0027-period-comparison-utils` | `.ai-tasks/feature/0027-period-comparison-utils/` | запланирована | — |
 | 0028 | `feature/0028-heatmap-delta-column` | `.ai-tasks/feature/0028-heatmap-delta-column/` | запланирована | — |
 | 0029 | `feature/0029-heatmap-cells-a11y` | `.ai-tasks/feature/0029-heatmap-cells-a11y/` | запланирована | — |

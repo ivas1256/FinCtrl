@@ -14,22 +14,25 @@ public class MainStatisticServiceTests
 {
     private static readonly DateRange AnyRange = new(new DateTime(2025, 1, 1), new DateTime(2027, 1, 1));
 
+    // Фильтр таблицы после «сегодня» (15.10.2025): текущий период сравнения с ним не пересекается и колонку не добавляет.
+    private static readonly DateRange TableRange = new(new DateTime(2026, 1, 1), new DateTime(2027, 1, 1));
+
     private readonly IPaymentService _paymentService = Substitute.For<IPaymentService>();
     private readonly ICategoryService _categoryService = Substitute.For<ICategoryService>();
+    private readonly FakeTimeProvider _timeProvider = new();
     private readonly MainStatisticService _service;
     private readonly Category _food = new(1);
 
     public MainStatisticServiceTests()
     {
-        var timeProvider = new FakeTimeProvider();
-        timeProvider.SetLocalTimeZone(TimeZoneInfo.Utc);
-        timeProvider.SetUtcNow(new DateTimeOffset(2025, 10, 15, 14, 0, 0, TimeSpan.Zero));
+        _timeProvider.SetLocalTimeZone(TimeZoneInfo.Utc);
+        GivenNow(new DateTime(2025, 10, 15, 14, 0, 0));
 
         _categoryService.GetCategoriesTree().Returns(_ => BuildTree());
         _categoryService.GetAllChildCategories(Arg.Any<int>(), Arg.Any<List<Category>>())
             .Returns(ci => Descendants(ci.ArgAt<List<Category>>(1), ci.ArgAt<int>(0)));
 
-        _service = new MainStatisticService(_paymentService, _categoryService, timeProvider);
+        _service = new MainStatisticService(_paymentService, _categoryService, _timeProvider);
     }
 
     [Fact]
@@ -114,7 +117,7 @@ public class MainStatisticServiceTests
             Spending(-30, new DateTime(2026, 2, 1), cafe),
             Spending(-7, new DateTime(2026, 1, 20), category: null));
 
-        var table = await _service.GetPaymentsTable(AnyRange, GroupingType.Month);
+        var table = await _service.GetPaymentsTable(TableRange, GroupingType.Month);
 
         Assert.Equal(new[] { "012026", "022026" }, table.Periods.Select(p => p.Key));
         Assert.Equal(new DateRange(new DateTime(2026, 1, 1), new DateTime(2026, 2, 1)), table.Periods[0].Range);
@@ -144,7 +147,7 @@ public class MainStatisticServiceTests
     {
         GivenPayments(Spending(-100, DateTime.Parse(date, System.Globalization.CultureInfo.InvariantCulture)));
 
-        var table = await _service.GetPaymentsTable(AnyRange, groupingType);
+        var table = await _service.GetPaymentsTable(TableRange, groupingType);
 
         Assert.Equal(expectedKey, Assert.Single(table.Periods).Key);
     }
@@ -154,7 +157,7 @@ public class MainStatisticServiceTests
     {
         GivenPayments(Spending(-100, new DateTime(2026, 2, 17, 15, 0, 0)));
 
-        var table = await _service.GetPaymentsTable(AnyRange, GroupingType.Day);
+        var table = await _service.GetPaymentsTable(TableRange, GroupingType.Day);
 
         Assert.Equal(new DateRange(new DateTime(2026, 2, 17), new DateTime(2026, 2, 18)), Assert.Single(table.Periods).Range);
     }
@@ -175,7 +178,7 @@ public class MainStatisticServiceTests
     {
         GivenPayments();
 
-        var table = await _service.GetPaymentsTable(AnyRange, GroupingType.Month);
+        var table = await _service.GetPaymentsTable(TableRange, GroupingType.Month);
 
         Assert.Empty(table.Periods);
         Assert.Equal(4, table.Tree.Count);
@@ -356,10 +359,192 @@ public class MainStatisticServiceTests
         await _paymentService.Received(1).GetByDateRange(AnyRange, tagIds);
     }
 
+    // Сегодня 21.10.2026 (среда), если не указано иное; фильтр шире обоих периодов — D = сегодня.
+    [Theory]
+    [InlineData(GroupingType.Month, "2026-10-21", "102026", "2026-10-01", "2026-11-01", "092026", "2026-09-01")]
+    [InlineData(GroupingType.Month, "2026-01-15", "012026", "2026-01-01", "2026-02-01", "122025", "2025-12-01")]
+    [InlineData(GroupingType.Week, "2026-10-21", "432026", "2026-10-19", "2026-10-26", "422026", "2026-10-12")]
+    [InlineData(GroupingType.Week, "2026-01-01", "532025", "2025-12-29", "2026-01-05", "522025", "2025-12-22")]
+    [InlineData(GroupingType.Week, "2026-01-05", "22026", "2026-01-05", "2026-01-12", "532025", "2025-12-29")]
+    [InlineData(GroupingType.Quartal, "2026-10-21", "Q42026", "2026-10-01", "2027-01-01", "Q32026", "2026-07-01")]
+    [InlineData(GroupingType.Quartal, "2026-02-10", "Q12026", "2026-01-01", "2026-04-01", "Q42025", "2025-10-01")]
+    [InlineData(GroupingType.Year, "2026-10-21", "2026", "2026-01-01", "2027-01-01", "2025", "2025-01-01")]
+    [InlineData(GroupingType.Day, "2026-10-21", "21.10.2026", "2026-10-21", "2026-10-22", "20.10.2026", "2026-10-20")]
+    [InlineData(GroupingType.Day, "2026-01-01", "01.01.2026", "2026-01-01", "2026-01-02", "31.12.2025", "2025-12-31")]
+    public async Task GetPaymentsTable_Comparison_CurrentPeriodToDateAndWholePreviousPeriod(
+        GroupingType groupingType, string today, string currentKey, string currentFrom, string currentPeriodTo,
+        string previousKey, string previousFrom)
+    {
+        GivenNow(D(today).AddHours(14));
+        GivenPayments();
+
+        var table = await _service.GetPaymentsTable(new DateRange(D("2020-01-01"), D("2030-01-01")), groupingType);
+
+        var comparison = table.Comparison!;
+        Assert.Equal(D(today), comparison.AsOf);
+        Assert.Equal(currentKey, comparison.Current.Key);
+        Assert.Equal(new DateRange(D(currentFrom), D(today).AddDays(1)), comparison.Current.Range);
+        Assert.Equal(D(currentPeriodTo), comparison.CurrentPeriodTo);
+        Assert.Equal(previousKey, comparison.Previous.Key);
+        Assert.Equal(new DateRange(D(previousFrom), D(currentFrom)), comparison.Previous.Range);
+        Assert.Equal(D(today).AddDays(1) < D(currentPeriodTo), comparison.IsCurrentPartial);
+    }
+
+    [Theory]
+    [InlineData(GroupingType.Month, "2026-10-31")]
+    [InlineData(GroupingType.Week, "2026-10-25")]
+    [InlineData(GroupingType.Quartal, "2026-12-31")]
+    [InlineData(GroupingType.Year, "2026-12-31")]
+    [InlineData(GroupingType.Day, "2026-10-21")]
+    public async Task GetPaymentsTable_TodayIsLastDayOfPeriod_CurrentIsNotPartial(GroupingType groupingType, string today)
+    {
+        GivenNow(D(today).AddHours(23));
+        GivenPayments();
+
+        var table = await _service.GetPaymentsTable(new DateRange(D("2020-01-01"), D("2030-01-01")), groupingType);
+
+        Assert.False(table.Comparison!.IsCurrentPartial);
+        Assert.Equal(table.Comparison.CurrentPeriodTo, table.Comparison.Current.Range.To);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_FilterEndsInPast_AsOfIsLastFilterDay()
+    {
+        GivenNow(new DateTime(2026, 10, 21, 14, 0, 0));
+        GivenPayments();
+
+        var table = await _service.GetPaymentsTable(DateRange.FromInclusiveDates(D("2026-01-01"), D("2026-03-15")), GroupingType.Month);
+
+        var comparison = table.Comparison!;
+        Assert.Equal(D("2026-03-15"), comparison.AsOf);
+        Assert.Equal(new DateRange(D("2026-03-01"), D("2026-03-16")), comparison.Current.Range);
+        Assert.Equal(new DateRange(D("2026-02-01"), D("2026-03-01")), comparison.Previous.Range);
+        Assert.True(comparison.IsCurrentPartial);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_FilterEndsOnLastDayOfPastMonth_CurrentIsWholeMonth()
+    {
+        GivenNow(new DateTime(2026, 10, 21, 14, 0, 0));
+        GivenPayments();
+
+        var table = await _service.GetPaymentsTable(DateRange.FromInclusiveDates(D("2026-01-01"), D("2026-03-31")), GroupingType.Month);
+
+        Assert.Equal(D("2026-03-31"), table.Comparison!.AsOf);
+        Assert.Equal(new DateRange(D("2026-03-01"), D("2026-04-01")), table.Comparison.Current.Range);
+        Assert.False(table.Comparison.IsCurrentPartial);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_NoRange_AsOfIsToday()
+    {
+        GivenNow(new DateTime(2026, 10, 21, 14, 0, 0));
+        GivenPayments();
+
+        var table = await _service.GetPaymentsTable(null, GroupingType.Month);
+
+        Assert.Equal(D("2026-10-21"), table.Comparison!.AsOf);
+        Assert.Equal("102026", table.Comparison.Current.Key);
+        Assert.Equal("092026", table.Comparison.Previous.Key);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_Comparison_SumsIncludeDescendantsAndPreviousPeriodOutsideFilter()
+    {
+        GivenNow(new DateTime(2026, 10, 21, 14, 0, 0));
+        var cafe = new Category(2);
+        var salary = new Category(3) { IsOnlyIncome = true };
+        GivenPayments(
+            Spending(-100, D("2026-09-05")),
+            Spending(-50, D("2026-09-20"), cafe),
+            Spending(500, D("2026-09-10"), salary),
+            Spending(-30, D("2026-10-03")),
+            Spending(-20, D("2026-10-10"), cafe),
+            Spending(-7, D("2026-10-02"), category: null),
+            Spending(-999, D("2026-10-25")));  // после D — в Т не входит
+
+        var table = await _service.GetPaymentsTable(DateRange.FromInclusiveDates(D("2026-10-01"), D("2026-10-31")), GroupingType.Month);
+
+        var food = table.Tree[0];
+        Assert.Equal((-50m, -150m), (food.Comparison!.Current, food.Comparison.Previous));
+        Assert.Equal((-20m, -50m), (food.Children[0].Comparison!.Current, food.Children[0].Comparison!.Previous));
+        Assert.Equal((0m, 500m), (table.Tree[1].Comparison!.Current, table.Tree[1].Comparison!.Previous));
+
+        var empty = table.Tree[2];
+        Assert.Equal(CategoryIds.FakeEmpty, empty.Category.CategoryId);
+        Assert.Equal((-7m, 0m), (empty.Comparison!.Current, empty.Comparison.Previous));
+
+        var total = table.Tree[3];
+        Assert.Equal(CategoryIds.FakeTotal, total.Category.CategoryId);
+        Assert.Equal((-50m, -150m), (total.Comparison!.Current, total.Comparison.Previous));
+
+        Assert.Equal(new[] { "102026" }, table.Periods.Select(p => p.Key));
+        Assert.Equal(-1049, food.Cells["102026"].TotalSum);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_Comparison_SelectedWithTagsFromPreviousStartToAsOf()
+    {
+        GivenNow(new DateTime(2026, 10, 21, 14, 0, 0));
+        GivenPayments();
+        int[] tagIds = [3];
+
+        await _service.GetPaymentsTable(DateRange.FromInclusiveDates(D("2026-10-01"), D("2026-10-31")), GroupingType.Quartal, tagIds);
+
+        await _paymentService.Received(1).GetByDateRange(new DateRange(D("2026-07-01"), D("2026-10-22")), tagIds);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_NoPaymentsInComparison_SumsAreZero()
+    {
+        GivenNow(new DateTime(2026, 10, 21, 14, 0, 0));
+        GivenPayments(Spending(-100, D("2026-05-05")));
+
+        var table = await _service.GetPaymentsTable(new DateRange(D("2026-01-01"), D("2027-01-01")), GroupingType.Month);
+
+        Assert.All(table.Tree, n => Assert.Equal((0m, 0m), (n.Comparison!.Current, n.Comparison.Previous)));
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_CurrentPeriodWithoutPaymentsInsideFilter_AddedToPeriods()
+    {
+        GivenNow(new DateTime(2026, 10, 21, 14, 0, 0));
+        GivenPayments(Spending(-100, D("2026-09-05")));
+
+        var table = await _service.GetPaymentsTable(DateRange.FromInclusiveDates(D("2026-09-01"), D("2026-10-31")), GroupingType.Month);
+
+        Assert.Equal(new[] { "092026", "102026" }, table.Periods.Select(p => p.Key));
+        Assert.Equal(new DateRange(D("2026-10-01"), D("2026-11-01")), table.Periods[1].Range);
+        Assert.Equal(0, table.Tree[0].Cells["102026"].TotalSum);
+        Assert.Empty(table.Tree[0].Cells["102026"].Payments);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_CurrentPeriodOutsideFilter_NotAddedToPeriods()
+    {
+        GivenNow(new DateTime(2026, 10, 21, 14, 0, 0));
+        GivenPayments(Spending(-100, D("2026-11-05")));
+
+        var table = await _service.GetPaymentsTable(DateRange.FromInclusiveDates(D("2026-11-01"), D("2026-11-30")), GroupingType.Month);
+
+        Assert.Equal(new[] { "112026" }, table.Periods.Select(p => p.Key));
+        Assert.Equal("102026", table.Comparison!.Current.Key);
+    }
+
     private void GivenPayments(params Payment[] payments)
     {
-        _paymentService.GetByDateRange(Arg.Any<DateRange>(), Arg.Any<int[]?>()).Returns(payments.ToList());
+        _paymentService.GetByDateRange(Arg.Any<DateRange>(), Arg.Any<int[]?>())
+            .Returns(ci =>
+            {
+                var range = ci.ArgAt<DateRange>(0);
+                return payments.Where(p => p.PaymentDate >= range.From && p.PaymentDate < range.To).ToList();
+            });
     }
+
+    private void GivenNow(DateTime localNow)
+        => _timeProvider.SetUtcNow(new DateTimeOffset(localNow, TimeSpan.Zero));
+
+    private static DateTime D(string date) => DateTime.Parse(date, System.Globalization.CultureInfo.InvariantCulture);
 
     private Payment Spending(decimal sum, DateTime date) => Spending(sum, date, _food);
 
