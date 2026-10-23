@@ -43,7 +43,7 @@
     <!-- Таблица платежей — тепловая карта -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Расходы по категориям</h5>
+            <h5 ref="tableHeading" class="mb-0" tabindex="-1">Расходы по категориям</h5>
             <div class="hm-legend">
                 <span class="text-muted small">меньше</span>
                 <div class="hm-legend-bar"></div>
@@ -85,7 +85,10 @@
                                 :selected-category-id="selectedCategoryId"
                                 :selected-period-key="selectedPeriodKey"
                                 :show-delta="!!deltaHeader"
+                                :comparison-labels="comparisonLabels"
+                                :selected-delta-id="comparisonScopeKey"
                                 @cell-click="handleCellClick"
+                                @delta-click="toggleComparison"
                             />
                         </template>
                     </tbody>
@@ -95,7 +98,16 @@
                             <td class="hm-total-amt" v-for="period in periodHeaders" :key="period.key">
                                 {{ formatSignedCurrency(totalNode.periods?.[period.key]?.totalSum || 0) }}
                             </td>
-                            <DeltaCell v-if="deltaHeader" :node="totalNode" :semantics="Semantics.Expense" total />
+                            <DeltaCell
+                                v-if="deltaHeader"
+                                :node="totalNode"
+                                :semantics="Semantics.Expense"
+                                total
+                                name="Все траты"
+                                :labels="comparisonLabels"
+                                :selected="comparisonScopeKey === TOTAL_SCOPE"
+                                @select="toggleComparison(TOTAL_SCOPE)"
+                            />
                         </tr>
                     </tfoot>
                 </table>
@@ -112,6 +124,21 @@
             </div>
         </div>
     </div>
+
+    <!-- Карточка сравнения по клику на Δ; под таблицей открыт либо он, либо блок платежей (СР §3.2) -->
+    <ComparisonCard
+        v-if="comparisonCard"
+        ref="comparisonCardRef"
+        :id="COMPARISON_CARD_ID"
+        :comparison="comparison"
+        :grouping-type="comparisonRequest.groupingType"
+        :with-tags="comparisonRequest.withTags"
+        :node="comparisonCard.node"
+        :parent="comparisonCard.parent"
+        :semantics="comparisonCard.semantics"
+        :is-total="comparisonCard.isTotal"
+        @close="closeComparison"
+    />
 
     <!-- PaymentsTable.vue - обновленная секция с выбранными платежами -->
     <div v-if="selectedPayments.length > 0" class="mt-4">
@@ -232,7 +259,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import axios from 'axios'
 import { getErrorMessage } from '../../utils/apiError'
 import { APP_CONFIG } from '../../config'
@@ -244,9 +271,17 @@ import { Modal } from 'bootstrap'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
 import { computeMaxValue, splitTotalNode, hasAnySum } from '../../utils/heatmap'
 import { formatCurrency, formatSignedCurrency, toInputDate } from '../../utils/format'
-import { formatPeriodHeader, formatComparisonHeader, formatComparisonCaption, GroupingType } from '../../utils/periodHeader'
-import { Semantics } from '../../utils/periodComparison'
+import {
+    formatPeriodHeader,
+    formatComparisonHeader,
+    formatComparisonCaption,
+    formatComparisonPhrase,
+    formatComparisonCellTitle,
+    GroupingType
+} from '../../utils/periodHeader'
+import { Semantics, findComparisonScope } from '../../utils/periodComparison'
 import DeltaCell from './DeltaCell.vue'
+import ComparisonCard from './ComparisonCard.vue'
 import AlertMessage from '../../components/AlertMessage.vue'
 import { useAlerts } from '../../composables/useAlerts'
 
@@ -378,6 +413,28 @@ const deltaCaption = computed(() => {
     const caption = formatComparisonCaption(comparison.value, comparisonRequest.value.groupingType)
     return comparisonRequest.value.withTags ? `${caption}, с учётом выбранных тегов` : caption
 })
+// Карточка сравнения (СР §3–§4): охват — categoryId строки или TOTAL_SCOPE для «Итого»
+const COMPARISON_CARD_ID = 'comparison-card'
+const TOTAL_SCOPE = 'total'
+const comparisonScopeKey = ref(null)
+const comparisonCardRef = ref(null)
+const tableHeading = ref(null)
+const comparisonLabels = computed(() => deltaHeader.value
+    ? {
+        phrase: formatComparisonPhrase(comparison.value, comparisonRequest.value.groupingType),
+        title: formatComparisonCellTitle(comparison.value, comparisonRequest.value.groupingType),
+        cardId: COMPARISON_CARD_ID
+    }
+    : null)
+const comparisonCard = computed(() => {
+    const key = comparisonScopeKey.value
+    if (key === null || !deltaHeader.value) return null
+    if (key === TOTAL_SCOPE) {
+        return totalNode.value ? { node: totalNode.value, parent: null, semantics: Semantics.Expense, isTotal: true } : null
+    }
+    const scope = findComparisonScope(treeRows.value, key)
+    return scope ? { ...scope, isTotal: false } : null
+})
 const selectedPayments = ref([])
 const selectedCellData = reactive({
     categoryName: '',
@@ -425,6 +482,7 @@ const fetchData = async (groupingType) => {
 }
 
 const handleCellClick = (payments, categoryName, periodName, totalSum, categoryId, periodKey) => {
+    comparisonScopeKey.value = null
     selectedPayments.value = payments
     selectedCellData.categoryName = categoryName
     selectedCellData.periodName = periodName
@@ -449,6 +507,28 @@ const clearSelection = () => {
     selectedPeriodKey.value = null
 }
 
+
+// Клик по Δ: закрывает блок платежей и открывает карточку; повторный клик по той же Δ — закрывает (СР §3.2)
+const toggleComparison = async (key) => {
+    if (comparisonScopeKey.value === key) {
+        comparisonScopeKey.value = null
+        return
+    }
+    clearSelection()
+    comparisonScopeKey.value = key
+    await nextTick()
+    comparisonCardRef.value?.reveal()
+}
+
+// «Скрыть»/Esc: фокус возвращается на Δ-ячейку, если её строка видна, иначе — на заголовок таблицы (СР §3.3)
+const closeComparison = async () => {
+    const key = comparisonScopeKey.value
+    comparisonScopeKey.value = null
+    await nextTick()
+    const cell = document.querySelector(`#payments-table [data-delta-key="${key}"]`)
+    if (cell) cell.focus()
+    else tableHeading.value?.focus()
+}
 
 const findCategoryById = (tree, categoryId) => {
     for (const cat of tree) {
@@ -577,12 +657,14 @@ const submitForm = async () => {
                 label: item.label
             }))
         
-        // Очищаем выбранные платежи при обновлении данных
+        // Очищаем выбранные платежи и закрываем карточку сравнения при обновлении данных (СР §3.5)
         clearSelection()
+        comparisonScopeKey.value = null
     } catch (err) {
         console.error('Ошибка загрузки платежей:', err)
         paymentsTree.value = []
         comparison.value = null
+        comparisonScopeKey.value = null
         periodHeaders.value = []
         maxValue.value = 0
         showError('Ошибка загрузки платежей')
