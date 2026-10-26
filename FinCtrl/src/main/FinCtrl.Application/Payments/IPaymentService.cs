@@ -46,8 +46,9 @@ namespace FinCtrl.Application.Payments
 
         /// <summary>Добавляет теги платежам периода с итоговой категорией из списка, не трогая уже назначенные.</summary>
         /// <param name="dateRange">Период; <c>To</c> — исключающая граница.</param>
+        /// <param name="categoryIds">Итоговые категории (без учёта потомков); пустой список — все платежи периода, включая без категории.</param>
         /// <returns>Число подходящих платежей.</returns>
-        /// <exception cref="FinCtrl.Common.Application.ValidationException">Не выбраны категории или теги, тег не найден или период перевёрнут.</exception>
+        /// <exception cref="FinCtrl.Common.Application.ValidationException">Не выбраны теги, тег не найден или период перевёрнут.</exception>
         Task<int> BulkAssignTags(DateRange dateRange, List<int> categoryIds, List<int> tagIds);
     }
 }

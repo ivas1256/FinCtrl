@@ -6,6 +6,7 @@ using FinCtrl.Domain;
 using FinCtrl.Domain.Statistic;
 using FinCtrl.Website.Controllers;
 using FinCtrl.Website.Controllers.PaymentsApi;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
@@ -99,6 +100,37 @@ public class PaymentsApiControllerTests
         Assert.Equal(4, response.AffectedCount);
         await _paymentService.Received(1).BulkAssignTags(
             new DateRange(new DateTime(2025, 10, 1), new DateTime(2025, 11, 1)), request.CategoryIds, request.TagIds);
+    }
+
+    [Fact]
+    public async Task BulkAssignTags_NoCategoryIds_PassesEmptyListToService()
+    {
+        _paymentService.BulkAssignTags(Arg.Any<DateRange>(), Arg.Any<List<int>>(), Arg.Any<List<int>>()).Returns(9);
+        var request = new BulkAssignTagsRequest
+        {
+            From = new DateTime(2025, 10, 1),
+            To = new DateTime(2025, 10, 7),
+            TagIds = [1]
+        };
+
+        var result = await _controller.BulkAssignTags(request);
+
+        var response = Assert.IsType<BulkAssignTagsResponse>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(9, response.AffectedCount);
+        await _paymentService.Received(1).BulkAssignTags(
+            Arg.Any<DateRange>(), Arg.Is<List<int>>(ids => ids.Count == 0), Arg.Any<List<int>>());
+    }
+
+    [Fact]
+    public void BulkAssignTagsRequest_NoCategoryIds_IsValid()
+    {
+        var request = new BulkAssignTagsRequest { From = new DateTime(2025, 10, 1), To = new DateTime(2025, 10, 7), TagIds = [1] };
+        var results = new List<ValidationResult>();
+
+        var isValid = Validator.TryValidateObject(
+            request, new ValidationContext(request), results, validateAllProperties: true);
+
+        Assert.True(isValid);
     }
 
     [Fact]

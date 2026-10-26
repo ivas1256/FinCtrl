@@ -175,10 +175,42 @@ public class PaymentServiceTests
     }
 
     [Fact]
-    public async Task BulkAssignTags_NoCategoriesOrTags_ThrowsValidationException()
+    public async Task BulkAssignTags_NoCategories_AddsTagsToAllPaymentsOfPeriod()
     {
-        await Assert.ThrowsAsync<ValidationException>(() => _service.BulkAssignTags(October, [], [1]));
+        var source = new PaymentSource(3, "Магазин", 7, null, Now, null);
+        _paymentRepository.GetByDateRange(October).Returns(new List<Payment>
+        {
+            new() { PaymentId = 1, PaymentCategory = new Category(8) },
+            new() { PaymentId = 2, PaymentSource = source },
+            new() { PaymentId = 3 },
+            new() { PaymentId = 4, ExcludeFromStats = true }
+        });
+
+        var count = await _service.BulkAssignTags(October, [], [1]);
+
+        Assert.Equal(4, count);
+        await _paymentRepository.Received(1).AddTagsToPayments(
+            Arg.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 1, 2, 3, 4 })),
+            Arg.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 1 })));
+    }
+
+    [Fact]
+    public async Task BulkAssignTags_NoCategoriesEmptyPeriod_ReturnsZeroAndPassesEmptyList()
+    {
+        _paymentRepository.GetByDateRange(October).Returns(new List<Payment>());
+
+        var count = await _service.BulkAssignTags(October, [], [1]);
+
+        Assert.Equal(0, count);
+        await _paymentRepository.Received(1).AddTagsToPayments(
+            Arg.Is<IEnumerable<int>>(ids => !ids.Any()), Arg.Any<IEnumerable<int>>());
+    }
+
+    [Fact]
+    public async Task BulkAssignTags_NoTags_ThrowsValidationException()
+    {
         await Assert.ThrowsAsync<ValidationException>(() => _service.BulkAssignTags(October, [7], []));
+        await Assert.ThrowsAsync<ValidationException>(() => _service.BulkAssignTags(October, [], []));
     }
 
     [Fact]

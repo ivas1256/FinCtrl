@@ -136,8 +136,6 @@ namespace FinCtrl.Application.Payments
 
         public async Task<int> BulkAssignTags(DateRange dateRange, List<int> categoryIds, List<int> tagIds)
         {
-            if (categoryIds.Count == 0)
-                throw new ValidationException("Не выбраны категории");
             if (tagIds.Count == 0)
                 throw new ValidationException("Не выбраны теги");
             if (dateRange.From >= dateRange.To)
@@ -146,8 +144,10 @@ namespace FinCtrl.Application.Payments
             await EnsureTagsExist(tagIds);
 
             var payments = await _paymentRepository.GetByDateRange(dateRange);
+            // Пустой список категорий — фильтра нет: все платежи периода, в т.ч. без категории.
             var matchingIds = payments
-                .Where(p => p.CalculatedCategory != null && categoryIds.Contains(p.CalculatedCategory.CategoryId))
+                .Where(p => categoryIds.Count == 0
+                    || (p.CalculatedCategory != null && categoryIds.Contains(p.CalculatedCategory.CategoryId)))
                 .Select(p => p.PaymentId)
                 .ToList();
 
