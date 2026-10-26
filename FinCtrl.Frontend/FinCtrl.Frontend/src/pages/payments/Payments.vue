@@ -299,11 +299,12 @@
                                 track-by="categoryId"
                                 :multiple="true"
                                 :close-on-select="false"
-                                placeholder="Выберите категории"
+                                placeholder="Все категории"
                                 select-label=""
                                 deselect-label=""
                                 selected-label=""
                             />
+                            <div class="form-text">Не выбрано — теги получат все операции периода</div>
                         </div>
 
                         <div class="mb-3">
@@ -642,10 +643,6 @@ const openBulkModal = () => {
 const submitBulkAssign = async () => {
     if (!bulkDateFrom.value || !bulkDateTo.value) {
         bulkError.value = 'Укажите период'
-        return
-    }
-    if (bulkSelectedCategories.value.length === 0) {
-        bulkError.value = 'Выберите хотя бы одну категорию'
         return
     }
     if (bulkTagIds.value.length === 0) {
