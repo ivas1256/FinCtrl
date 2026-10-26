@@ -38,3 +38,4 @@
 | 0031 | `feature/0031-comparison-card-open` | `.ai-tasks/feature/0031-comparison-card-open/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/35 |
 | 0032 | `feature/0032-comparison-card-rows` | `.ai-tasks/feature/0032-comparison-card-rows/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/36 (стек поверх #35) |
 | 0033 | `feature/0033-comparison-card-content` | `.ai-tasks/feature/0033-comparison-card-content/` | запланирована | — |
+| 0034 | `feature/0034-bulk-tags-whole-period` | `.ai-tasks/feature/0034-bulk-tags-whole-period/` | запланирована | — |
