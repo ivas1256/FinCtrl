@@ -40,4 +40,4 @@
 | 0033 | `feature/0033-comparison-card-content` | `.ai-tasks/feature/0033-comparison-card-content/` | запланирована | — |
 | 0034 | `feature/0034-bulk-tags-whole-period` | `.ai-tasks/feature/0034-bulk-tags-whole-period/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/38 |
 | 0035 | `feature/0035-ai-assistant-classify-api` | `.ai-tasks/feature/0035-ai-assistant-classify-api/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/39 |
-| 0036 | `feature/0036-ai-payment-source-classification` | `.ai-tasks/feature/0036-ai-payment-source-classification/` | в работе | — |
+| 0036 | `feature/0036-ai-payment-source-classification` | `.ai-tasks/feature/0036-ai-payment-source-classification/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/40 |
