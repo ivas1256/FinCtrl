@@ -24,7 +24,7 @@ copy .env.example .env   # вписать LLM_API_KEY
 ## Структура
 
 - `main.py` — приложение, эндпоинт, обработчики ошибок;
-- `config.py` — настройки; `logging_setup.py` — лог в файл;
-- `llm_client.py` — `LlmClient`, отправка запроса к LLM;
-- `classifier.py` — `PaymentSourceClassifier` (промт из `promts/`);
-- `response_validation.py` — проверка ответа LLM.
+- `infrastructure/config.py` — настройки; `infrastructure/logging_setup.py` — лог в файл;
+- `infrastructure/llm_client.py` — `LlmClient`, отправка запроса к LLM;
+- `application/payment_source_classifier.py` — `PaymentSourceClassifier` (промт из `promts/`);
+- `application/response_validation.py` — проверка ответа LLM.

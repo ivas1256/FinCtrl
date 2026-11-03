@@ -5,10 +5,10 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from classifier import PaymentSourceClassifier
-from config import get_settings
-from llm_client import LlmClient
-from logging_setup import configure_logging
+from application.payment_source_classifier import PaymentSourceClassifier
+from infrastructure.config import get_settings
+from infrastructure.llm_client import LlmClient
+from infrastructure.logging_setup import configure_logging
 from models import ClassifiedPaymentSource, PaymentSource
 
 settings = get_settings()

@@ -1,7 +1,7 @@
 import openai
 from openai import OpenAI
 
-from config import Settings
+from infrastructure.config import Settings
 
 
 class LlmError(Exception):

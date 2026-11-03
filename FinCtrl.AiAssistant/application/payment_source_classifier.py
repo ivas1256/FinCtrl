@@ -1,9 +1,9 @@
 import json
 
-from config import BASE_DIR
-from llm_client import LlmClient
-from models import ClassifiedPaymentSource, PaymentSource
-from response_validation import LlmResponseValidationError, parse_classification
+from infrastructure.config import BASE_DIR
+from infrastructure.llm_client import LlmClient
+from models import classified_payment_source, payment_source
+from application.response_validation import LlmResponseValidationError, parse_classification
 
 PROMTS_DIR = BASE_DIR / "promts"
 
@@ -18,7 +18,7 @@ class PaymentSourceClassifier:
     def __init__(self, llm_client: LlmClient):
         self._llm_client = llm_client
 
-    def classify(self, sources: list[PaymentSource]) -> list[ClassifiedPaymentSource]:
+    def classify(self, sources: list[payment_source]) -> list[classified_payment_source]:
         raw = self._llm_client.complete(
             system_prompt=read_promt("classify-payment-sources.md"),
             user_content=json.dumps([s.model_dump() for s in sources], ensure_ascii=False),
