@@ -1,5 +1,6 @@
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Application.PaymentSources.Classification;
+using FinCtrl.Common.Application;
 using FinCtrl.Domain;
 using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
@@ -89,6 +90,42 @@ public class PaymentSourceClassificationServiceTests
         Assert.True(sources[1].IsAiClassified);
         Assert.Null(sources[2].Classification);
         await _repository.Received(1).UpdateClassifications(Arg.Any<IReadOnlyList<PaymentSource>>());
+    }
+
+    [Fact]
+    public async Task ClassifyLatestUnclassified_Count_ClassifiesAndSavesFoundSources()
+    {
+        var sources = Sources(3);
+        _repository.GetLatestUnclassified(10).Returns(sources);
+
+        var result = await CreateService().ClassifyLatestUnclassified(10);
+
+        Assert.Null(result.Error);
+        Assert.Same(sources, result.PaymentSources);
+        Assert.All(sources, s => Assert.True(s.IsAiClassified));
+        await _repository.Received(1).UpdateClassifications(Arg.Is<IReadOnlyList<PaymentSource>>(x => x.Count == 3));
+    }
+
+    [Fact]
+    public async Task ClassifyLatestUnclassified_ClassifierFails_ReturnsErrorWithoutSaving()
+    {
+        _repository.GetLatestUnclassified(2).Returns(Sources(2));
+        _classifier.Classify(Arg.Any<IReadOnlyList<PaymentSource>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new PaymentSourceClassificationException("сервис недоступен"));
+
+        var result = await CreateService().ClassifyLatestUnclassified(2);
+
+        Assert.Equal("сервис недоступен", result.Error);
+        await _repository.DidNotReceiveWithAnyArgs().UpdateClassifications(default!);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(PaymentSourceClassificationService.MaxUnclassifiedCount + 1)]
+    public async Task ClassifyLatestUnclassified_CountOutOfRange_Throws(int count)
+    {
+        await Assert.ThrowsAsync<ValidationException>(() => CreateService().ClassifyLatestUnclassified(count));
+        await _repository.DidNotReceiveWithAnyArgs().GetLatestUnclassified(default);
     }
 
     private PaymentSourceClassificationService CreateService(int batchSize = 30) =>

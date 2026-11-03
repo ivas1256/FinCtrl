@@ -1,4 +1,5 @@
 ﻿using FinCtrl.Application.PaymentSources;
+using FinCtrl.Application.PaymentSources.Classification;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinCtrl.Website.Controllers.PaymentSourcesApi
@@ -8,10 +9,28 @@ namespace FinCtrl.Website.Controllers.PaymentSourcesApi
     public class PaymentSourcesApiController : ControllerBase
     {
         private readonly IPaymentSourceService _paymentSourceService;
+        private readonly IPaymentSourceClassificationService _classificationService;
 
-        public PaymentSourcesApiController(IPaymentSourceService paymentSourceService)
+        public PaymentSourcesApiController(
+            IPaymentSourceService paymentSourceService,
+            IPaymentSourceClassificationService classificationService)
         {
             _paymentSourceService = paymentSourceService;
+            _classificationService = classificationService;
+        }
+
+        /// <summary>
+        /// Классифицирует через FinCtrl.AiAssistant последние созданные источники без классификации.
+        /// Ошибка LLM возвращается в <c>classificationError</c> (уже сохранённые пачки остаются); 400 — некорректный <paramref name="count"/>.
+        /// </summary>
+        /// <param name="count">Сколько последних неклассифицированных источников взять.</param>
+        [HttpPost("classify-unclassified")]
+        [ProducesResponseType(typeof(ClassifyPaymentSourcesResponse), 200)]
+        public async Task<IActionResult> ClassifyUnclassified([FromQuery] int count = 10, CancellationToken cancellationToken = default)
+        {
+            var result = await _classificationService.ClassifyLatestUnclassified(count, cancellationToken);
+
+            return Ok(ClassifyPaymentSourcesResponse.FromModel(result));
         }
 
         /// <summary>Все источники платежей.</summary>

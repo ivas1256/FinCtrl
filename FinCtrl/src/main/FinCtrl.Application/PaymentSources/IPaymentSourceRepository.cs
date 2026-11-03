@@ -24,6 +24,10 @@ public interface IPaymentSourceRepository
     /// <summary>Сохраняет только классификацию и признак ИИ-классификации источников.</summary>
     Task UpdateClassifications(IReadOnlyList<PaymentSource> paymentSources);
 
+    /// <summary>Последние созданные источники без классификации, новые первыми.</summary>
+    /// <param name="count">Сколько источников вернуть (не больше).</param>
+    Task<List<PaymentSource>> GetLatestUnclassified(int count);
+
     /// <summary>Есть ли источник с таким именем.</summary>
     Task<bool> Exists(string paymentSourceName);
 

@@ -1,4 +1,5 @@
 using FinCtrl.Application.PaymentSources;
+using FinCtrl.Application.PaymentSources.Classification;
 using FinCtrl.Domain;
 using FinCtrl.Website.Controllers;
 using FinCtrl.Website.Controllers.PaymentSourcesApi;
@@ -10,11 +11,28 @@ namespace FinCtrl.Website.Tests.Controllers.PaymentSourcesApi;
 public class PaymentSourcesApiControllerTests
 {
     private readonly IPaymentSourceService _paymentSourceService = Substitute.For<IPaymentSourceService>();
+    private readonly IPaymentSourceClassificationService _classificationService = Substitute.For<IPaymentSourceClassificationService>();
     private readonly PaymentSourcesApiController _controller;
 
     public PaymentSourcesApiControllerTests()
     {
-        _controller = new PaymentSourcesApiController(_paymentSourceService);
+        _controller = new PaymentSourcesApiController(_paymentSourceService, _classificationService);
+    }
+
+    [Fact]
+    public async Task ClassifyUnclassified_Count_PassedAndResultMapped()
+    {
+        var source = new PaymentSource(3, "Магазин", null, null, new DateTime(2025, 10, 1), null);
+        source.SetAiClassification("Продукты");
+        _classificationService.ClassifyLatestUnclassified(10, Arg.Any<CancellationToken>())
+            .Returns(new UnclassifiedClassificationResult([source], "ошибка"));
+
+        var result = await _controller.ClassifyUnclassified(10);
+
+        var response = Assert.IsType<ClassifyPaymentSourcesResponse>(Assert.IsType<OkObjectResult>(result).Value);
+        var dto = Assert.Single(response.PaymentSources);
+        Assert.Equal(("Продукты", true), (dto.Classification, dto.IsAiClassified));
+        Assert.Equal("ошибка", response.ClassificationError);
     }
 
     [Fact]

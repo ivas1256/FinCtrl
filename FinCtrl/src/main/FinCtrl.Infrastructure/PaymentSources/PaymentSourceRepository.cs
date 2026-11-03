@@ -56,6 +56,17 @@ namespace FinCtrl.Infrastructure.PaymentSources
                 .FirstOrDefault();
         }
 
+        public async Task<List<PaymentSource>> GetLatestUnclassified(int count)
+        {
+            var sql = $@"SELECT TOP (@count) *
+                         FROM ({SelectPaymentSource} WHERE ps.Classification IS NULL) x
+                         ORDER BY x.CreatedAt DESC, x.PaymentSourceId DESC;";
+
+            return (await Query<PaymentSourceRow>(sql, new { count }))
+                .Select(x => x.MapToPaymentSource())
+                .ToList();
+        }
+
         public async Task<bool> Exists(string paymentSourceName)
         {
             return await GetByName(paymentSourceName) is not null;
