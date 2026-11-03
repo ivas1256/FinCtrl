@@ -27,6 +27,8 @@ public class PaymentDtoTests
             PaymentSource_Description = "у дома",
             PaymentSource_CreatedAt = Created,
             PaymentSource_LastUpdatedAt = Updated,
+            PaymentSource_Classification = "Супермаркеты",
+            PaymentSource_IsAiClassified = true,
             PaymentSourceCategory_CategoryId = 8,
             PaymentSourceCategory_CategoryName = "Продукты",
             PaymentSourceCategory_ParentCategoryId = 1,
@@ -64,6 +66,7 @@ public class PaymentDtoTests
         var source = Assert.IsType<PaymentSource>(payment.PaymentSource);
         Assert.Equal((3, "Магазин", "у дома", Created, (DateTime?)Updated),
             (source.PaymentSourceId, source.PaymentSourceName, source.Description, source.CreatedAt, source.LastUpdatedAt));
+        Assert.Equal(("Супермаркеты", true), (source.Classification, source.IsAiClassified));
         var sourceCategory = Assert.IsType<Category>(source.PaymentSourceCategory);
         Assert.Equal((8, "Продукты", (int?)1, false, 4, Created, (DateTime?)Updated),
             (sourceCategory.CategoryId, sourceCategory.CategoryName, sourceCategory.ParentCategoryId, sourceCategory.IsOnlyIncome,

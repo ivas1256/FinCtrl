@@ -21,6 +21,9 @@ public interface IPaymentSourceRepository
     /// <summary>Сохраняет изменения источников.</summary>
     Task Update(params PaymentSource[] paymentSources);
 
+    /// <summary>Сохраняет только классификацию и признак ИИ-классификации источников.</summary>
+    Task UpdateClassifications(IReadOnlyList<PaymentSource> paymentSources);
+
     /// <summary>Есть ли источник с таким именем.</summary>
     Task<bool> Exists(string paymentSourceName);
 

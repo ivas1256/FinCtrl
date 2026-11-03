@@ -17,25 +17,52 @@ public class PaymentSourceTests
     }
 
     [Fact]
-    public void CreateFromExisting_WithCategory_KeepsPassedCategoryInstance()
+    public void SetClassificationByUser_ChangedValue_SetsTrimmedValueAndResetsAiFlag()
     {
-        var food = new Category(7) { CategoryName = "Еда" };
+        var source = new PaymentSource { Classification = "Продукты", IsAiClassified = true };
 
-        var source = PaymentSource.CreateFromExisting(42, "Магазин", food, "у дома");
+        source.SetClassificationByUser("  Кафе  ");
 
-        Assert.Equal(42, source.PaymentSourceId);
-        Assert.Equal("Магазин", source.PaymentSourceName);
-        Assert.Same(food, source.PaymentSourceCategory);
-        Assert.Equal("у дома", source.Description);
+        Assert.Equal("Кафе", source.Classification);
+        Assert.False(source.IsAiClassified);
+    }
+
+    [Theory]
+    [InlineData("Продукты")]
+    [InlineData(" Продукты ")]
+    public void SetClassificationByUser_SameValue_KeepsAiFlag(string classification)
+    {
+        var source = new PaymentSource { Classification = "Продукты", IsAiClassified = true };
+
+        source.SetClassificationByUser(classification);
+
+        Assert.Equal("Продукты", source.Classification);
+        Assert.True(source.IsAiClassified);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void SetClassificationByUser_Empty_ClearsClassificationAndAiFlag(string? classification)
+    {
+        var source = new PaymentSource { Classification = "Продукты", IsAiClassified = true };
+
+        source.SetClassificationByUser(classification);
+
+        Assert.Null(source.Classification);
+        Assert.False(source.IsAiClassified);
     }
 
     [Fact]
-    public void CreateFromExisting_WithoutCategory_CategoryIsNull()
+    public void SetAiClassification_Value_SetsTrimmedValueAndAiFlag()
     {
-        var source = PaymentSource.CreateFromExisting(42, "Магазин", null, null);
+        var source = new PaymentSource { Classification = "Старое" };
 
-        Assert.Null(source.PaymentSourceCategory);
-        Assert.Null(source.Description);
+        source.SetAiClassification(" Продукты ");
+
+        Assert.Equal("Продукты", source.Classification);
+        Assert.True(source.IsAiClassified);
     }
 
     [Theory]

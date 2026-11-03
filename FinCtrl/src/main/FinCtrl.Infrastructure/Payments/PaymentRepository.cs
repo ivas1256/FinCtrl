@@ -36,6 +36,8 @@ namespace FinCtrl.Infrastructure.Payments
                 ps.Description AS PaymentSource_Description,
                 ps.CreatedAt AS PaymentSource_CreatedAt,
                 ps.LastUpdatedAt AS PaymentSource_LastUpdatedAt,
+                ps.Classification AS PaymentSource_Classification,
+                ps.IsAiClassified AS PaymentSource_IsAiClassified,
 
                 a.AccountId AS Account_AccountId,
                 a.ExcelAccountName AS Account_ExcelAccountName,

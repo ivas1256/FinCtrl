@@ -18,6 +18,8 @@ namespace FinCtrl.Infrastructure.PaymentSources
                  ,ps.Description
                  ,ps.CreatedAt
                  ,ps.LastUpdatedAt
+                 ,ps.Classification
+                 ,ps.IsAiClassified
                  ,c.CategoryId Category_CategoryId
                  ,c.CategoryName Category_CategoryName
                  ,c.ParentCategoryCategoryId Category_ParentCategoryId
@@ -66,6 +68,8 @@ namespace FinCtrl.Infrastructure.PaymentSources
                            ,CategoryId = @CategoryId
                            ,LastUpdatedAt = @LastUpdatedAt
                            ,Description = @Description
+                           ,Classification = @Classification
+                           ,IsAiClassified = @IsAiClassified
                         WHERE PaymentSourceId = @PaymentSourceId;";
 
             foreach (var paymentSource in paymentSources)
@@ -76,9 +80,22 @@ namespace FinCtrl.Infrastructure.PaymentSources
                     paymentSource.PaymentSourceName,
                     paymentSource.PaymentSourceCategory?.CategoryId,
                     paymentSource.LastUpdatedAt,
-                    paymentSource.Description
+                    paymentSource.Description,
+                    paymentSource.Classification,
+                    paymentSource.IsAiClassified
                 });
             }
+        }
+
+        public async Task UpdateClassifications(IReadOnlyList<PaymentSource> paymentSources)
+        {
+            const string sql = @"UPDATE PaymentSources
+                        SET Classification = @Classification
+                           ,IsAiClassified = @IsAiClassified
+                        WHERE PaymentSourceId = @PaymentSourceId;";
+
+            // Dapper выполняет команду для каждого элемента коллекции.
+            await Execute(sql, paymentSources.Select(x => new { x.PaymentSourceId, x.Classification, x.IsAiClassified }).ToList());
         }
 
         public async Task<(List<PaymentSource> Items, int TotalCount)> GetListPaged(
@@ -120,9 +137,9 @@ namespace FinCtrl.Infrastructure.PaymentSources
 
         public async Task<int> Create(PaymentSource paymentSource)
         {
-            var sql = @"INSERT INTO dbo.PaymentSources (PaymentSourceName, CategoryId, CreatedAt, LastUpdatedAt, Description)
+            var sql = @"INSERT INTO dbo.PaymentSources (PaymentSourceName, CategoryId, CreatedAt, LastUpdatedAt, Description, Classification, IsAiClassified)
                         OUTPUT INSERTED.PaymentSourceId
-                        VALUES (@PaymentSourceName, @CategoryId, @CreatedAt, @LastUpdatedAt, @Description);";
+                        VALUES (@PaymentSourceName, @CategoryId, @CreatedAt, @LastUpdatedAt, @Description, @Classification, @IsAiClassified);";
 
             return await ExecuteScalar<int>(sql, new
             {
@@ -130,7 +147,9 @@ namespace FinCtrl.Infrastructure.PaymentSources
                 paymentSource.PaymentSourceCategory?.CategoryId,
                 paymentSource.Description,
                 paymentSource.CreatedAt,
-                paymentSource.LastUpdatedAt
+                paymentSource.LastUpdatedAt,
+                paymentSource.Classification,
+                paymentSource.IsAiClassified
             });
         }
     }
