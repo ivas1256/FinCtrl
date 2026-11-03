@@ -14,7 +14,7 @@
 - [x] 5. `classifier.py`, `logging_setup.py`, `main.py` (FastAPI, эндпоинт, обработчики ошибок)
 - [x] 6. `requirements.txt`, `.env.example`, `README.md`, launch.json, документация
 - [x] 7. Ручная проверка
-- [ ] 8. PR
+- [x] 8. PR — https://github.com/ivas1256/FinCtrl/pull/39
 
 ## Тесты
 Автотесты не пишутся (решение пользователя). Проверка ручная.
