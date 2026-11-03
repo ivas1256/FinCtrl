@@ -1,0 +1,30 @@
+import json
+
+from config import BASE_DIR
+from llm_client import LlmClient
+from models import ClassifiedPaymentSource, PaymentSource
+from response_validation import LlmResponseValidationError, parse_classification
+
+PROMTS_DIR = BASE_DIR / "promts"
+
+
+def read_promt(name: str) -> str:
+    return (PROMTS_DIR / name).read_text(encoding="utf-8")
+
+
+class PaymentSourceClassifier:
+    """ классификация источников платежей через LLM """
+
+    def __init__(self, llm_client: LlmClient):
+        self._llm_client = llm_client
+
+    def classify(self, sources: list[PaymentSource]) -> list[ClassifiedPaymentSource]:
+        raw = self._llm_client.complete(
+            system_prompt=read_promt("classify-payment-sources.md"),
+            user_content=json.dumps([s.model_dump() for s in sources], ensure_ascii=False),
+        )
+        try:
+            return parse_classification(raw, sources)
+        except LlmResponseValidationError as e:
+            # сырой ответ модели нужен в логе для разбора
+            raise LlmResponseValidationError(f"{e}. Ответ LLM: {raw[:1000]}") from e
