@@ -186,11 +186,34 @@ public class PaymentsApiControllerTests
         file.FileName.Returns("выписка.xlsx");
         file.OpenReadStream().Returns(stream);
         using var cts = new CancellationTokenSource();
+        _paymentsImportService.Upload("выписка.xlsx", stream, cts.Token)
+            .Returns(new PaymentsImportResult([], [], null));
 
         var result = await _controller.UploadFile(file, cts.Token);
 
-        Assert.IsType<OkResult>(result);
+        Assert.IsType<OkObjectResult>(result);
         await _paymentsImportService.Received(1).Upload("выписка.xlsx", stream, cts.Token);
+    }
+
+    [Fact]
+    public async Task UploadFile_ImportResult_MapsNewPaymentsSourcesAndClassificationError()
+    {
+        var created = new DateTime(2025, 10, 1);
+        var source = new PaymentSource(3, "YANDEX TAXI", null, null, created, null) { Classification = "Такси", IsAiClassified = true };
+        var payment = new Payment { PaymentId = 10, PaymentSum = -250m, PaymentDate = created, PaymentSource = source };
+        var file = Substitute.For<IFormFile>();
+        file.FileName.Returns("выписка.csv");
+        file.OpenReadStream().Returns(new MemoryStream());
+        _paymentsImportService.Upload(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(new PaymentsImportResult([payment], [source], "сервис недоступен"));
+
+        var result = await _controller.UploadFile(file, CancellationToken.None);
+
+        var response = Assert.IsType<UploadPaymentsResponse>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(10, Assert.Single(response.NewPayments).PaymentId);
+        var sourceDto = Assert.Single(response.NewPaymentSources);
+        Assert.Equal(("YANDEX TAXI", "Такси", true), (sourceDto.PaymentSourceName, sourceDto.Classification, sourceDto.IsAiClassified));
+        Assert.Equal("сервис недоступен", response.ClassificationError);
     }
 
     private static DateTime? ParseDate(string? value)

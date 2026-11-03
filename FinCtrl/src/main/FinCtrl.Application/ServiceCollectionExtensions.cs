@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using FinCtrl.Application.PaymentSources;
+using FinCtrl.Application.PaymentSources.Classification;
 using FinCtrl.Application.Categories;
 using FinCtrl.Application.Payments;
 using FinCtrl.Application.PaymentsImport;
@@ -22,6 +23,7 @@ namespace FinCtrl.Application
             services.AddScoped<IAccountService, AccountService>();
             services.AddScoped<ITagService, TagService>();
 
+            services.AddScoped<IPaymentSourceClassificationService, PaymentSourceClassificationService>();
             services.AddScoped<IPaymentsImportService, PaymentsImportService>();
 
             services.AddScoped<IMainStatisticService, MainStatisticService>();
