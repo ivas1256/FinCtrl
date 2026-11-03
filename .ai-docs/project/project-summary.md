@@ -105,7 +105,8 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 - `Categories`: CategoryId PK, CategoryName, ParentCategoryCategoryId
   (self FK), IsOnlyIncome, OrderIndex, Color.
 - `PaymentSources`: PaymentSourceId PK, PaymentSourceName, CategoryId FK,
-  CreatedAt, LastUpdatedAt, Description.
+  CreatedAt, LastUpdatedAt, Description, Classification (NVARCHAR(200) NULL),
+  IsAiClassified (BIT, default 0; миграция 0004).
 - `Accounts`: AccountId PK, ExcelAccountName (уникальный индекс),
   DisplayName, CreatedAt, LastUpdatedAt.
 - `Payments`: PaymentId PK, PaymentType, PaymentSum, PaymentDate,
@@ -519,3 +520,11 @@ Characterization-тесты на места, не покрытые профил�
 - Ключ/адрес/модель LLM — из env или `.env` (`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`), образец — `.env.example`; `.env`, `logs/`, `payment-sources.json` не коммитятся.
 - Запрос к LLM — `LlmClient` (`llm_client.py`, ошибки openai → `LlmError`); проверка ответа — `parse_classification` (`response_validation.py`): JSON (массив или объект с одним полем-списком, ```json-ограждение срезается), схема, те же Id без дублей, непустая классификация; `Name` — из запроса.
 - Ошибки: 422 — невалидный запрос (WARNING в лог), любая другая — 500 `{"detail": "Внутренняя ошибка сервиса"}` + трейс в `logs/errors.log`. Автотестов нет (решение пользователя).
+
+## Классификация источников через AiAssistant (задача 0036, 2026-11-03)
+- БД (миграция `0004`): `PaymentSources.Classification` (`NVARCHAR(200) NULL`) и `IsAiClassified` (`BIT NOT NULL DEFAULT 0`). Поля есть в `SelectPaymentSource`, `SelectPayment` (`PaymentSource_Classification`/`_IsAiClassified`) и в `PaymentSourceDto` (`classification`, `isAiClassified`), т.е. и во вложенном источнике `PaymentDto`.
+- Правила (Domain `PaymentSource`): `SetClassificationByUser` — trim, пустая строка = очистить, флаг ИИ снимается **только при реальном изменении** значения (массовое сохранение строки с правкой категории признак не трогает); `SetAiClassification` — ставит флаг. `PaymentSourceService.Edit` теперь правит загруженный источник (а не собранный заново), `PUT api/PaymentSourcesApi[/{id}]` принимает `classification`. `PaymentSource.CreateFromExisting` удалён.
+- Автоклассификация: `IPaymentSourceClassificationService` (Application, `PaymentSources/Classification/`) режет новые источники на пачки `AiAssistant:BatchSize` (appsettings, по умолчанию 30), зовёт `IPaymentSourceClassifier` → `AiAssistantClient` (Infrastructure, typed `HttpClient`, `AiAssistant:BaseUrl`/`TimeoutSeconds`, JSON в PascalCase) и сохраняет `UpdateClassifications` с `IsAiClassified = 1`. Ошибки клиента оборачиваются в `PaymentSourceClassificationException`; сервис её не бросает, а возвращает текст — обработанные пачки остаются сохранены.
+- Импорт: `IPaymentsImportService.Upload` возвращает `PaymentsImportResult` (созданные платежи и источники, `ClassificationError`); классификация — **после коммита** транзакции импорта, её ошибка импорт не откатывает. `POST api/PaymentsApi/upload` → `200 UploadPaymentsResponse { newPayments: PaymentDto[], newPaymentSources: PaymentSourceDto[], classificationError }` (раньше пустой `200`). Options секции `AiAssistant` привязываются в `Startup`.
+- Frontend: кнопка «Загрузить файл» — в меню `App.vue` (на «Операциях» её больше нет), открывает `components/PaymentsImportModal.vue` (`modal-lg`): файл + «Загрузить», спиннер на время импорта и LLM, вкладки-кнопки «Новые платежи (N)» / «Новые источники платежей (N)», предупреждение `classificationError`. `composables/usePaymentsImport.js` — общий счётчик импортов: «Операции» и уже построенная таблица главной перезагружаются после импорта.
+- «Источники платежей»: колонка «Классификация» (input, change tracking, значок «ИИ» у неизменённой LLM-классификации). Главная, «Распределение по источникам»: группировка `utils/paymentSourceGroups.js` по классификации (без неё — по имени источника), под названием серым — оригинальные имена.
