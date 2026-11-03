@@ -24,12 +24,15 @@
         <div v-else>
             <div class="list-group">
                 <div 
-                    v-for="source in sortedSources" 
-                    :key="source.paymentSourceId"
+                    v-for="source in sortedSources"
+                    :key="source.name"
                     class="list-group-item d-flex justify-content-between align-items-center p-0 border-0"
                 >
                     <div class="py-2">
-                        <div class="fw-medium">{{ source.paymentSourceName || 'Без источника' }}</div>
+                        <div class="fw-medium">{{ source.name }}</div>
+                        <div v-if="sourceNamesCaption(source)" class="text-muted small source-names">
+                            {{ sourceNamesCaption(source) }}
+                        </div>
                         <div class="text-muted small">
                             {{ source.count }} платеж(ей)
                         </div>
@@ -53,6 +56,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { formatCurrency } from '../../utils/format'
+import { groupPaymentsBySource, sourceNamesCaption } from '../../utils/paymentSourceGroups'
 
 const props = defineProps({
     payments: {
@@ -63,29 +67,8 @@ const props = defineProps({
 
 const sortOrder = ref('asc') // 'asc' или 'desc'
 
-// Группируем платежи по источникам
-const sourcesWithAmounts = computed(() => {
-    const sourcesMap = {}
-
-    props.payments.forEach(payment => {
-        const sourceId = payment.paymentSource?.paymentSourceId || 'unknown'
-        const sourceName = payment.paymentSource?.paymentSourceName || 'Без источника'
-
-        if (!sourcesMap[sourceId]) {
-            sourcesMap[sourceId] = {
-                paymentSourceId: sourceId,
-                paymentSourceName: sourceName,
-                totalSum: 0,
-                count: 0
-            }
-        }
-
-        sourcesMap[sourceId].totalSum += payment.paymentSum
-        sourcesMap[sourceId].count += 1
-    })
-
-    return Object.values(sourcesMap)
-})
+// Группируем платежи по классификации источника (без неё — по имени источника)
+const sourcesWithAmounts = computed(() => groupPaymentsBySource(props.payments))
 
 // Отсортированные по сумме источники
 const sortedSources = computed(() =>
@@ -114,6 +97,10 @@ const toggleSortOrder = () => {
 
 .list-group-item {
     background-color: transparent;
+}
+
+.source-names {
+    overflow-wrap: anywhere;
 }
 
 .payment-amount {

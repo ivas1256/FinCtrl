@@ -74,6 +74,7 @@
                                     <th width="80">ID</th>
                                     <th>Название</th>
                                     <th>Категория</th>
+                                    <th>Классификация</th>
                                     <th>Описание</th>
                                     <th width="140">Дата создания</th>
                                     <th width="100" class="text-center">Действия</th>
@@ -98,6 +99,22 @@
                                             size="sm"
                                             :auto-load="false"
                                         />
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <input
+                                                type="text"
+                                                class="form-control form-control-sm"
+                                                v-model="source.classification"
+                                                maxlength="200"
+                                                placeholder="Классификация..."
+                                            >
+                                            <span
+                                                v-if="source.isAiClassified && source.classification === source.originalClassification"
+                                                class="badge text-bg-info"
+                                                title="Классификацию задала LLM"
+                                            >ИИ</span>
+                                        </div>
                                     </td>
                                     <td>
                                         <textarea
@@ -302,7 +319,23 @@ const changedItemsCount = computed(() => paymentSources.value.filter(s => hasCha
 
 const hasChangesForSource = (source) =>
     source.categoryId !== source.originalCategoryId ||
-    source.description !== source.originalDescription
+    source.description !== source.originalDescription ||
+    source.classification !== source.originalClassification
+
+// После сохранения текущие значения становятся исходными; изменённая классификация — уже не от ИИ (так же решает backend).
+const markSaved = (source) => {
+    if (source.classification !== source.originalClassification) source.isAiClassified = false
+    source.originalCategoryId = source.categoryId
+    source.originalDescription = source.description
+    source.originalClassification = source.classification
+}
+
+const toSourcePayload = (source) => ({
+    paymentSourceName: source.paymentSourceName,
+    categoryId: source.categoryId,
+    description: source.description,
+    classification: source.classification
+})
 
 const loadPaymentSources = async () => {
     loading.value = true
@@ -318,8 +351,10 @@ const loadPaymentSources = async () => {
         totalCount.value = response.data.totalCount
         paymentSources.value = response.data.items.map(source => ({
             ...source,
+            classification: source.classification ?? '',
             originalCategoryId: source.categoryId,
             originalDescription: source.description,
+            originalClassification: source.classification ?? '',
             createdAt: source.createdAt || new Date().toISOString()
         }))
     } catch (error) {
@@ -387,14 +422,9 @@ const saveSingleItem = async (source) => {
     try {
         await axios.put(
             `${APP_CONFIG.apiBaseUrl}/api/PaymentSourcesApi/${source.paymentSourceId}`,
-            {
-                paymentSourceName: source.paymentSourceName,
-                categoryId: source.categoryId,
-                description: source.description
-            }
+            toSourcePayload(source)
         )
-        source.originalCategoryId = source.categoryId
-        source.originalDescription = source.description
+        markSaved(source)
     } catch (error) {
         console.error('Ошибка сохранения источника:', error)
         showError(getErrorMessage(error, 'Ошибка сохранения'))
@@ -411,15 +441,10 @@ const saveAllChanges = async () => {
         await Promise.all(changedSources.map(source =>
             axios.put(`${APP_CONFIG.apiBaseUrl}/api/PaymentSourcesApi`, {
                 paymentSourceId: source.paymentSourceId,
-                paymentSourceName: source.paymentSourceName,
-                categoryId: source.categoryId,
-                description: source.description
+                ...toSourcePayload(source)
             })
         ))
-        changedSources.forEach(source => {
-            source.originalCategoryId = source.categoryId
-            source.originalDescription = source.description
-        })
+        changedSources.forEach(markSaved)
         showSuccess(`Успешно обновлено источников: ${changedSources.length}`)
     } catch (error) {
         console.error('Ошибка массового сохранения:', error)
@@ -433,6 +458,7 @@ const resetAllChanges = () => {
     paymentSources.value.forEach(source => {
         source.categoryId = source.originalCategoryId
         source.description = source.originalDescription
+        source.classification = source.originalClassification
     })
 }
 
