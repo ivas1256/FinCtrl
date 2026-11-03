@@ -284,6 +284,7 @@ import DeltaCell from './DeltaCell.vue'
 import ComparisonCard from './ComparisonCard.vue'
 import AlertMessage from '../../components/AlertMessage.vue'
 import { useAlerts } from '../../composables/useAlerts'
+import { usePaymentsImport } from '../../composables/usePaymentsImport'
 
 // Добавляем флаг для отслеживания загрузки категорий
 const categoriesLoaded = ref(false)
@@ -672,6 +673,11 @@ const submitForm = async () => {
         loading.value = false
     }
 }
+
+// Файл загружен модалкой из меню (App.vue): уже показанную таблицу пересчитываем с новыми платежами
+usePaymentsImport().onImported(() => {
+    if (periodHeaders.value.length > 0) submitForm()
+})
 
 onMounted(() => {
     loadCategories()
