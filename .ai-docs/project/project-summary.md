@@ -11,10 +11,11 @@
 
 ## Структура репозитория
 
-Один git-репозиторий в корне (`root.FinCtrl`, базовая ветка `main`), две части:
+Один git-репозиторий в корне (`root.FinCtrl`, базовая ветка `main`), три части:
 
 - `FinCtrl/` — backend, .NET 9 + MS SQL Server.
 - `FinCtrl.Frontend/FinCtrl.Frontend/` — фронтенд, Vue 3 + Vite.
+- `FinCtrl.AiAssistant/` — Python-сервис (FastAPI) классификации источников платежей через LLM, см. `FinCtrl.AiAssistant/README.md`.
 
 ### Backend: проекты
 
@@ -512,3 +513,9 @@ Characterization-тесты на места, не покрытые профил�
 ## Массовые теги всем операциям периода (задача 0034, 2026-10-26)
 - `POST api/PaymentsApi/bulk-tags`: пустой `categoryIds` (или поле не передано) — теги получают все платежи периода (`GetByDateRange`), включая без итоговой категории и с `ExcludeFromStats`; `affectedCount` — их число. Раньше — 400 «Выберите хотя бы одну категорию» (`[MinLength(1)]` в `BulkAssignTagsRequest` и проверка в `PaymentService.BulkAssignTags` убраны). Теги и период по-прежнему обязательны.
 - «Операции», окно «Назначить теги»: поле «Категории» необязательное — плейсхолдер «Все категории», подсказка «Не выбрано — теги получат все операции периода».
+
+## AiAssistant: API классификации источников платежей (задача 0035, 2026-11-03)
+- `FinCtrl.AiAssistant/` из скрипта стал FastAPI-сервисом: `POST /payment-sources/classify` (`list[PaymentSource]` → `list[ClassifiedPaymentSource]`), запуск — `uvicorn main:app --port 8000` (preview-конфигурация `ai-assistant`).
+- Ключ/адрес/модель LLM — из env или `.env` (`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`), образец — `.env.example`; `.env`, `logs/`, `payment-sources.json` не коммитятся.
+- Запрос к LLM — `LlmClient` (`llm_client.py`, ошибки openai → `LlmError`); проверка ответа — `parse_classification` (`response_validation.py`): JSON (массив или объект с одним полем-списком, ```json-ограждение срезается), схема, те же Id без дублей, непустая классификация; `Name` — из запроса.
+- Ошибки: 422 — невалидный запрос (WARNING в лог), любая другая — 500 `{"detail": "Внутренняя ошибка сервиса"}` + трейс в `logs/errors.log`. Автотестов нет (решение пользователя).

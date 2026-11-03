@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "FinCtrl.Frontend/FinCtrl.Frontend", "run", "dev"],
       "port": 5173
+    },
+    {
+      "name": "ai-assistant",
+      "runtimeExecutable": "FinCtrl.AiAssistant/.venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "main:app", "--app-dir", "FinCtrl.AiAssistant", "--port", "8000"],
+      "port": 8000
     }
   ]
 }

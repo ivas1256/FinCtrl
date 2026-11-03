@@ -2,10 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-FinCtrl — личное приложение для учёта финансов: пользователь загружает выгрузку из банка (Excel/CSV), операции привязываются к источникам платежа / счетам / категориям / тегам, UI показывает сводные таблицы. Корневая папка — единый git-репозиторий (базовая ветка `main`) с двумя частями:
+FinCtrl — личное приложение для учёта финансов: пользователь загружает выгрузку из банка (Excel/CSV), операции привязываются к источникам платежа / счетам / категориям / тегам, UI показывает сводные таблицы. Корневая папка — единый git-репозиторий (базовая ветка `main`) с тремя частями:
 
 - `FinCtrl/` — backend, .NET 9 + MS SQL Server (Dapper, без ORM).
 - `FinCtrl.Frontend/FinCtrl.Frontend/` — frontend, Vue 3 + Vite.
+- `FinCtrl.AiAssistant/` — Python-сервис (FastAPI, `.venv`) классификации источников платежей через LLM: `POST /payment-sources/classify`, ключ LLM — в `.env` (образец `.env.example`), ошибки — в `logs/errors.log`, preview-конфигурация `ai-assistant`; автотестов нет. Подробности — `FinCtrl.AiAssistant/README.md`.
 
 Подробный контекст проекта — в `.ai-docs/`, сгруппирован по двум папкам:
 
