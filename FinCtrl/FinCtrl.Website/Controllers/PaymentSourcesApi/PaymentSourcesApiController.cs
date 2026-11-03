@@ -44,20 +44,23 @@ namespace FinCtrl.Website.Controllers.PaymentSourcesApi
         [HttpPut]
         public async Task<IActionResult> EditSources(PaymentSourceDto editDto)
         {
-            await _paymentSourceService.Edit(editDto.PaymentSourceId, editDto.PaymentSourceName, editDto.CategoryId, editDto.Description);
+            await _paymentSourceService.Edit(editDto.PaymentSourceId, editDto.PaymentSourceName, editDto.CategoryId, editDto.Description, editDto.Classification);
 
             return NoContent();
         }
 
         /// <summary>
-        /// Правит один источник платежа: имя, категорию и описание.
+        /// Правит один источник платежа: имя, категорию, описание и классификацию.
         /// </summary>
         /// <param name="paymentSourceId">Id источника (из роута; id в теле не используется).</param>
-        /// <param name="request">Новые значения полей; <c>CategoryId == null</c> — снять категорию.</param>
+        /// <param name="request">
+        /// Новые значения полей; <c>CategoryId == null</c> — снять категорию, пустая <c>Classification</c> — очистить.
+        /// Изменённая классификация снимает признак ИИ-классификации.
+        /// </param>
         [HttpPut("{paymentSourceId:int}")]
         public async Task<IActionResult> EditSource(int paymentSourceId, [FromBody] EditPaymentSourceRequest request)
         {
-            await _paymentSourceService.Edit(paymentSourceId, request.PaymentSourceName, request.CategoryId, request.Description);
+            await _paymentSourceService.Edit(paymentSourceId, request.PaymentSourceName, request.CategoryId, request.Description, request.Classification);
 
             return NoContent();
         }

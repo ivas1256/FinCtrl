@@ -25,6 +25,9 @@
                     <router-link to="/tags">Теги</router-link>
                 </li>
             </ul>
+            <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-2" @click="importModal.open()">
+                Загрузить файл
+            </button>
         </div>
         <div class="col content-col">
             <main role="main" class="py-3">
@@ -32,6 +35,13 @@
             </main>
         </div>
     </div>
+    <PaymentsImportModal ref="importModal" />
   </div>
 </template>
 
+<script setup>
+import { ref } from 'vue'
+import PaymentsImportModal from './components/PaymentsImportModal.vue'
+
+const importModal = ref(null)
+</script>

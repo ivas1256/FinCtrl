@@ -36,20 +36,22 @@ namespace FinCtrl.Application.PaymentSources
             return await _repository.GetByName(paymentSourceName);
         }
 
-        public async Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description)
+        public async Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description, string? classification)
         {
             if (string.IsNullOrWhiteSpace(paymentSourceName))
                 throw new ValidationException("Название источника обязательно");
 
-            await GetById(paymentSourceId);
+            // Правим загруженный источник, а не собранный заново: иначе потеряется признак ИИ-классификации.
+            var toUpdate = await GetById(paymentSourceId);
 
             if (categoryId is int id && await _categoryRepository.GetById(id) is null)
                 throw new ValidationException($"Категория {id} не найдена");
 
+            toUpdate.PaymentSourceName = paymentSourceName;
             // Для UPDATE репозиторию нужен только id категории — загружать её целиком незачем.
-            var category = categoryId.HasValue ? new Category(categoryId.Value) : null;
-            var toUpdate = PaymentSource.CreateFromExisting(paymentSourceId, paymentSourceName, category, description);
-
+            toUpdate.PaymentSourceCategory = categoryId.HasValue ? new Category(categoryId.Value) : null;
+            toUpdate.Description = description;
+            toUpdate.SetClassificationByUser(classification);
             toUpdate.Updated(_timeProvider.GetLocalNow().DateTime);
 
             await _repository.Update(toUpdate);

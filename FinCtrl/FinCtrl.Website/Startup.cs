@@ -1,5 +1,7 @@
 using FinCtrl.Application;
+using FinCtrl.Application.PaymentSources.Classification;
 using FinCtrl.Infrastructure;
+using FinCtrl.Infrastructure.AiAssistant;
 using FinCtrl.Website.ErrorHandling;
 using Microsoft.OpenApi.Models;
 using NLog.Extensions.Logging;
@@ -53,6 +55,11 @@ namespace FinCtrl.Website
                 c.ClearProviders();
                 c.AddNLog();
             });
+
+            // Секция AiAssistant: размер пачки нужен Application, адрес и таймаут — HTTP-клиенту Infrastructure.
+            var aiAssistantSection = _configuration.GetSection(PaymentSourceClassificationOptions.SectionName);
+            services.Configure<PaymentSourceClassificationOptions>(aiAssistantSection);
+            services.Configure<AiAssistantOptions>(aiAssistantSection);
 
             services.AddApplication();
             services.AddInfrastructure();

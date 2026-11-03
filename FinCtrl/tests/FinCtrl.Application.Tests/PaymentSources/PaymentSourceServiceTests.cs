@@ -82,7 +82,7 @@ public class PaymentSourceServiceTests
     {
         _repository.GetById(99).Returns((PaymentSource?)null);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => _service.Edit(99, "Магазин", null, null));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.Edit(99, "Магазин", null, null, null));
 
         await _repository.DidNotReceiveWithAnyArgs().Update();
     }
@@ -92,7 +92,7 @@ public class PaymentSourceServiceTests
     {
         _categoryRepository.GetById(100).Returns((Category?)null);
 
-        var ex = await Assert.ThrowsAsync<ValidationException>(() => _service.Edit(42, "Магазин", 100, null));
+        var ex = await Assert.ThrowsAsync<ValidationException>(() => _service.Edit(42, "Магазин", 100, null, null));
 
         Assert.Contains("100", ex.Message);
         await _repository.DidNotReceiveWithAnyArgs().Update();
@@ -103,7 +103,7 @@ public class PaymentSourceServiceTests
     [InlineData("   ")]
     public async Task Edit_EmptyName_ThrowsValidationException(string name)
     {
-        await Assert.ThrowsAsync<ValidationException>(() => _service.Edit(42, name, null, null));
+        await Assert.ThrowsAsync<ValidationException>(() => _service.Edit(42, name, null, null, null));
 
         await _repository.DidNotReceiveWithAnyArgs().Update();
     }
@@ -131,7 +131,7 @@ public class PaymentSourceServiceTests
     [Fact]
     public async Task Edit_WithCategory_UpdatesSourceWithCategoryId()
     {
-        await _service.Edit(42, "Магазин", 7, "Продукты");
+        await _service.Edit(42, "Магазин", 7, "Продукты", null);
 
         await _repository.Received(1).Update(Arg.Is<PaymentSource[]>(sources =>
             sources.Length == 1
@@ -145,7 +145,7 @@ public class PaymentSourceServiceTests
     [Fact]
     public async Task Edit_WithoutCategory_ClearsCategory()
     {
-        await _service.Edit(42, "Магазин", categoryId: null, description: null);
+        await _service.Edit(42, "Магазин", categoryId: null, description: null, classification: null);
 
         await _repository.Received(1).Update(Arg.Is<PaymentSource[]>(sources =>
             sources.Length == 1
@@ -153,5 +153,37 @@ public class PaymentSourceServiceTests
             && sources[0].PaymentSourceCategory == null
             && sources[0].Description == null
             && sources[0].LastUpdatedAt == Now));
+    }
+
+    [Fact]
+    public async Task Edit_ChangedClassification_SavesItAndResetsAiFlag()
+    {
+        _repository.GetById(42).Returns(new PaymentSource(42, "Магазин", null, null, Now, null)
+        {
+            Classification = "Продукты",
+            IsAiClassified = true
+        });
+
+        await _service.Edit(42, "Магазин", null, null, "Супермаркеты");
+
+        await _repository.Received(1).Update(Arg.Is<PaymentSource[]>(sources =>
+            sources[0].Classification == "Супермаркеты" && !sources[0].IsAiClassified));
+    }
+
+    [Fact]
+    public async Task Edit_SameClassification_KeepsAiFlag()
+    {
+        _repository.GetById(42).Returns(new PaymentSource(42, "Магазин", null, null, Now, null)
+        {
+            Classification = "Продукты",
+            IsAiClassified = true
+        });
+
+        await _service.Edit(42, "Магазин у дома", 7, "описание", "Продукты");
+
+        await _repository.Received(1).Update(Arg.Is<PaymentSource[]>(sources =>
+            sources[0].PaymentSourceName == "Магазин у дома"
+            && sources[0].Classification == "Продукты"
+            && sources[0].IsAiClassified));
     }
 }

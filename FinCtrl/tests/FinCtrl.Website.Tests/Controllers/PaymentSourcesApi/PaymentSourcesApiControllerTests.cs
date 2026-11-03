@@ -20,23 +20,23 @@ public class PaymentSourcesApiControllerTests
     [Fact]
     public async Task EditSources_LegacyBody_EditsWithIdFromBody()
     {
-        var dto = new PaymentSourceDto { PaymentSourceId = 42, PaymentSourceName = "Магазин", CategoryId = 7, Description = "у дома" };
+        var dto = new PaymentSourceDto { PaymentSourceId = 42, PaymentSourceName = "Магазин", CategoryId = 7, Description = "у дома", Classification = "Продукты" };
 
         var result = await _controller.EditSources(dto);
 
         Assert.IsType<NoContentResult>(result);
-        await _paymentSourceService.Received(1).Edit(42, "Магазин", 7, "у дома");
+        await _paymentSourceService.Received(1).Edit(42, "Магазин", 7, "у дома", "Продукты");
     }
 
     [Fact]
     public async Task EditSource_RouteId_EditsWithIdFromRoute()
     {
-        var request = new EditPaymentSourceRequest { PaymentSourceName = "Магазин", CategoryId = null, Description = null };
+        var request = new EditPaymentSourceRequest { PaymentSourceName = "Магазин", CategoryId = null, Description = null, Classification = "Кафе" };
 
         var result = await _controller.EditSource(42, request);
 
         Assert.IsType<NoContentResult>(result);
-        await _paymentSourceService.Received(1).Edit(42, "Магазин", null, null);
+        await _paymentSourceService.Received(1).Edit(42, "Магазин", null, null, "Кафе");
     }
 
     [Fact]

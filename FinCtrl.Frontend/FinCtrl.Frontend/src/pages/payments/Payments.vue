@@ -4,20 +4,6 @@
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">Операции</h5>
                 <div class="d-flex flex-wrap gap-2">
-                    <input
-                        type="file"
-                        ref="fileInput"
-                        accept=".xlsx,.csv"
-                        style="display: none"
-                        @change="onFileSelected"
-                    >
-                    <button
-                        class="btn btn-outline-secondary btn-sm"
-                        @click="fileInput.click()"
-                        :disabled="uploading"
-                    >
-                        {{ uploading ? 'Загрузка...' : 'Загрузить файл' }}
-                    </button>
                     <button class="btn btn-outline-secondary btn-sm" @click="reload">
                         Обновить
                     </button>
@@ -339,6 +325,7 @@ import Multiselect from 'vue-multiselect'
 import { Modal } from 'bootstrap'
 import AlertMessage from '../../components/AlertMessage.vue'
 import { useAlerts } from '../../composables/useAlerts'
+import { usePaymentsImport } from '../../composables/usePaymentsImport'
 
 const payments = ref([])
 const categories = ref([])
@@ -347,9 +334,8 @@ const tags = ref([])
 const totalCount = ref(0)
 const loading = ref(false)
 const saving = ref(false)
-const uploading = ref(false)
-const fileInput = ref(null)
 const { error, success, showError, showSuccess, clearAlerts } = useAlerts()
+const { onImported } = usePaymentsImport()
 
 // Фильтры
 const dateFrom = ref('')
@@ -547,24 +533,11 @@ const loadTags = async () => {
     }
 }
 
-const onFileSelected = async (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-    uploading.value = true
-    try {
-        const formData = new FormData()
-        formData.append('file', file)
-        await axios.post(APP_CONFIG.apiBaseUrl + '/api/PaymentsApi/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        })
-        await loadPayments()
-    } catch (error) {
-        showError(getErrorMessage(error, 'Ошибка загрузки файла'))
-    } finally {
-        uploading.value = false
-        event.target.value = ''
-    }
-}
+// Файл загружается модалкой из меню (App.vue): после импорта появились новые платежи и источники
+onImported(() => {
+    loadSources()
+    loadPayments()
+})
 
 const saveSinglePayment = async (payment) => {
     saving.value = true

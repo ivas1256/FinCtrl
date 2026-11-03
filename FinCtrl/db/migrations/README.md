@@ -39,3 +39,7 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\0001_initial.sql
 `-E` — Windows-аутентификация (как в текущих строках подключения), `-C` —
 доверять сертификату сервера. Для следующих миграций — та же команда с новым
 файлом, по порядку номеров.
+- `0004_payment_source_classification.sql` — колонки `PaymentSources.Classification`
+  (классификация источника, `NVARCHAR(200) NULL`) и `PaymentSources.IsAiClassified`
+  (`BIT NOT NULL DEFAULT 0`: классификацию проставила LLM, ручная правка
+  сбрасывает флаг). Идемпотентна. Нужно накатить на dev2.

@@ -12,6 +12,8 @@ internal class PaymentSourceRow
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastUpdatedAt { get; set; }
+    public string? Classification { get; set; }
+    public bool IsAiClassified { get; set; }
 
     public int? Category_CategoryId { get; set; }
     public string? Category_CategoryName { get; set; }
@@ -32,6 +34,8 @@ internal class PaymentSourceRow
         Description = Description,
         CreatedAt = CreatedAt,
         LastUpdatedAt = LastUpdatedAt,
+        Classification = Classification,
+        IsAiClassified = IsAiClassified,
         PaymentSourceCategory = Category_CategoryId is null
             ? null
             : new Category

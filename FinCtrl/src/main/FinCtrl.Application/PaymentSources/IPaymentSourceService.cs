@@ -19,12 +19,15 @@ namespace FinCtrl.Application.PaymentSources
         Task<int> Create(PaymentSource paymentSource);
 
         /// <summary>
-        /// Правит источник платежа: имя, категорию и описание.
+        /// Правит источник платежа: имя, категорию, описание и классификацию.
         /// </summary>
         /// <param name="categoryId">Категория источника; <c>null</c> — снять категорию.</param>
+        /// <param name="classification">
+        /// Классификация; <c>null</c>/пустая строка — очистить. Если значение изменилось, признак ИИ-классификации снимается.
+        /// </param>
         /// <exception cref="FinCtrl.Common.Application.NotFoundException">Источник не найден.</exception>
         /// <exception cref="FinCtrl.Common.Application.ValidationException">Имя не заполнено или категория не найдена.</exception>
-        Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description);
+        Task Edit(int paymentSourceId, string paymentSourceName, int? categoryId, string? description, string? classification);
 
         /// <summary>Страница источников, новые первыми.</summary>
         /// <param name="search">Подстрока имени; <c>null</c>/пусто — без фильтра.</param>

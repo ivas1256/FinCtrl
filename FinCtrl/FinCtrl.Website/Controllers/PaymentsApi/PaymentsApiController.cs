@@ -79,15 +79,18 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
 
         /// <summary>
         /// Импорт банковской выгрузки (xlsx/csv) одной транзакцией; отмена запроса откатывает импорт.
+        /// После импорта новые источники классифицируются LLM (FinCtrl.AiAssistant); её ошибка не откатывает импорт
+        /// и возвращается в <c>classificationError</c>.
         /// 400 — файл не выбран, формат не поддерживается, файл не читается или в нём нет операций.
         /// </summary>
         [HttpPost("upload")]
+        [ProducesResponseType(typeof(UploadPaymentsResponse), 200)]
         public async Task<IActionResult> UploadFile([Required(ErrorMessage = "Файл не выбран")] IFormFile file, CancellationToken cancellationToken)
         {
             using var stream = file.OpenReadStream();
-            await _paymentsImportService.Upload(file.FileName, stream, cancellationToken);
+            var result = await _paymentsImportService.Upload(file.FileName, stream, cancellationToken);
 
-            return Ok();
+            return Ok(UploadPaymentsResponse.FromModel(result));
         }
 
         /// <summary>

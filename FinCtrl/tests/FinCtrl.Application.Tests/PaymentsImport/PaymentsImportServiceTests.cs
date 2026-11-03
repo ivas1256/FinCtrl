@@ -3,6 +3,7 @@ using FinCtrl.Application.Payments;
 using FinCtrl.Application.PaymentsImport;
 using FinCtrl.Application.PaymentsImport.FileFormats;
 using FinCtrl.Application.PaymentSources;
+using FinCtrl.Application.PaymentSources.Classification;
 using FinCtrl.Common;
 using FinCtrl.Common.Application;
 using FinCtrl.Domain;
@@ -27,6 +28,7 @@ public class PaymentsImportServiceTests
     private readonly IFileFormat _fileFormat = Substitute.For<IFileFormat>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ITransaction _transaction = Substitute.For<ITransaction>();
+    private readonly IPaymentSourceClassificationService _classificationService = Substitute.For<IPaymentSourceClassificationService>();
     private readonly FakeLogger<PaymentsImportService> _logger = new();
     private readonly PaymentsImportService _service;
 
@@ -44,9 +46,54 @@ public class PaymentsImportServiceTests
 
         _paymentSourceService.GetByName("Магазин").Returns(_shop);
         _accountService.GetByExcelName("Карта").Returns(_card);
+        _classificationService.Classify(Arg.Any<IReadOnlyList<PaymentSource>>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
 
         _service = new PaymentsImportService(_paymentSourceService, _accountService, _paymentService, _fileFormatFactory,
-            _unitOfWork, timeProvider, _logger);
+            _unitOfWork, _classificationService, timeProvider, _logger);
+    }
+
+    [Fact]
+    public async Task Upload_NewAndExistingSources_ReturnsOnlyNewSourcesAndCreatedPayments()
+    {
+        var cafe = new PaymentSource(2, "Кафе", null, null, Now, null);
+        _paymentSourceService.Create(Arg.Any<PaymentSource>()).Returns(2);
+        _paymentSourceService.GetById(2).Returns(cafe);
+        _paymentService.Create(Arg.Any<Payment>()).Returns(100, 101, 102);
+        _paymentService.FindDuplicate(-300m, PaymentDate).Returns(new Payment { PaymentId = 7, Account = _card });
+        SetRows(
+            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate, -200m, "Кафе", "INV-2", "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate.AddDays(1), -50m, "Кафе", "INV-3", "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate, -300m, "Магазин", "INV-4", "OK", "Списание", "Карта"));
+
+        var result = await _service.Upload("file.xlsx", new MemoryStream());
+
+        Assert.Same(cafe, Assert.Single(result.NewPaymentSources));
+        Assert.Equal(new[] { 100, 101, 102 }, result.NewPayments.Select(p => p.PaymentId));
+        Assert.Equal(new[] { -150m, -200m, -50m }, result.NewPayments.Select(p => p.PaymentSum));
+        Assert.Null(result.ClassificationError);
+    }
+
+    [Fact]
+    public async Task Upload_NewSources_ClassifiesThemAfterCommitAndReturnsError()
+    {
+        var cafe = new PaymentSource(2, "Кафе", null, null, Now, null);
+        _paymentSourceService.Create(Arg.Any<PaymentSource>()).Returns(2);
+        _paymentSourceService.GetById(2).Returns(cafe);
+        _classificationService.Classify(Arg.Any<IReadOnlyList<PaymentSource>>(), Arg.Any<CancellationToken>())
+            .Returns("сервис недоступен");
+        SetRows(new ExcelPayment(PaymentDate, -200m, "Кафе", "INV-2", "OK", "Списание", "Карта"));
+
+        var result = await _service.Upload("file.xlsx", new MemoryStream());
+
+        Received.InOrder(() =>
+        {
+            _transaction.Commit(Arg.Any<CancellationToken>());
+            _classificationService.Classify(Arg.Is<IReadOnlyList<PaymentSource>>(s => s.Single() == cafe), Arg.Any<CancellationToken>());
+        });
+        Assert.Equal("сервис недоступен", result.ClassificationError);
+        Assert.Single(result.NewPayments);
     }
 
     [Fact]

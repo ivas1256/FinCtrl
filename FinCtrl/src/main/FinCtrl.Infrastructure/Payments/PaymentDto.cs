@@ -24,6 +24,8 @@ namespace FinCtrl.Infrastructure.Payments
         public string? PaymentSource_Description { get; set; }
         public DateTime PaymentSource_CreatedAt { get; set; }
         public DateTime? PaymentSource_LastUpdatedAt { get; set; }
+        public string? PaymentSource_Classification { get; set; }
+        public bool PaymentSource_IsAiClassified { get; set; }
 
         // Account fields
         public int Account_AccountId { get; set; }
@@ -74,7 +76,8 @@ namespace FinCtrl.Infrastructure.Payments
                     Description = PaymentSource_Description,
                     CreatedAt = PaymentSource_CreatedAt,
                     LastUpdatedAt = PaymentSource_LastUpdatedAt,
-
+                    Classification = PaymentSource_Classification,
+                    IsAiClassified = PaymentSource_IsAiClassified,
                 };
 
                 if (PaymentSourceCategory_CategoryId is not null)

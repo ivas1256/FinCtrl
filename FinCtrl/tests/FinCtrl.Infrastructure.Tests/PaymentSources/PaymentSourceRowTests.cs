@@ -18,6 +18,8 @@ public class PaymentSourceRowTests
             Description = "у дома",
             CreatedAt = Created,
             LastUpdatedAt = Updated,
+            Classification = "Супермаркеты",
+            IsAiClassified = true,
             Category_CategoryId = 7,
             Category_CategoryName = "Еда",
             Category_ParentCategoryId = 1,
@@ -32,6 +34,7 @@ public class PaymentSourceRowTests
 
         Assert.Equal((3, "Магазин", "у дома", Created, (DateTime?)Updated),
             (source.PaymentSourceId, source.PaymentSourceName, source.Description, source.CreatedAt, source.LastUpdatedAt));
+        Assert.Equal(("Супермаркеты", true), (source.Classification, source.IsAiClassified));
         var category = Assert.IsType<Category>(source.PaymentSourceCategory);
         Assert.Equal((7, "Еда", (int?)1, true, 2, "#00ff00", Created, (DateTime?)Updated),
             (category.CategoryId, category.CategoryName, category.ParentCategoryId, category.IsOnlyIncome, category.OrderIndex,

@@ -2,6 +2,7 @@
 using FinCtrl.Application.Payments;
 using FinCtrl.Application.PaymentsImport.FileFormats;
 using FinCtrl.Application.PaymentSources;
+using FinCtrl.Application.PaymentSources.Classification;
 using FinCtrl.Common;
 using FinCtrl.Common.Application;
 using FinCtrl.Domain;
@@ -17,6 +18,7 @@ namespace FinCtrl.Application.PaymentsImport
         private readonly IPaymentService _paymentService;
         private readonly IFileFormatFactory _fileFormatFactory;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPaymentSourceClassificationService _classificationService;
         private readonly TimeProvider _timeProvider;
         private readonly ILogger<PaymentsImportService> _logger;
 
@@ -25,6 +27,7 @@ namespace FinCtrl.Application.PaymentsImport
                                      IPaymentService paymentService,
                                      IFileFormatFactory fileFormatFactory,
                                      IUnitOfWork unitOfWork,
+                                     IPaymentSourceClassificationService classificationService,
                                      TimeProvider timeProvider,
                                      ILogger<PaymentsImportService> logger)
         {
@@ -33,11 +36,12 @@ namespace FinCtrl.Application.PaymentsImport
             _paymentService = paymentService;
             _fileFormatFactory = fileFormatFactory;
             _unitOfWork = unitOfWork;
+            _classificationService = classificationService;
             _timeProvider = timeProvider;
             _logger = logger;
         }
 
-        public async Task Upload(string fileName, Stream fileStream, CancellationToken cancellationToken = default)
+        public async Task<PaymentsImportResult> Upload(string fileName, Stream fileStream, CancellationToken cancellationToken = default)
         {
             List<ExcelPayment> rows;
             try
@@ -72,6 +76,12 @@ namespace FinCtrl.Application.PaymentsImport
             _logger.LogInformation(
                 "Импорт файла {FileName}: строк {Rows}, создано платежей {Created}, дозаполнен счёт {AccountFilled}, пропущено дублей {Skipped}",
                 fileName, rows.Count, summary.Created, summary.AccountFilled, summary.Skipped);
+
+            // Классификация — после коммита: запрос к LLM долгий, держать транзакцию ради него незачем,
+            // а его ошибка не должна откатывать уже загруженные платежи.
+            var classificationError = await _classificationService.Classify(context.NewSources, cancellationToken);
+
+            return new PaymentsImportResult(context.NewPayments, context.NewSources, classificationError);
         }
 
         private async Task ImportRow(ExcelPayment row, ImportContext context, ImportSummary summary)
@@ -95,7 +105,8 @@ namespace FinCtrl.Application.PaymentsImport
             var existingPayment = await _paymentService.FindDuplicate(payment.PaymentSum, payment.PaymentDate);
             if (existingPayment is null)
             {
-                await _paymentService.Create(payment);
+                payment.PaymentId = await _paymentService.Create(payment);
+                context.NewPayments.Add(payment);
                 summary.Created++;
             }
             else if (existingPayment.Account is null && account is not null)
@@ -124,6 +135,7 @@ namespace FinCtrl.Application.PaymentsImport
             {
                 var id = await _paymentSourceService.Create(PaymentSource.CreateNew(name, _timeProvider.GetLocalNow().DateTime));
                 source = await _paymentSourceService.GetById(id);
+                context.NewSources.Add(source);
             }
 
             context.Sources[name] = source;
@@ -153,6 +165,8 @@ namespace FinCtrl.Application.PaymentsImport
         {
             public Dictionary<string, PaymentSource> Sources { get; } = new(StringComparer.Ordinal);
             public Dictionary<string, Account> Accounts { get; } = new(StringComparer.Ordinal);
+            public List<PaymentSource> NewSources { get; } = new();
+            public List<Payment> NewPayments { get; } = new();
         }
 
         private sealed class ImportSummary

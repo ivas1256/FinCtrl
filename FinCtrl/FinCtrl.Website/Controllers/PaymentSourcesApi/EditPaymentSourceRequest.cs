@@ -14,4 +14,8 @@ public class EditPaymentSourceRequest
     public int? CategoryId { get; set; }
 
     public string? Description { get; set; }
+
+    /// <summary>Классификация; <c>null</c>/пустая строка — очистить.</summary>
+    [MaxLength(200)]
+    public string? Classification { get; set; }
 }

@@ -29,20 +29,40 @@
         public DateTime CreatedAt { get;  set; }
         public DateTime? LastUpdatedAt { get;  set; }
 
+        /// <summary>Человекочитаемая классификация контрагента (группа, по которой сводятся источники).</summary>
+        public string? Classification { get; set; }
+
+        /// <summary>Классификацию задала LLM (FinCtrl.AiAssistant), а не человек.</summary>
+        public bool IsAiClassified { get; set; }
+
         public void Updated(DateTime now)
         {
             LastUpdatedAt = now;
         }
 
-        public static PaymentSource CreateFromExisting(int paymentSourceId, string paymentSourceName, Category? category, string? description)
+        /// <summary>
+        /// Классификация, заданная пользователем: пробелы по краям обрезаются, пустая строка — очистить.
+        /// Признак <see cref="IsAiClassified"/> сбрасывается, только если значение действительно изменилось.
+        /// </summary>
+        public void SetClassificationByUser(string? classification)
         {
-            return new PaymentSource(paymentSourceId, category?.CategoryId)
-            {
-                PaymentSourceName = paymentSourceName,
-                Description = description,
-                PaymentSourceCategory = category,
-            };
+            var normalized = NormalizeClassification(classification);
+            if (normalized == Classification)
+                return;
+
+            Classification = normalized;
+            IsAiClassified = false;
         }
+
+        /// <summary>Классификация, полученная от LLM.</summary>
+        public void SetAiClassification(string classification)
+        {
+            Classification = NormalizeClassification(classification);
+            IsAiClassified = Classification is not null;
+        }
+
+        private static string? NormalizeClassification(string? classification) =>
+            string.IsNullOrWhiteSpace(classification) ? null : classification.Trim();
 
         public static PaymentSource CreateNew(string name, DateTime createdAt) => new PaymentSource(0, null)
         {
