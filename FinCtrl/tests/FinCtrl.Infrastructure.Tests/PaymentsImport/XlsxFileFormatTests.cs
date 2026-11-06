@@ -20,7 +20,7 @@ public class XlsxFileFormatTests
         var first = rows[0];
         Assert.Equal(new DateTime(2025, 10, 1), first.Date);
         Assert.Equal("Карта", first.AccountName);
-        Assert.Equal("INV-1", first.InvoiceNumber);
+        Assert.Equal("INV-1", first.AccountNumber);
         Assert.Equal("Магазин", first.SourceName);
         Assert.Equal(-150m, first.Sum);
         Assert.Equal("OK", first.Status);

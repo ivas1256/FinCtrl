@@ -14,6 +14,7 @@ namespace FinCtrl.Infrastructure.Accounts
                   a.AccountId
                  ,a.ExcelAccountName
                  ,a.DisplayName
+                 ,a.AccountNumber
                  ,a.IsSavings
                  ,a.CreatedAt
                  ,a.LastUpdatedAt
@@ -29,14 +30,22 @@ namespace FinCtrl.Infrastructure.Accounts
             return await FirstOrDefault<Account>(_select + " WHERE a.AccountId = @accountId", new { accountId });
         }
 
+        // Название не уникально (с задачи 0038) — при совпадении берётся самый старый счёт.
         public async Task<Account?> GetByExcelName(string excelAccountName)
         {
-            return await FirstOrDefault<Account>(_select + " WHERE a.ExcelAccountName = @excelAccountName", new { excelAccountName });
+            return await FirstOrDefault<Account>(_select + " WHERE a.ExcelAccountName = @excelAccountName ORDER BY a.AccountId", new { excelAccountName });
         }
 
-        public async Task<bool> Exists(string excelAccountName)
+        public async Task<Account?> GetWithoutNumberByExcelName(string excelAccountName)
         {
-            return await GetByExcelName(excelAccountName) is not null;
+            return await FirstOrDefault<Account>(
+                _select + " WHERE a.ExcelAccountName = @excelAccountName AND a.AccountNumber IS NULL ORDER BY a.AccountId",
+                new { excelAccountName });
+        }
+
+        public async Task<Account?> GetByAccountNumber(string accountNumber)
+        {
+            return await FirstOrDefault<Account>(_select + " WHERE a.AccountNumber = @accountNumber", new { accountNumber });
         }
 
         public async Task<int> CountPayments(int accountId)
@@ -47,14 +56,15 @@ namespace FinCtrl.Infrastructure.Accounts
 
         public async Task<int> Create(Account account)
         {
-            var sql = @"INSERT INTO dbo.Accounts (ExcelAccountName, DisplayName, IsSavings, CreatedAt, LastUpdatedAt)
+            var sql = @"INSERT INTO dbo.Accounts (ExcelAccountName, DisplayName, AccountNumber, IsSavings, CreatedAt, LastUpdatedAt)
                         OUTPUT INSERTED.AccountId
-                        VALUES (@ExcelAccountName, @DisplayName, @IsSavings, @CreatedAt, @LastUpdatedAt);";
+                        VALUES (@ExcelAccountName, @DisplayName, @AccountNumber, @IsSavings, @CreatedAt, @LastUpdatedAt);";
 
             return await ExecuteScalar<int>(sql, new
             {
                 account.ExcelAccountName,
                 account.DisplayName,
+                account.AccountNumber,
                 account.IsSavings,
                 account.CreatedAt,
                 account.LastUpdatedAt
@@ -66,6 +76,7 @@ namespace FinCtrl.Infrastructure.Accounts
             var sql = @"UPDATE Accounts
                         SET ExcelAccountName = @ExcelAccountName
                            ,DisplayName = @DisplayName
+                           ,AccountNumber = @AccountNumber
                            ,IsSavings = @IsSavings
                            ,LastUpdatedAt = @LastUpdatedAt
                         WHERE AccountId = @AccountId;";
@@ -77,6 +88,7 @@ namespace FinCtrl.Infrastructure.Accounts
                     account.AccountId,
                     account.ExcelAccountName,
                     account.DisplayName,
+                    account.AccountNumber,
                     account.IsSavings,
                     account.LastUpdatedAt
                 });

@@ -11,8 +11,14 @@ public interface IAccountRepository
     /// <summary>Счёт по id или <c>null</c>, если не найден.</summary>
     Task<Account?> GetById(int accountId);
 
-    /// <summary>Счёт по имени из банковского файла или <c>null</c>, если не найден.</summary>
+    /// <summary>Самый старый счёт с таким именем из банковского файла или <c>null</c>, если не найден.</summary>
     Task<Account?> GetByExcelName(string excelAccountName);
+
+    /// <summary>Самый старый счёт с таким именем из банковского файла и без номера или <c>null</c>.</summary>
+    Task<Account?> GetWithoutNumberByExcelName(string excelAccountName);
+
+    /// <summary>Счёт по номеру или <c>null</c>, если не найден.</summary>
+    Task<Account?> GetByAccountNumber(string accountNumber);
 
     /// <summary>Создаёт счёт.</summary>
     /// <returns>Id созданного счёта.</returns>
@@ -26,7 +32,4 @@ public interface IAccountRepository
 
     /// <summary>Число операций со счётом, включая удалённые (на них тоже ссылается внешний ключ).</summary>
     Task<int> CountPayments(int accountId);
-
-    /// <summary>Есть ли счёт с таким именем из банковского файла.</summary>
-    Task<bool> Exists(string excelAccountName);
 }

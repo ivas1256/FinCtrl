@@ -9,7 +9,6 @@ namespace FinCtrl.Infrastructure.PaymentsImport
     internal class CsvFileFormat : IFileFormat
     {
         private const int DateColumn = 0;
-        private const int InvoiceNumberColumn = 2;
         private const int StatusColumn = 3;
         private const int SumColumn = 6;
         private const int SourceNameColumn = 11;
@@ -53,7 +52,7 @@ namespace FinCtrl.Infrastructure.PaymentsImport
                 ParseDate(fields[DateColumn], lineNumber),
                 ParseSum(fields[SumColumn], lineNumber),
                 fields[SourceNameColumn],
-                fields[InvoiceNumberColumn],
+                accountNumber: null,
                 fields[StatusColumn],
                 "");
         }

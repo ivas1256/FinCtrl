@@ -87,9 +87,7 @@ namespace FinCtrl.Application.PaymentsImport
         private async Task ImportRow(ExcelPayment row, ImportContext context, ImportSummary summary)
         {
             var source = await GetOrCreatePaymentSource(row.SourceName, context);
-            var account = string.IsNullOrWhiteSpace(row.AccountName)
-                ? null
-                : await GetOrCreateAccount(row.AccountName, context);
+            var account = await GetOrCreateAccount(row, context);
 
             var payment = Payment.FromExcelPayment(row, source, account, _timeProvider.GetLocalNow().DateTime);
 
@@ -142,9 +140,54 @@ namespace FinCtrl.Application.PaymentsImport
             return source;
         }
 
-        private async Task<Account> GetOrCreateAccount(string excelAccountName, ImportContext context)
+        // Счёт сопоставляется по номеру (с задачи 0038); строка без номера — по названию, как раньше.
+        private async Task<Account?> GetOrCreateAccount(ExcelPayment row, ImportContext context)
         {
-            if (context.Accounts.TryGetValue(excelAccountName, out var cached))
+            var accountNumber = Account.NormalizeAccountNumber(row.AccountNumber);
+            if (accountNumber is not null)
+            {
+                return await GetOrCreateAccountByNumber(accountNumber, row.AccountName, context);
+            }
+
+            return string.IsNullOrWhiteSpace(row.AccountName)
+                ? null
+                : await GetOrCreateAccountByName(row.AccountName, context);
+        }
+
+        private async Task<Account> GetOrCreateAccountByNumber(string accountNumber, string? excelAccountName, ImportContext context)
+        {
+            if (context.AccountsByNumber.TryGetValue(accountNumber, out var cached))
+            {
+                return cached;
+            }
+
+            // Без названия в файле счёт называется номером: название у счёта обязательно.
+            var name = string.IsNullOrWhiteSpace(excelAccountName) ? accountNumber : excelAccountName;
+
+            var account = await _accountService.GetByAccountNumber(accountNumber);
+            if (account is null)
+            {
+                // Счёт, созданный до появления номеров, получает номер — иначе на него не попадут новые операции.
+                account = await _accountService.GetWithoutNumberByExcelName(name);
+                if (account is not null)
+                {
+                    account.AccountNumber = accountNumber;
+                    await _accountService.Update(account);
+                }
+                else
+                {
+                    var id = await _accountService.Create(Account.CreateNew(name, _timeProvider.GetLocalNow().DateTime, accountNumber));
+                    account = await _accountService.GetById(id);
+                }
+            }
+
+            context.AccountsByNumber[accountNumber] = account;
+            return account;
+        }
+
+        private async Task<Account> GetOrCreateAccountByName(string excelAccountName, ImportContext context)
+        {
+            if (context.AccountsByName.TryGetValue(excelAccountName, out var cached))
             {
                 return cached;
             }
@@ -156,7 +199,7 @@ namespace FinCtrl.Application.PaymentsImport
                 account = await _accountService.GetById(id);
             }
 
-            context.Accounts[excelAccountName] = account;
+            context.AccountsByName[excelAccountName] = account;
             return account;
         }
 
@@ -164,7 +207,8 @@ namespace FinCtrl.Application.PaymentsImport
         private sealed class ImportContext
         {
             public Dictionary<string, PaymentSource> Sources { get; } = new(StringComparer.Ordinal);
-            public Dictionary<string, Account> Accounts { get; } = new(StringComparer.Ordinal);
+            public Dictionary<string, Account> AccountsByNumber { get; } = new(StringComparer.Ordinal);
+            public Dictionary<string, Account> AccountsByName { get; } = new(StringComparer.Ordinal);
             public List<PaymentSource> NewSources { get; } = new();
             public List<Payment> NewPayments { get; } = new();
         }
