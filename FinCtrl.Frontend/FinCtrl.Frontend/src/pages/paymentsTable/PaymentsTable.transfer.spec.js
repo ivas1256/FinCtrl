@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { SAVINGS_CATEGORY_ID } from '../../utils/periodComparison'
 
@@ -45,11 +45,7 @@ const openModal = async (payment = outgoing) => {
         attachTo: document.body
     })
     await flushPromises()
-    // handleCellClick откладывает прокрутку setTimeout'ом — прокручиваем таймер сразу, чтобы он не сработал после теста
-    vi.useFakeTimers({ toFake: ['setTimeout'] })
     await wrapper.find('td.hm-cell.interactive').trigger('click')
-    vi.runOnlyPendingTimers()
-    vi.useRealTimers()
     await flushPromises()
     wrapper.findComponent(PaymentList).vm.$emit('edit-payment', payment)
     await flushPromises()
@@ -68,6 +64,18 @@ const savePayment = async (wrapper) => {
 describe('PaymentsTable: перевод между своими счетами в модалке правки', () => {
     // jsdom не умеет прокручивать: handleCellClick вызывает scrollIntoView
     Element.prototype.scrollIntoView = vi.fn()
+
+    // handleCellClick (при открытии ячейки и повторно после сохранения) откладывает прокрутку setTimeout'ом:
+    // подменяем только setTimeout (flushPromises работает на setImmediate) и прокручиваем его до конца теста,
+    // иначе таймер срабатывает после teardown jsdom
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['setTimeout'] })
+    })
+
+    afterEach(() => {
+        vi.runOnlyPendingTimers()
+        vi.useRealTimers()
+    })
 
     beforeEach(() => {
         axios.get.mockReset()
