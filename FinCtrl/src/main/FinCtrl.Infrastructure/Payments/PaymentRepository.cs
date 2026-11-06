@@ -235,12 +235,15 @@ namespace FinCtrl.Infrastructure.Payments
             }
         }
 
-        public async Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate)
+        public async Task<List<Payment>> GetByDateAndSum(decimal paymentSum, DateTime paymentDate)
         {
-            var sql = $"{SelectPayment} WHERE p.PaymentSum = @paymentSum AND p.PaymentDate = @paymentDate AND p.IsDeleted = 0";
+            var sql = $@"{SelectPayment}
+                WHERE p.PaymentSum = @paymentSum AND p.PaymentDate = @paymentDate AND p.IsDeleted = 0
+                ORDER BY p.PaymentId";
 
-            var dto = await FirstOrDefault<PaymentDto>(sql, new { paymentSum, paymentDate });
-            return dto?.MapToPayment();
+            return (await Query<PaymentDto>(sql, new { paymentSum, paymentDate }))
+                .Select(x => x.MapToPayment())
+                .ToList();
         }
 
         public async Task<List<Payment>> GetBySource(int PaymentSourceId)

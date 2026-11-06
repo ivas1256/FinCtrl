@@ -21,8 +21,11 @@ public interface IPaymentRepository
     /// <summary>Сохраняет изменения платежей (без тегов).</summary>
     Task Update(params Payment[] payments);
 
-    /// <summary>Платёж с такой же суммой и датой (поиск дубля при импорте) или <c>null</c>.</summary>
-    Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate);
+    /// <summary>
+    /// Неудалённые платежи с такой суммой (как хранится, без нормализации знака) и датой, по возрастанию id —
+    /// кандидаты в дубли при импорте.
+    /// </summary>
+    Task<List<Payment>> GetByDateAndSum(decimal paymentSum, DateTime paymentDate);
 
     /// <summary>Платежи источника.</summary>
     Task<List<Payment>> GetBySource(int PaymentSourceId);

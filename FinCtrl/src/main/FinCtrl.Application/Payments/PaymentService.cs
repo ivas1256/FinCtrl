@@ -103,9 +103,17 @@ namespace FinCtrl.Application.Payments
             await _paymentRepository.Update(payments);
         }
 
-        public async Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate)
+        public async Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate, int? accountId)
         {
-            return await _paymentRepository.FindDuplicate(paymentSum, paymentDate);
+            var candidates = await _paymentRepository.GetByDateAndSum(paymentSum, paymentDate);
+
+            if (accountId is null)
+                return candidates.FirstOrDefault();
+
+            // Совпадение на том же счёте проверяется первым: иначе дозаполнение счёта у платежа без счёта
+            // создало бы второй платёж с тем же ключом «счёт + дата + сумма» (UQ_Payments_Account_Date_Sum)
+            return candidates.FirstOrDefault(p => p.Account?.AccountId == accountId)
+                ?? candidates.FirstOrDefault(p => p.Account is null);
         }
 
         public async Task<List<Payment>> GetByDateRange(DateRange dateRange, int[]? tagIds = null)

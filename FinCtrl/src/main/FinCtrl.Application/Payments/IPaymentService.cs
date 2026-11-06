@@ -30,8 +30,12 @@ namespace FinCtrl.Application.Payments
         /// <exception cref="FinCtrl.Common.Application.ValidationException">Категория, счёт или какой-то из тегов не найдены.</exception>
         Task Edit(PaymentEdit edit);
 
-        /// <summary>Платёж с такой же суммой и датой (поиск дубля при импорте) или <c>null</c>.</summary>
-        Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate);
+        /// <summary>
+        /// Дубль строки импорта или <c>null</c>. Ключ — «счёт + дата + сумма»: при указанном <paramref name="accountId"/>
+        /// сначала ищется платёж на том же счёте, затем платёж без счёта (ему импорт дозаполнит счёт);
+        /// платёж на другом счёте дублем не считается. Без счёта — любой платёж с такой суммой и датой.
+        /// </summary>
+        Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate, int? accountId);
 
         /// <summary>Платежи источника; пустой список, если источника нет.</summary>
         Task<List<Payment>> GetBySource(int PaymentSourceId);

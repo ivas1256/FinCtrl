@@ -369,4 +369,63 @@ public class PaymentServiceTests
             PaymentSource = new PaymentSource(3, categoryId: 8)
         });
     }
+
+    private static readonly DateTime DuplicateDate = new(2025, 10, 1);
+
+    private void SetDuplicateCandidates(params Payment[] candidates) =>
+        _paymentRepository.GetByDateAndSum(-150m, DuplicateDate).Returns(candidates.ToList());
+
+    [Fact]
+    public async Task FindDuplicate_SameDateAndSumOnOtherAccount_NotDuplicate()
+    {
+        SetDuplicateCandidates(new Payment { PaymentId = 1, Account = new Account { AccountId = 7 } });
+
+        Assert.Null(await _service.FindDuplicate(-150m, DuplicateDate, 5));
+    }
+
+    [Fact]
+    public async Task FindDuplicate_SameAccount_ReturnsIt()
+    {
+        var sameAccount = new Payment { PaymentId = 2, Account = new Account { AccountId = 5 } };
+        SetDuplicateCandidates(new Payment { PaymentId = 1, Account = new Account { AccountId = 7 } }, sameAccount);
+
+        Assert.Same(sameAccount, await _service.FindDuplicate(-150m, DuplicateDate, 5));
+    }
+
+    [Fact]
+    public async Task FindDuplicate_SameAccountAndWithoutAccount_PrefersSameAccount()
+    {
+        var sameAccount = new Payment { PaymentId = 2, Account = new Account { AccountId = 5 } };
+        SetDuplicateCandidates(new Payment { PaymentId = 1, Account = null }, sameAccount);
+
+        Assert.Same(sameAccount, await _service.FindDuplicate(-150m, DuplicateDate, 5));
+    }
+
+    [Fact]
+    public async Task FindDuplicate_OnlyWithoutAccount_ReturnsItForAccountFill()
+    {
+        var withoutAccount = new Payment { PaymentId = 2, Account = null };
+        SetDuplicateCandidates(new Payment { PaymentId = 1, Account = new Account { AccountId = 7 } }, withoutAccount);
+
+        Assert.Same(withoutAccount, await _service.FindDuplicate(-150m, DuplicateDate, 5));
+    }
+
+    [Fact]
+    public async Task FindDuplicate_RowWithoutAccount_ReturnsFirstCandidateWithAnyAccount()
+    {
+        var first = new Payment { PaymentId = 1, Account = new Account { AccountId = 7 } };
+        SetDuplicateCandidates(first, new Payment { PaymentId = 2, Account = null });
+
+        Assert.Same(first, await _service.FindDuplicate(-150m, DuplicateDate, null));
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(null)]
+    public async Task FindDuplicate_NoCandidates_ReturnsNull(int? accountId)
+    {
+        SetDuplicateCandidates();
+
+        Assert.Null(await _service.FindDuplicate(-150m, DuplicateDate, accountId));
+    }
 }
