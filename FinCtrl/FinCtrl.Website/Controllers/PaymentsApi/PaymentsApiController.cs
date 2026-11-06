@@ -41,7 +41,8 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
 
         /// <summary>
         /// Правит платёж и его теги одной транзакцией; поля со значением <c>null</c> не меняются.
-        /// 404 — платёж не найден, 400 — категория, счёт или тег не найдены (платёж при этом не меняется).
+        /// 404 — платёж не найден; 400 — категория, счёт, тег или вторая сторона перевода не найдены, вторая сторона того же знака,
+        /// сам платёж или указана не у перевода; 409 — вторая сторона уже связана с другим платежом (платёж при ошибке не меняется).
         /// </summary>
         [HttpPut("{paymentId:int}")]
         public async Task<IActionResult> EditPayment(int paymentId, [FromBody] EditPaymentRequest request)
@@ -49,6 +50,19 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
             await _paymentService.Edit(request.ToModel(paymentId));
 
             return NoContent();
+        }
+
+        /// <summary>
+        /// Кандидаты во вторую сторону перевода: противоположный знак, та же сумма по модулю, дата ±5 дней, другой счёт
+        /// (или без счёта), ещё не связанные с другим платежом; по близости даты. 404 — платёж не найден.
+        /// </summary>
+        [HttpGet("{paymentId:int}/transfer-candidates")]
+        [ProducesResponseType(typeof(List<PaymentDto>), 200)]
+        public async Task<IActionResult> GetTransferCandidates(int paymentId)
+        {
+            var candidates = await _paymentService.GetTransferCandidates(paymentId);
+
+            return Ok(candidates.Select(PaymentDto.FromModel).ToList());
         }
 
         /// <summary>

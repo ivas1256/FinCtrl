@@ -23,19 +23,32 @@ namespace FinCtrl.Application.Payments
         Task Update(params Payment[] payments);
 
         /// <summary>
-        /// Правит платёж (поля и теги) одной транзакцией; поля с <c>null</c> не меняются (см. <see cref="PaymentEdit"/>).
-        /// Связанные категория, счёт и теги проверяются до записи.
+        /// Правит платёж (поля, теги, отметку перевода и его вторую сторону) одной транзакцией; поля с <c>null</c>
+        /// не меняются (см. <see cref="PaymentEdit"/>). Связанные категория, счёт, теги и вторая сторона проверяются до записи.
         /// </summary>
         /// <exception cref="FinCtrl.Common.Application.NotFoundException">Платёж не найден.</exception>
-        /// <exception cref="FinCtrl.Common.Application.ValidationException">Категория, счёт или какой-то из тегов не найдены.</exception>
+        /// <exception cref="FinCtrl.Common.Application.ValidationException">
+        /// Категория, счёт, тег или вторая сторона перевода не найдены; вторая сторона — сам платёж, того же знака
+        /// или указана у платежа, который не перевод.
+        /// </exception>
+        /// <exception cref="FinCtrl.Common.Application.ConflictException">Вторая сторона уже связана с другим платежом.</exception>
         Task Edit(PaymentEdit edit);
+
+        /// <summary>
+        /// Кандидаты во вторую сторону перевода: противоположный знак, та же сумма по модулю, дата ±5 дней, не тот же счёт
+        /// (платежи без счёта подходят), ещё не связанные с другим платежом. По близости даты, затем по id.
+        /// </summary>
+        /// <exception cref="FinCtrl.Common.Application.NotFoundException">Платёж не найден.</exception>
+        Task<List<Payment>> GetTransferCandidates(int paymentId);
 
         /// <summary>
         /// Дубль строки импорта или <c>null</c>. Ключ — «счёт + дата + сумма»: при указанном <paramref name="accountId"/>
         /// сначала ищется платёж на том же счёте, затем платёж без счёта (ему импорт дозаполнит счёт);
         /// платёж на другом счёте дублем не считается. Без счёта — любой платёж с такой суммой и датой.
+        /// Сумма сравнивается как хранится; у расхода с положительной суммой (так бывает в файлах) ищется и отрицательная:
+        /// правка платежа сохраняет сумму нормализованной (см. <see cref="Payment.NormalizeSumSign"/>).
         /// </summary>
-        Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate, int? accountId);
+        Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate, int? accountId, PaymentTypeEnum paymentType);
 
         /// <summary>Платежи источника; пустой список, если источника нет.</summary>
         Task<List<Payment>> GetBySource(int PaymentSourceId);

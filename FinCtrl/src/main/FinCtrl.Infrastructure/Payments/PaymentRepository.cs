@@ -207,9 +207,12 @@ namespace FinCtrl.Infrastructure.Payments
 
         public async Task Update(params Payment[] payments)
         {
+            // Сумма пишется нормализованной (расход — отрицательная, см. Payment.NormalizeSumSign): иначе расход, сохранённый
+            // с положительной суммой, при смене типа на Transfer стал бы поступлением
             var sql = @"UPDATE dbo.Payments
                 SET
                   PaymentType = @PaymentType
+                 ,PaymentSum = @PaymentSum
                  ,PaymentSourceId = @PaymentSourceId
                  ,AccountId = @AccountId
                  ,PaymentCategoryCategoryId = @PaymentCategoryId
@@ -225,6 +228,7 @@ namespace FinCtrl.Infrastructure.Payments
                 {
                     payment.PaymentId,
                     payment.PaymentType,
+                    payment.PaymentSum,
                     payment.PaymentSource?.PaymentSourceId,
                     AccountId = payment.Account?.AccountId,
                     PaymentCategoryId = payment.PaymentCategory?.CategoryId,
@@ -235,13 +239,31 @@ namespace FinCtrl.Infrastructure.Payments
             }
         }
 
-        public async Task<List<Payment>> GetByDateAndSum(decimal paymentSum, DateTime paymentDate)
+        public async Task<List<Payment>> GetTransferCandidates(int paymentId, decimal absSum, DateTime from, DateTime to, int? excludeAccountId)
+        {
+            // tr — связь кандидата из SelectPayment; tr.InPaymentId IS NULL — перевод-списание без второй стороны
+            var sql = $@"{SelectPayment}
+                WHERE p.IsDeleted = 0
+                    AND p.PaymentId <> @paymentId
+                    AND ABS(p.PaymentSum) = @absSum
+                    AND p.PaymentDate >= @from
+                    AND p.PaymentDate < @to
+                    AND (@excludeAccountId IS NULL OR p.AccountId IS NULL OR p.AccountId <> @excludeAccountId)
+                    AND (tr.TransferId IS NULL OR tr.InPaymentId IS NULL
+                         OR tr.OutPaymentId = @paymentId OR tr.InPaymentId = @paymentId)";
+
+            return (await Query<PaymentDto>(sql, new { paymentId, absSum, from, to, excludeAccountId }))
+                .Select(x => x.MapToPayment())
+                .ToList();
+        }
+
+        public async Task<List<Payment>> GetByDateAndSums(IReadOnlyCollection<decimal> paymentSums, DateTime paymentDate)
         {
             var sql = $@"{SelectPayment}
-                WHERE p.PaymentSum = @paymentSum AND p.PaymentDate = @paymentDate AND p.IsDeleted = 0
+                WHERE p.PaymentSum IN @paymentSums AND p.PaymentDate = @paymentDate AND p.IsDeleted = 0
                 ORDER BY p.PaymentId";
 
-            return (await Query<PaymentDto>(sql, new { paymentSum, paymentDate }))
+            return (await Query<PaymentDto>(sql, new { paymentSums, paymentDate }))
                 .Select(x => x.MapToPayment())
                 .ToList();
         }

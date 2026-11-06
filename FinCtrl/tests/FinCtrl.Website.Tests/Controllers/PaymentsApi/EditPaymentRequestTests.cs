@@ -20,13 +20,15 @@ public class EditPaymentRequestTests
         Assert.Null(edit.Description);
         Assert.Null(edit.ExcludeFromStats);
         Assert.Null(edit.TagIds);
+        Assert.Null(edit.IsTransfer);
+        Assert.Null(edit.TransferPairPaymentId);
     }
 
     [Fact]
     public void ToModel_BodyFromClient_IdFromRouteAndValuesFromBody()
     {
         const string body = """
-            {"paymentId": 99, "categoryId": 7, "accountId": 0, "description": "", "excludeFromStats": true, "tagIds": []}
+            {"paymentId": 99, "categoryId": 7, "accountId": 0, "description": "", "excludeFromStats": true, "tagIds": [], "isTransfer": true, "transferPairPaymentId": 0}
             """;
         var request = JsonSerializer.Deserialize<EditPaymentRequest>(body, WebOptions)!;
 
@@ -38,5 +40,7 @@ public class EditPaymentRequestTests
         Assert.Equal("", edit.Description);
         Assert.True(edit.ExcludeFromStats);
         Assert.Empty(edit.TagIds!);
+        Assert.True(edit.IsTransfer);
+        Assert.Equal(0, edit.TransferPairPaymentId);
     }
 }

@@ -18,14 +18,21 @@ public interface IPaymentRepository
     /// <returns>Id созданного платежа.</returns>
     Task<int> Create(Payment payment);
 
-    /// <summary>Сохраняет изменения платежей (без тегов).</summary>
+    /// <summary>Сохраняет изменения платежей (без тегов); сумма пишется как есть в объекте — нормализованной после чтения.</summary>
     Task Update(params Payment[] payments);
 
     /// <summary>
-    /// Неудалённые платежи с такой суммой (как хранится, без нормализации знака) и датой, по возрастанию id —
-    /// кандидаты в дубли при импорте.
+    /// Неудалённые платежи с одной из сумм (как хранится в БД) и такой датой, по возрастанию id — кандидаты в дубли при импорте.
     /// </summary>
-    Task<List<Payment>> GetByDateAndSum(decimal paymentSum, DateTime paymentDate);
+    Task<List<Payment>> GetByDateAndSums(IReadOnlyCollection<decimal> paymentSums, DateTime paymentDate);
+
+    /// <summary>
+    /// Кандидаты во вторую сторону перевода платежа <paramref name="paymentId"/> (без тегов): неудалённые платежи с суммой
+    /// <paramref name="absSum"/> по модулю (знак не фильтруется), датой в [<paramref name="from"/>; <paramref name="to"/>),
+    /// не на счёте <paramref name="excludeAccountId"/> (платежи без счёта подходят), не связанные со второй стороной —
+    /// кроме связи с самим <paramref name="paymentId"/>.
+    /// </summary>
+    Task<List<Payment>> GetTransferCandidates(int paymentId, decimal absSum, DateTime from, DateTime to, int? excludeAccountId);
 
     /// <summary>Платежи источника.</summary>
     Task<List<Payment>> GetBySource(int PaymentSourceId);

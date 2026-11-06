@@ -225,6 +225,39 @@
                         </div>
 
                         <div class="mb-3">
+                            <div class="form-check">
+                                <input
+                                    id="edit-payment-is-transfer"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                    :checked="editingPayment.isTransfer"
+                                    @change="onTransferToggle($event.target.checked)"
+                                >
+                                <label for="edit-payment-is-transfer" class="form-check-label">Перевод между своими счетами</label>
+                            </div>
+                        </div>
+
+                        <div v-if="editingPayment.isTransfer" class="mb-3">
+                            <label for="edit-payment-transfer-pair" class="form-label">Вторая сторона</label>
+                            <select
+                                id="edit-payment-transfer-pair"
+                                class="form-select"
+                                :value="editingPayment.transferPairPaymentId"
+                                :disabled="transferCandidatesLoading"
+                                @change="onTransferPairChange($event.target.value)"
+                            >
+                                <option value="">Не указывать</option>
+                                <option v-for="option in transferPairOptions" :key="option.paymentId" :value="option.paymentId">
+                                    {{ option.label }}
+                                </option>
+                            </select>
+                            <div v-if="transferCandidatesLoading" class="form-text">Ищем подходящие операции…</div>
+                            <div v-else-if="transferCandidates.length === 0" class="form-text">
+                                Подходящих операций не найдено: нужна противоположная по знаку операция на ту же сумму в пределах 5 дней
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Категория</label>
                             <CategoryTreeSelect
                                 v-model="editingPayment.categoryId"
@@ -270,7 +303,8 @@ import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import { Modal } from 'bootstrap'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
 import { computeMaxValue, splitTotalNode, hasAnySum } from '../../utils/heatmap'
-import { formatCurrency, formatSignedCurrency, toInputDate } from '../../utils/format'
+import { formatCurrency, formatSignedCurrency, formatShortDate, toInputDate } from '../../utils/format'
+import { resolveTransferCategory } from '../../utils/transferCategory'
 import {
     formatPeriodHeader,
     formatComparisonHeader,
@@ -449,6 +483,69 @@ const { error, showError, clearAlerts } = useAlerts()
 // Ошибка сохранения платежа показывается внутри модалки
 const modalError = ref(null)
 
+// Перевод между своими счетами в модалке правки (PaymentTypeEnum.Transfer = 2 на backend)
+const TRANSFER_PAYMENT_TYPE = 2
+const transferCandidates = ref([])
+const transferCandidatesLoading = ref(false)
+// Автоподстановка «Накоплений»: null или { previousCategoryId } — см. utils/transferCategory.js
+const transferCategoryAuto = ref(null)
+
+const formatTransferCandidate = (payment) => [
+    formatShortDate(payment.paymentDate),
+    formatSignedCurrency(payment.paymentSum),
+    payment.account?.displayName || 'без счёта',
+    payment.paymentSource?.paymentSourceName || 'источник не указан'
+].join(' · ')
+
+// Кандидаты + текущая вторая сторона, если она не попала в кандидаты (например, дальше 5 дней)
+const transferPairOptions = computed(() => {
+    const options = transferCandidates.value.map(c => ({ paymentId: c.paymentId, label: formatTransferCandidate(c) }))
+    const pairId = editingPayment.value?.originalTransferPairPaymentId
+    if (pairId && !options.some(o => o.paymentId === pairId)) {
+        options.unshift({ paymentId: pairId, label: `Связанная операция #${pairId}` })
+    }
+    return options
+})
+
+const loadTransferCandidates = async (paymentId) => {
+    transferCandidatesLoading.value = true
+    try {
+        const response = await axios.get(`${APP_CONFIG.apiBaseUrl}/api/PaymentsApi/${paymentId}/transfer-candidates`)
+        if (editingPayment.value?.paymentId === paymentId) transferCandidates.value = response.data || []
+    } catch (err) {
+        console.error('Ошибка загрузки кандидатов перевода:', err)
+        modalError.value = getErrorMessage(err, 'Не удалось подобрать вторую сторону перевода')
+    } finally {
+        transferCandidatesLoading.value = false
+    }
+}
+
+const applyTransferCategory = () => {
+    const payment = editingPayment.value
+    const pair = transferCandidates.value.find(c => c.paymentId === payment.transferPairPaymentId)
+    const result = resolveTransferCategory({
+        isTransfer: payment.isTransfer,
+        pairIsSavings: !!pair?.account?.isSavings,
+        categoryId: payment.categoryId,
+        auto: transferCategoryAuto.value
+    })
+    payment.categoryId = result.categoryId
+    transferCategoryAuto.value = result.auto
+}
+
+const onTransferToggle = async (checked) => {
+    editingPayment.value.isTransfer = checked
+    applyTransferCategory()
+    if (checked && transferCandidates.value.length === 0) {
+        await loadTransferCandidates(editingPayment.value.paymentId)
+    }
+}
+
+const onTransferPairChange = (value) => {
+    editingPayment.value.transferPairPaymentId = value === '' ? '' : Number(value)
+    applyTransferCategory()
+}
+
 // Спиннер вместо таблицы: пока грузятся категории (до первого запроса) и во время запроса платежей
 const isLoadingTable = computed(() => loading.value || !categoriesLoaded.value)
 
@@ -567,11 +664,32 @@ const openEditModal = (payment) => {
         ...payment,
         categoryId: payment.effectiveCategory?.categoryId || '',
         accountId: payment.account?.accountId || '',
-        tagIds: (payment.tags || []).map(t => t.tagId)
+        tagIds: (payment.tags || []).map(t => t.tagId),
+        isTransfer: payment.paymentType === TRANSFER_PAYMENT_TYPE,
+        originalIsTransfer: payment.paymentType === TRANSFER_PAYMENT_TYPE,
+        transferPairPaymentId: payment.transferPairPaymentId || '',
+        originalTransferPairPaymentId: payment.transferPairPaymentId || ''
     }
     modalError.value = null
+    transferCandidates.value = []
+    transferCategoryAuto.value = null
 
     Modal.getOrCreateInstance(document.getElementById('editPaymentModal')).show()
+
+    if (editingPayment.value.isTransfer) {
+        loadTransferCandidates(payment.paymentId)
+    }
+}
+
+// Поля перевода — только изменённые (null = не трогать): IsTransfer false снимает отметку и связь,
+// TransferPairPaymentId 0 — отвязать вторую сторону
+const buildTransferChanges = (payment) => {
+    const changes = {}
+    if (payment.isTransfer !== payment.originalIsTransfer) changes.IsTransfer = payment.isTransfer
+    if (payment.isTransfer && payment.transferPairPaymentId !== payment.originalTransferPairPaymentId) {
+        changes.TransferPairPaymentId = payment.transferPairPaymentId === '' ? 0 : payment.transferPairPaymentId
+    }
+    return changes
 }
 
 const savePayment = async () => {
@@ -588,7 +706,8 @@ const savePayment = async () => {
                 CategoryId: editingPayment.value.categoryId || null,
                 AccountId: editingPayment.value.accountId === '' ? 0 : editingPayment.value.accountId,
                 Description: editingPayment.value.paymentDescription,
-                TagIds: editingPayment.value.tagIds
+                TagIds: editingPayment.value.tagIds,
+                ...buildTransferChanges(editingPayment.value)
             }
         )
 
