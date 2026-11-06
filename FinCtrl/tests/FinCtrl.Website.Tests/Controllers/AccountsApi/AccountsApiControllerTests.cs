@@ -27,12 +27,12 @@ public class AccountsApiControllerTests
     {
         _accountService.Create(Arg.Any<Account>()).Returns(5);
         _accountService.GetById(5).Returns(new Account(5, "Карта *1234", "Основная", Now, null));
-        var dto = new AccountDto { AccountId = 99, ExcelAccountName = "Карта *1234", DisplayName = "Основная" };
+        var dto = new AccountDto { AccountId = 99, ExcelAccountName = "Карта *1234", DisplayName = "Основная", IsSavings = true };
 
         var result = await _controller.Create(dto);
 
         await _accountService.Received(1).Create(Arg.Is<Account>(a =>
-            a.AccountId == 0 && a.ExcelAccountName == "Карта *1234" && a.DisplayName == "Основная" && a.CreatedAt == Now));
+            a.AccountId == 0 && a.ExcelAccountName == "Карта *1234" && a.DisplayName == "Основная" && a.IsSavings && a.CreatedAt == Now));
         var saved = Assert.IsType<AccountDto>(Assert.IsType<OkObjectResult>(result).Value);
         Assert.Equal((5, "Основная", Now), (saved.AccountId, saved.DisplayName, saved.CreatedAt));
     }
@@ -40,13 +40,13 @@ public class AccountsApiControllerTests
     [Fact]
     public async Task Update_RouteId_UpdatesAccountWithRouteIdAndReturnsNoContent()
     {
-        var dto = new AccountDto { AccountId = 99, ExcelAccountName = "Карта *1234", DisplayName = "Основная" };
+        var dto = new AccountDto { AccountId = 99, ExcelAccountName = "Карта *1234", DisplayName = "Основная", IsSavings = true };
 
         var result = await _controller.Update(5, dto);
 
         Assert.IsType<NoContentResult>(result);
         await _accountService.Received(1).Update(Arg.Is<Account>(a =>
-            a.AccountId == 5 && a.ExcelAccountName == "Карта *1234" && a.DisplayName == "Основная"));
+            a.AccountId == 5 && a.ExcelAccountName == "Карта *1234" && a.DisplayName == "Основная" && a.IsSavings));
     }
 
     [Fact]

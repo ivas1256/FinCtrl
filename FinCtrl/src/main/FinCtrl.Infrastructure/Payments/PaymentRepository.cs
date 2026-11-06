@@ -31,6 +31,9 @@ namespace FinCtrl.Infrastructure.Payments
                 p.LastUpdatedAt AS PaymentLastUpdatedAt,
                 p.ExcludeFromStats,
 
+                tr.TransferId,
+                CASE WHEN tr.OutPaymentId = p.PaymentId THEN tr.InPaymentId ELSE tr.OutPaymentId END AS TransferPairPaymentId,
+
                 ps.PaymentSourceId AS PaymentSource_PaymentSourceId,
                 ps.PaymentSourceName AS PaymentSource_PaymentSourceName,
                 ps.Description AS PaymentSource_Description,
@@ -42,6 +45,7 @@ namespace FinCtrl.Infrastructure.Payments
                 a.AccountId AS Account_AccountId,
                 a.ExcelAccountName AS Account_ExcelAccountName,
                 a.DisplayName AS Account_DisplayName,
+                a.IsSavings AS Account_IsSavings,
                 a.CreatedAt AS Account_CreatedAt,
                 a.LastUpdatedAt AS Account_LastUpdatedAt,
 
@@ -64,7 +68,9 @@ namespace FinCtrl.Infrastructure.Payments
             LEFT JOIN PaymentSources ps ON p.PaymentSourceId = ps.PaymentSourceId
             LEFT JOIN Accounts a ON p.AccountId = a.AccountId
             LEFT JOIN Categories c ON p.PaymentCategoryCategoryId = c.CategoryId
-            LEFT JOIN Categories c_ps ON c_ps.CategoryId = ps.CategoryId";
+            LEFT JOIN Categories c_ps ON c_ps.CategoryId = ps.CategoryId
+            -- OutPaymentId и InPaymentId уникальны: платёж входит не больше чем в один перевод, строки не размножаются
+            LEFT JOIN Transfers tr ON tr.OutPaymentId = p.PaymentId OR tr.InPaymentId = p.PaymentId";
 
         public async Task<Payment?> Get(int paymentId)
         {

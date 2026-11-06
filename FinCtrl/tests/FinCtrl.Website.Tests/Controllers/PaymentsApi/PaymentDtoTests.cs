@@ -60,7 +60,9 @@ public class PaymentDtoTests
             PaymentDescription = "Обед",
             ExcludeFromStats = true,
             PaymentSource = new PaymentSource(3, "Кафе у дома", null, "Описание", SourceCreatedAt, null),
-            Account = new Account(5, "40817", "Карта", SourceCreatedAt, null),
+            Account = new Account(5, "40817", "Карта", SourceCreatedAt, null) { IsSavings = true },
+            TransferId = 4,
+            TransferPairPaymentId = 11,
             Tags = { new Tag(1, "Поездка", SourceCreatedAt, null) }
         };
 
@@ -76,6 +78,8 @@ public class PaymentDtoTests
         Assert.Equal("Описание", dto.PaymentSource.Description);
         Assert.Equal(SourceCreatedAt, dto.PaymentSource.CreatedAt);
         Assert.Equal("Карта", dto.Account!.DisplayName);
+        Assert.True(dto.Account.IsSavings);
+        Assert.Equal((4, 11), (dto.TransferId, dto.TransferPairPaymentId));
         Assert.Equal("Поездка", Assert.Single(dto.Tags).TagName);
     }
 }

@@ -35,6 +35,12 @@ public class PaymentDto
     public bool ExcludeFromStats { get; set; }
     public List<TagDto> Tags { get; set; } = new();
 
+    /// <summary>Перевод между своими счетами, в который входит платёж; <c>null</c> — не связан.</summary>
+    public int? TransferId { get; set; }
+
+    /// <summary>Вторая сторона перевода; <c>null</c> — платёж не в переводе или вторая сторона не указана.</summary>
+    public int? TransferPairPaymentId { get; set; }
+
     public static PaymentDto FromModel(Payment payment)
     {
         var effectiveCategory = payment.CalculatedCategory;
@@ -54,7 +60,9 @@ public class PaymentDto
                 : null,
             PaymentDescription = payment.PaymentDescription,
             ExcludeFromStats = payment.ExcludeFromStats,
-            Tags = payment.Tags.Select(TagDto.FromModel).ToList()
+            Tags = payment.Tags.Select(TagDto.FromModel).ToList(),
+            TransferId = payment.TransferId,
+            TransferPairPaymentId = payment.TransferPairPaymentId
         };
     }
 }

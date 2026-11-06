@@ -19,6 +19,10 @@ namespace FinCtrl.Domain
         public int AccountId { get; set; }
         public string ExcelAccountName { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
+
+        /// <summary>Накопительный счёт (вклад): перевод на него модалка правки платежа относит к «Накоплениям».</summary>
+        public bool IsSavings { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public DateTime? LastUpdatedAt { get; set; }
 
@@ -27,11 +31,12 @@ namespace FinCtrl.Domain
             LastUpdatedAt = now;
         }
 
-        public static Account CreateFromExisting(int accountId, string excelAccountName, string displayName) => new Account
+        public static Account CreateFromExisting(int accountId, string excelAccountName, string displayName, bool isSavings) => new Account
         {
             AccountId = accountId,
             ExcelAccountName = excelAccountName,
             DisplayName = displayName,
+            IsSavings = isSavings,
         };
 
         public static Account CreateNew(string excelAccountName, DateTime createdAt) => new Account

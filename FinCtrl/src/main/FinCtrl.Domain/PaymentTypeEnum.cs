@@ -1,4 +1,12 @@
-﻿namespace FinCtrl.Domain
+namespace FinCtrl.Domain
 {
-    public enum PaymentTypeEnum { Income, Spending, InvoiceTransfer, CardTransfer }
+    /// <summary>Тип операции. Значения хранятся в <c>Payments.PaymentType</c>.</summary>
+    public enum PaymentTypeEnum
+    {
+        Income = 0,
+        Spending = 1,
+
+        /// <summary>Перевод между своими счетами; стороны связаны в таблице <c>Transfers</c>.</summary>
+        Transfer = 2
+    }
 }

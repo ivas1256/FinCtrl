@@ -46,7 +46,7 @@ Backend-тесты — xUnit + NSubstitute в `FinCtrl/tests/FinCtrl.<Проек
 ### Миграции БД
 `FinCtrl/db/migrations/000N_описание.sql` — просто SQL-файлы, без раннера и без таблицы учёта применённых миграций. Не править существующие файлы — добавлять новый со следующим номером; накатывать вручную:
 ```bash
-sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -i db/migrations/000N_....sql
+sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -I -i db/migrations/000N_....sql
 ```
 
 ## Архитектура backend

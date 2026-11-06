@@ -18,6 +18,10 @@ namespace FinCtrl.Infrastructure.Payments
 
         public bool ExcludeFromStats { get; set; }
 
+        // Transfer fields
+        public int? TransferId { get; set; }
+        public int? TransferPairPaymentId { get; set; }
+
         // PaymentSource fields
         public int PaymentSource_PaymentSourceId { get; set; }
         public string? PaymentSource_PaymentSourceName { get; set; }
@@ -31,6 +35,7 @@ namespace FinCtrl.Infrastructure.Payments
         public int Account_AccountId { get; set; }
         public string? Account_ExcelAccountName { get; set; }
         public string? Account_DisplayName { get; set; }
+        public bool Account_IsSavings { get; set; }
         public DateTime Account_CreatedAt { get; set; }
         public DateTime? Account_LastUpdatedAt { get; set; }
 
@@ -63,6 +68,8 @@ namespace FinCtrl.Infrastructure.Payments
                 CreatedAt = PaymentCreatedAt,
                 LastUpdatedAt = PaymentLastUpdatedAt,
                 ExcludeFromStats = ExcludeFromStats,
+                TransferId = TransferId,
+                TransferPairPaymentId = TransferPairPaymentId,
             };
 
             payment.NormalizeSumSign();
@@ -102,6 +109,7 @@ namespace FinCtrl.Infrastructure.Payments
                     AccountId = Account_AccountId,
                     ExcelAccountName = Account_ExcelAccountName ?? string.Empty,
                     DisplayName = Account_DisplayName ?? string.Empty,
+                    IsSavings = Account_IsSavings,
                     CreatedAt = Account_CreatedAt,
                     LastUpdatedAt = Account_LastUpdatedAt,
                 };

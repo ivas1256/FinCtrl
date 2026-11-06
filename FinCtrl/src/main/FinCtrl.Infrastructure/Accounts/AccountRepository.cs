@@ -14,6 +14,7 @@ namespace FinCtrl.Infrastructure.Accounts
                   a.AccountId
                  ,a.ExcelAccountName
                  ,a.DisplayName
+                 ,a.IsSavings
                  ,a.CreatedAt
                  ,a.LastUpdatedAt
               FROM Accounts a";
@@ -46,14 +47,15 @@ namespace FinCtrl.Infrastructure.Accounts
 
         public async Task<int> Create(Account account)
         {
-            var sql = @"INSERT INTO dbo.Accounts (ExcelAccountName, DisplayName, CreatedAt, LastUpdatedAt)
+            var sql = @"INSERT INTO dbo.Accounts (ExcelAccountName, DisplayName, IsSavings, CreatedAt, LastUpdatedAt)
                         OUTPUT INSERTED.AccountId
-                        VALUES (@ExcelAccountName, @DisplayName, @CreatedAt, @LastUpdatedAt);";
+                        VALUES (@ExcelAccountName, @DisplayName, @IsSavings, @CreatedAt, @LastUpdatedAt);";
 
             return await ExecuteScalar<int>(sql, new
             {
                 account.ExcelAccountName,
                 account.DisplayName,
+                account.IsSavings,
                 account.CreatedAt,
                 account.LastUpdatedAt
             });
@@ -64,6 +66,7 @@ namespace FinCtrl.Infrastructure.Accounts
             var sql = @"UPDATE Accounts
                         SET ExcelAccountName = @ExcelAccountName
                            ,DisplayName = @DisplayName
+                           ,IsSavings = @IsSavings
                            ,LastUpdatedAt = @LastUpdatedAt
                         WHERE AccountId = @AccountId;";
 
@@ -74,6 +77,7 @@ namespace FinCtrl.Infrastructure.Accounts
                     account.AccountId,
                     account.ExcelAccountName,
                     account.DisplayName,
+                    account.IsSavings,
                     account.LastUpdatedAt
                 });
             }

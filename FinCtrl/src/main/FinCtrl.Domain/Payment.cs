@@ -42,6 +42,12 @@ namespace FinCtrl.Domain
         public DateTime? LastUpdatedAt { get; set; }
         public List<Tag> Tags { get; set; } = new();
 
+        /// <summary>Перевод, в который входит платёж; <c>null</c> — не связан.</summary>
+        public int? TransferId { get; set; }
+
+        /// <summary>Вторая сторона перевода; <c>null</c> — платёж не в переводе или вторая сторона не указана.</summary>
+        public int? TransferPairPaymentId { get; set; }
+
 
         /// <summary>
         /// Итоговая категория: своя категория платежа приоритетнее категории его источника.

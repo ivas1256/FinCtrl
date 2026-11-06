@@ -5,6 +5,7 @@ using FinCtrl.Application.PaymentsImport.FileFormats;
 using FinCtrl.Application.PaymentSources;
 using FinCtrl.Application.PaymentSources.Classification;
 using FinCtrl.Application.Tags;
+using FinCtrl.Application.Transfers;
 using FinCtrl.Common;
 using FinCtrl.Common.Infrastructure;
 using FinCtrl.Infrastructure.Accounts;
@@ -14,6 +15,7 @@ using FinCtrl.Infrastructure.Payments;
 using FinCtrl.Infrastructure.PaymentsImport;
 using FinCtrl.Infrastructure.PaymentSources;
 using FinCtrl.Infrastructure.Tags;
+using FinCtrl.Infrastructure.Transfers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -36,6 +38,7 @@ namespace FinCtrl.Infrastructure
             services.AddScoped<IPaymentRepository, PaymentRepository>();
             services.AddScoped<IAccountRepository, AccountRepository>();
             services.AddScoped<ITagRepository, TagRepository>();
+            services.AddScoped<ITransferRepository, TransferRepository>();
 
             services.AddScoped<IFileFormatFactory, FileFormatFactory>();
 
