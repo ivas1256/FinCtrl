@@ -1,4 +1,4 @@
-# FinCtrl — саммари проекта (актуально на 2026-10-20)
+# FinCtrl — саммари проекта (актуально на 2026-11-06)
 
 Личное приложение для учёта финансов. Основной сценарий: пользователь
 выгружает из банка Excel/CSV со списком операций, приложение их импортирует,
@@ -82,9 +82,9 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 источника (`Payment.CalculatedCategory = PaymentCategory ?? PaymentSource?.PaymentSourceCategory`).
 
 - **Payment** (`src/main/FinCtrl.Domain/Payment.cs`, `record`) —
-  `PaymentId, PaymentType (enum Spending/Income), PaymentSum, PaymentDate,
+  `PaymentId, PaymentType (enum Income = 0 / Spending = 1 / Transfer = 2), PaymentSum, PaymentDate,
   PaymentSource, Account, PaymentCategory, PaymentDescription,
-  ExcludeFromStats, CreatedAt, LastUpdatedAt`.
+  ExcludeFromStats, CreatedAt, LastUpdatedAt, TransferId, TransferPairPaymentId`.
 - **PaymentSource** ("Источник платежа") — по сути метка
   контрагента/строки банковской выписки (например конкретный магазин),
   **не то же самое, что банковский счёт**. Поля: `PaymentSourceId,
@@ -95,7 +95,7 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 - **Account** ("Счёт", добавлено 2026-09-08) — именно банковский счёт.
   Поля: `AccountId, ExcelAccountName (как называется в файле банка — ключ
   для get-or-create при импорте), DisplayName (что показывается в UI),
-  CreatedAt, LastUpdatedAt`. В отличие от `PaymentSource`, здесь полный
+  IsSavings (накопительный счёт, задача 0037), CreatedAt, LastUpdatedAt`. В отличие от `PaymentSource`, здесь полный
   CRUD (создание/редактирование/удаление) через отдельную страницу.
 - **Category** — дерево (`ParentCategoryId`), `IsOnlyIncome`,
   `OrderIndex`, `Color`.
@@ -108,12 +108,17 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
   CreatedAt, LastUpdatedAt, Description, Classification (NVARCHAR(200) NULL),
   IsAiClassified (BIT, default 0; миграция 0004).
 - `Accounts`: AccountId PK, ExcelAccountName (уникальный индекс),
-  DisplayName, CreatedAt, LastUpdatedAt.
+  DisplayName, IsSavings (BIT, default 0; миграция 0005), CreatedAt, LastUpdatedAt.
 - `Payments`: PaymentId PK, PaymentType, PaymentSum, PaymentDate,
   PaymentSourceId FK, AccountId FK → Accounts, PaymentCategoryCategoryId
   FK, PaymentDescription, CreatedAt, LastUpdatedAt, IsDeleted,
   ExcludeFromStats. Индексы на (PaymentDate, IsDeleted),
-  PaymentCategoryCategoryId, PaymentSourceId, AccountId.
+  PaymentCategoryCategoryId, PaymentSourceId, AccountId; уникальный фильтрованный
+  `UQ_Payments_Account_Date_Sum (AccountId, PaymentDate, PaymentSum) WHERE AccountId IS NOT NULL AND IsDeleted = 0`
+  (миграция 0005; из-за фильтрованных индексов DML через `sqlcmd` — только с `-I`).
+- `Transfers` (миграция 0005): TransferId PK, OutPaymentId FK → Payments (уникальный; списание),
+  InPaymentId FK → Payments NULL (уникальный фильтрованный; поступление, NULL — вторая сторона не указана),
+  CreatedAt. Каскада нет.
 
 ## Импорт из Excel/CSV
 
@@ -528,3 +533,11 @@ Characterization-тесты на места, не покрытые профил�
 - Импорт: `IPaymentsImportService.Upload` возвращает `PaymentsImportResult` (созданные платежи и источники, `ClassificationError`); классификация — **после коммита** транзакции импорта, её ошибка импорт не откатывает. `POST api/PaymentsApi/upload` → `200 UploadPaymentsResponse { newPayments: PaymentDto[], newPaymentSources: PaymentSourceDto[], classificationError }` (раньше пустой `200`). Options секции `AiAssistant` привязываются в `Startup`.
 - Frontend: кнопка «Загрузить файл» — в меню `App.vue` (на «Операциях» её больше нет), открывает `components/PaymentsImportModal.vue` (`modal-lg`): файл + «Загрузить», спиннер на время импорта и LLM, вкладки-кнопки «Новые платежи (N)» / «Новые источники платежей (N)», предупреждение `classificationError`. `composables/usePaymentsImport.js` — общий счётчик импортов: «Операции» и уже построенная таблица главной перезагружаются после импорта.
 - «Источники платежей»: колонка «Классификация» (input, change tracking, значок «ИИ» у неизменённой LLM-классификации). Главная, «Распределение по источникам»: группировка `utils/paymentSourceGroups.js` по классификации (без неё — по имени источника), под названием серым — оригинальные имена.
+
+## Переводы между своими счетами (задача 0037, 2026-11-06)
+- БД (миграция `0005_transfers.sql`): `Accounts.IsSavings`, таблица `Transfers`, уникальный фильтрованный индекс `UQ_Payments_Account_Date_Sum`. Перевод — `PaymentType = Transfer (2)` у обеих сторон (мёртвые `InvoiceTransfer`/`CardTransfer` удалены). Связанная пара — строка `(Out, In)`, списание без второй стороны — `(Out, NULL)`, поступление без второй стороны строки не имеет. `SelectPayment` отдаёт `TransferId`, `TransferPairPaymentId`, `Account_IsSavings`; то же — в `PaymentDto` (`transferId`, `transferPairPaymentId`, `account.isSavings`). Страница «Счета» — флажок «Накопительный».
+- Импорт: дубль — по ключу «счёт + дата + сумма» (`PaymentService.FindDuplicate(sum, date, accountId, type)` поверх `GetByDateAndSums`): сначала платёж на том же счёте, затем без счёта (ему дозаполняется счёт); платёж на другом счёте — не дубль; без счёта у строки — прежний поиск по сумме и дате. У расхода с положительной суммой ищется и отрицательная. Тип найденного платежа (в т.ч. `Transfer`) не меняется. Повтор строки внутри файла тихо схлопывается.
+- `PaymentRepository.Update` пишет сумму нормализованной (расход — отрицательная): иначе расход, сохранённый с положительной суммой, после смены типа на `Transfer` читался бы поступлением.
+- Правка: `PUT api/PaymentsApi/{id}` — `IsTransfer` (`false` — тип по знаку, связь удаляется, вторая сторона остаётся переводом без пары) и `TransferPairPaymentId` (`0` — отвязать; вторая сторона тоже становится переводом). 400 — сам платёж / тот же знак / не найдена / указана не у перевода; 409 — вторая сторона уже связана с другим платежом. Всё — в транзакции `PaymentService.Edit`. `GET api/PaymentsApi/{id}/transfer-candidates` — противоположный знак (после нормализации), та же сумма по модулю, ±5 дней, не тот же счёт (без счёта подходят), не связанные с другим платежом; по близости даты.
+- Модалка главной: галочка «Перевод между своими счетами», select «Вторая сторона» (+ «Не указывать»); если счёт второй стороны накопительный — категория переключается на «Накопления», снятие галочки возвращает прежнюю (`utils/transferCategory.js`). В `PaymentList` цвет суммы — по знаку.
+- Аналитика: фейковая категория `CategoryIds.FakeTransfers` (`int.MaxValue - 2`, строка «Переводы» перед «Без категории»). `MainStatisticService` относит перевод к «Переводам», если его итоговая категория не «Накопления» и не их потомок (в т.ч. перевод без категории или со старой категорией); такие переводы не попадают ни в свою категорию, ни в «ВСЕГО» (`IsIncludeInTotalResults` → `false`). Переводы с категорией «Накопления» остаются в «Накоплениях». Frontend: `TRANSFERS_ID` (`utils/heatmap.js`), `Semantics.Transfer` — Δ всегда серая, «новые переводы»; карточка «Итого» без «Переводов»; имя строки приглушено. Дашборд: `FilterSpendings` исключает `PaymentType == Transfer`.

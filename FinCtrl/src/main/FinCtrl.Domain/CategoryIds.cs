@@ -6,6 +6,12 @@ public static class CategoryIds
     /// <summary>Категория «Накопления» в БД: переводы на накопления — не траты, в итоги не входят.</summary>
     public const int Savings = 33;
 
+    /// <summary>
+    /// Фейковая категория «Переводы» (только в отчётах, в БД её нет): переводы между своими счетами, кроме отнесённых
+    /// к «Накоплениям». В итоги не входит.
+    /// </summary>
+    public const int FakeTransfers = int.MaxValue - 2;
+
     /// <summary>Фейковая категория «Без категории» (только в отчётах, в БД её нет).</summary>
     public const int FakeEmpty = int.MaxValue - 1;
 

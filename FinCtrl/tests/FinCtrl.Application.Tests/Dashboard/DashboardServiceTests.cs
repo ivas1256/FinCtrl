@@ -59,7 +59,8 @@ public class DashboardServiceTests
             Spending(-20, new DateTime(2025, 10, 2), food),
             Spending(-1000, Today, new Category(CategoryIds.Savings)),   // накопления — не учитываются
             Spending(500, Today, food),                  // доход — не учитывается
-            Spending(-7, Today, category: null)          // без категории — не учитывается
+            Spending(-7, Today, category: null),         // без категории — не учитывается
+            Transfer(-5000, Today, food)                 // перевод между своими счетами — не трата
         });
 
         var summary = await _service.GetSummary();
@@ -70,6 +71,14 @@ public class DashboardServiceTests
         Assert.Equal(200, summary.MonthSpending);
         Assert.Equal(new[] { 100m, 50m, 30m }, summary.TopPayments.Select(p => p.PaymentSum));
     }
+
+    private static Payment Transfer(decimal sum, DateTime date, Category? category) => new()
+    {
+        PaymentType = PaymentTypeEnum.Transfer,
+        PaymentSum = sum,
+        PaymentDate = date,
+        PaymentCategory = category
+    };
 
     private static Payment Spending(decimal sum, DateTime date, Category? category) => new()
     {
@@ -88,7 +97,8 @@ public class DashboardServiceTests
         _paymentService.GetByDateRange(Arg.Any<DateRange>()).Returns(new List<Payment>
         {
             Spending(-150, Today, food),
-            Spending(-50, Today, cafe)
+            Spending(-50, Today, cafe),
+            Transfer(-5000, Today, cafe)
         });
 
         var summary = await _service.GetSummary();
@@ -191,7 +201,8 @@ public class DashboardServiceTests
             Spending(500, Today, new Category(1)),                              // доход
             Spending(-1000, Today, new Category(CategoryIds.Savings)),          // накопления
             Spending(-50, Today, new Category(3) { IsOnlyIncome = true }),      // доходная категория
-            Spending(-7, Today, category: null)                                 // без категории
+            Spending(-7, Today, category: null),                                // без категории
+            Transfer(-5000, Today, new Category(1))                              // перевод между своими счетами
         });
 
         var points = await _service.GetChartData(mode, Today, Today.AddDays(1));

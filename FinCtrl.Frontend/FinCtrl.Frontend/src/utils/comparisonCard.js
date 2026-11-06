@@ -9,7 +9,7 @@ import {
     ComparisonState,
     SAVINGS_CATEGORY_ID
 } from './periodComparison'
-import { UNCATEGORIZED_ID } from './heatmap'
+import { TRANSFERS_ID, UNCATEGORIZED_ID } from './heatmap'
 
 export const SortMode = Object.freeze({
     ByCategory: 'category',
@@ -93,7 +93,7 @@ const buildChildRows = (node, semantics, level) => {
 export const buildComparisonRows = (scope) => {
     if (scope.treeRows) {
         const roots = scope.treeRows.filter(n =>
-            !n.isOnlyIncome && n.categoryId !== SAVINGS_CATEGORY_ID)
+            !n.isOnlyIncome && n.categoryId !== SAVINGS_CATEGORY_ID && n.categoryId !== TRANSFERS_ID)
         const rows = []
         for (const node of roots) {
             const isUncategorized = node.categoryId === UNCATEGORIZED_ID

@@ -121,7 +121,8 @@ public class MainStatisticServiceTests
 
         Assert.Equal(new[] { "012026", "022026" }, table.Periods.Select(p => p.Key));
         Assert.Equal(new DateRange(new DateTime(2026, 1, 1), new DateTime(2026, 2, 1)), table.Periods[0].Range);
-        Assert.Equal(new[] { 1, 3, CategoryIds.FakeEmpty, CategoryIds.FakeTotal }, table.Tree.Select(n => n.Category.CategoryId));
+        Assert.Equal(new[] { 1, 3, CategoryIds.FakeTransfers, CategoryIds.FakeEmpty, CategoryIds.FakeTotal },
+            table.Tree.Select(n => n.Category.CategoryId));
 
         var food = table.Tree[0];
         Assert.Equal(-150, food.Cells["012026"].TotalSum);
@@ -133,8 +134,9 @@ public class MainStatisticServiceTests
         Assert.Equal(new[] { "012026", "022026" }, salary.Cells.Keys);
         Assert.All(salary.Cells.Values, c => Assert.Equal(0, c.TotalSum));
 
-        Assert.Equal(-7, table.Tree[2].Cells["012026"].TotalSum);
-        Assert.Equal(-150, table.Tree[3].Cells["012026"].TotalSum);
+        Assert.All(table.Tree[2].Cells.Values, c => Assert.Equal(0, c.TotalSum));
+        Assert.Equal(-7, table.Tree[3].Cells["012026"].TotalSum);
+        Assert.Equal(-150, table.Tree[4].Cells["012026"].TotalSum);
     }
 
     [Theory]
@@ -181,7 +183,7 @@ public class MainStatisticServiceTests
         var table = await _service.GetPaymentsTable(TableRange, GroupingType.Month);
 
         Assert.Empty(table.Periods);
-        Assert.Equal(4, table.Tree.Count);
+        Assert.Equal(5, table.Tree.Count); // Еда, Зарплата, «Переводы», «Без категории», «ВСЕГО»
         Assert.All(table.Tree, n => Assert.Empty(n.Cells));
     }
 
@@ -316,12 +318,14 @@ public class MainStatisticServiceTests
     {
         GivenPayments(
             Spending(-7, new DateTime(2026, 1, 9), category: null),
+            Transfer(-3, new DateTime(2026, 1, 9), category: null),
             Spending(-10, new DateTime(2026, 1, 5), new Category(10) { OrderIndex = 5 }),
             Spending(-20, new DateTime(2026, 1, 5), new Category(11) { OrderIndex = 1 }));
 
         var result = await _service.Calculate(AnyRange, GroupingType.Month);
 
-        Assert.Equal(new[] { 11, 10, CategoryIds.FakeEmpty, CategoryIds.FakeTotal }, result.Select(x => x.Category.CategoryId));
+        Assert.Equal(new[] { 11, 10, CategoryIds.FakeTransfers, CategoryIds.FakeEmpty, CategoryIds.FakeTotal },
+            result.Select(x => x.Category.CategoryId));
     }
 
     [Fact]
@@ -470,11 +474,11 @@ public class MainStatisticServiceTests
         Assert.Equal((-20m, -50m), (food.Children[0].Comparison!.Current, food.Children[0].Comparison!.Previous));
         Assert.Equal((0m, 500m), (table.Tree[1].Comparison!.Current, table.Tree[1].Comparison!.Previous));
 
-        var empty = table.Tree[2];
+        var empty = table.Tree[3];
         Assert.Equal(CategoryIds.FakeEmpty, empty.Category.CategoryId);
         Assert.Equal((-7m, 0m), (empty.Comparison!.Current, empty.Comparison.Previous));
 
-        var total = table.Tree[3];
+        var total = table.Tree[4];
         Assert.Equal(CategoryIds.FakeTotal, total.Category.CategoryId);
         Assert.Equal((-50m, -150m), (total.Comparison!.Current, total.Comparison.Previous));
 
@@ -530,6 +534,115 @@ public class MainStatisticServiceTests
         Assert.Equal(new[] { "112026" }, table.Periods.Select(p => p.Key));
         Assert.Equal("102026", table.Comparison!.Current.Key);
     }
+
+    // --- Переводы между своими счетами ---
+
+    [Fact]
+    public async Task Calculate_TransferWithoutCategory_InTransfersRowAndNotInTotal()
+    {
+        GivenPayments(
+            Spending(-100, new DateTime(2026, 1, 5)),
+            Transfer(-5000, new DateTime(2026, 1, 6), category: null),
+            Transfer(5000, new DateTime(2026, 1, 6), category: null));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        var transfers = Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTransfers);
+        Assert.Equal("Переводы", transfers.Category.CategoryName);
+        Assert.Equal(0, transfers.TotalSum);
+        Assert.Equal(2, transfers.Payments.Count);
+        Assert.DoesNotContain(result, x => x.Category.CategoryId == CategoryIds.FakeEmpty);
+        var total = Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTotal);
+        Assert.Equal(-100, total.TotalSum);
+        Assert.DoesNotContain(total.Payments, p => p.PaymentType == PaymentTypeEnum.Transfer);
+    }
+
+    [Fact]
+    public async Task Calculate_TransferWithOldSpendingCategory_InTransfersNotInCategoryNorTotal()
+    {
+        // Перевод со старой категорией «Еда» (например, осталась от источника) — не трата
+        GivenPayments(
+            Spending(-100, new DateTime(2026, 1, 5)),
+            Transfer(-5000, new DateTime(2026, 1, 6), _food));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(-100, Assert.Single(result, x => x.Category == _food).TotalSum);
+        Assert.Equal(-5000, Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTransfers).TotalSum);
+        Assert.Equal(-100, Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTotal).TotalSum);
+    }
+
+    [Fact]
+    public async Task Calculate_TransferWithIncomeCategory_InTransfersNotInIncome()
+    {
+        var salary = new Category(3) { IsOnlyIncome = true, OrderIndex = 3 };
+        GivenPayments(Transfer(5000, new DateTime(2026, 1, 6), salary));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.DoesNotContain(result, x => x.Category == salary);
+        Assert.Equal(5000, Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTransfers).TotalSum);
+    }
+
+    [Fact]
+    public async Task Calculate_TransferWithSavingsCategory_StaysInSavingsAndNotInTotal()
+    {
+        var savings = new Category(CategoryIds.Savings) { OrderIndex = 4 };
+        GivenPayments(
+            Spending(-100, new DateTime(2026, 1, 5)),
+            Transfer(-5000, new DateTime(2026, 1, 6), savings));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(-5000, Assert.Single(result, x => x.Category == savings).TotalSum);
+        Assert.DoesNotContain(result, x => x.Category.CategoryId == CategoryIds.FakeTransfers);
+        Assert.Equal(-100, Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTotal).TotalSum);
+    }
+
+    [Fact]
+    public async Task Calculate_TransferWithSavingsSubcategory_StaysInSubcategory()
+    {
+        var deposit = new Category(40) { ParentCategoryId = CategoryIds.Savings, OrderIndex = 5 };
+        _categoryService.GetCategoriesTree().Returns(_ =>
+        {
+            var tree = BuildTree();
+            var savings = new Category(CategoryIds.Savings) { CategoryName = "Накопления", OrderIndex = 4 };
+            savings.Children.Add(new Category(40) { CategoryName = "Вклад", ParentCategoryId = CategoryIds.Savings, OrderIndex = 5 });
+            tree.Add(savings);
+            return tree;
+        });
+        GivenPayments(Transfer(-5000, new DateTime(2026, 1, 6), deposit));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(-5000, Assert.Single(result, x => x.Category == deposit).TotalSum);
+        Assert.DoesNotContain(result, x => x.Category.CategoryId == CategoryIds.FakeTransfers);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_Transfers_RowBeforeUncategorizedAndOutsideTotalAndComparison()
+    {
+        GivenPayments(
+            Spending(-100, new DateTime(2026, 1, 5)),
+            Transfer(-5000, new DateTime(2026, 1, 6), _food));
+
+        var table = await _service.GetPaymentsTable(TableRange, GroupingType.Month);
+
+        var transfers = Assert.Single(table.Tree, n => n.Category.CategoryId == CategoryIds.FakeTransfers);
+        Assert.Equal(-5000, transfers.Cells["012026"].TotalSum);
+        Assert.Single(transfers.Cells["012026"].Payments);
+        Assert.Equal(-100, table.Tree.Single(n => n.Category.CategoryId == CategoryIds.FakeTotal).Cells["012026"].TotalSum);
+        Assert.Equal(-100, table.Tree.Single(n => n.Category.CategoryId == 1).Cells["012026"].TotalSum);
+        Assert.True(table.Tree.IndexOf(transfers) < table.Tree.FindIndex(n => n.Category.CategoryId == CategoryIds.FakeEmpty));
+    }
+
+    private static Payment Transfer(decimal sum, DateTime date, Category? category) => new()
+    {
+        PaymentType = PaymentTypeEnum.Transfer,
+        PaymentSum = sum,
+        PaymentDate = date,
+        PaymentCategory = category
+    };
 
     private void GivenPayments(params Payment[] payments)
     {

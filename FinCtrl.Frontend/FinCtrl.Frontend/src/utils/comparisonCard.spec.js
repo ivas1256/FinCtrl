@@ -8,7 +8,7 @@ import {
   SortMode
 } from './comparisonCard'
 import { Semantics, SAVINGS_CATEGORY_ID } from './periodComparison'
-import { UNCATEGORIZED_ID } from './heatmap'
+import { TRANSFERS_ID, UNCATEGORIZED_ID } from './heatmap'
 
 // Узел дерева; суммы знаковые (расход < 0): S_П → previous, S_Т → current
 const node = (categoryId, categoryName, sPrev, sCur, children = [], extra = {}) => ({
@@ -46,7 +46,8 @@ const savings = {
   comparison: { current: 5000, previous: 0 },
   children: []
 }
-const treeRows = [products, cafe, transport, sport, gifts, health, income, savings, uncategorized]
+const transfers = node(TRANSFERS_ID, 'Переводы', 5000, 20000)
+const treeRows = [products, cafe, transport, sport, gifts, health, income, savings, transfers, uncategorized]
 
 const names = (rows) => rows.map(r => r.name)
 
@@ -152,7 +153,7 @@ describe('buildComparisonRows — особые состояния', () => {
 describe('buildComparisonRows — охват «Итого»', () => {
   const model = buildComparisonRows({ treeRows })
 
-  it('корни трат без доходных и «Накоплений», «Без категории» в конце служебная', () => {
+  it('корни трат без доходных, «Накоплений» и «Переводов», «Без категории» в конце служебная', () => {
     expect(names(model.rows)).toEqual([
       'Продукты', 'Кафе и рестораны', 'Транспорт', 'Спорт', 'Подарки', 'Здоровье', 'Без категории'
     ])

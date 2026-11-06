@@ -92,7 +92,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { categoryColor, heatClass, heatStyle, UNCATEGORIZED_ID } from '../../utils/heatmap'
+import { categoryColor, heatClass, heatStyle, TRANSFERS_ID, UNCATEGORIZED_ID } from '../../utils/heatmap'
 import { formatSignedCurrency } from '../../utils/format'
 import { getSemantics, Semantics } from '../../utils/periodComparison'
 import DeltaCell from './DeltaCell.vue'
@@ -165,9 +165,9 @@ const semantics = computed(() => getSemantics(props.category, props.inSavings))
 
 const shouldShow = computed(() => props.level === 0 || props.parentExpanded)
 
-// «Без категории» — приглушённое имя обычного веса
+// «Без категории» и «Переводы» — служебные строки вне «Итого»: приглушённое имя обычного веса
 const nameClass = computed(() => {
-    if (props.category.categoryId === UNCATEGORIZED_ID) return 'hm-cat-name-muted'
+    if ([UNCATEGORIZED_ID, TRANSFERS_ID].includes(props.category.categoryId)) return 'hm-cat-name-muted'
     return props.level === 0 ? 'hm-cat-name-root' : 'hm-cat-name-child'
 })
 
