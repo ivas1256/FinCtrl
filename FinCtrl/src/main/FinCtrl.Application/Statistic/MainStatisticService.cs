@@ -14,6 +14,7 @@ namespace FinCtrl.Application.Statistic
         private readonly ICategoryService _categoryService;
         private readonly TimeProvider _timeProvider;
         private readonly Category _nullCategory = Category.CreateFakeEmpty();
+        private readonly Category _transfersCategory = Category.CreateFakeTransfers();
 
         public MainStatisticService(IPaymentService paymentService, ICategoryService categoryService, TimeProvider timeProvider)
         {
@@ -25,14 +26,16 @@ namespace FinCtrl.Application.Statistic
         public async Task<PaymentsTable> GetPaymentsTable(DateRange? dateRange, GroupingType groupingType, int[]? tagIds = null)
         {
             var range = dateRange ?? GetDefaultRange();
-            var items = await Calculate(range, groupingType, tagIds);
+            var tree = await _categoryService.GetCategoriesTree();
+            var savingsIds = GetSavingsCategoryIds(tree);
+            var items = await Calculate(range, groupingType, tagIds, savingsIds);
 
             // П часто лежит вне фильтра дат, поэтому суммы сравнения — отдельной выборкой за [начало П, D + 1).
             var comparison = GetComparison(range, groupingType);
             var comparisonItems = await Calculate(
-                new DateRange(comparison.Previous.Range.From, comparison.Current.Range.To), groupingType, tagIds);
+                new DateRange(comparison.Previous.Range.From, comparison.Current.Range.To), groupingType, tagIds, savingsIds);
 
-            var tree = await _categoryService.GetCategoriesTree();
+            tree.Add(Category.CreateFakeTransfers());
             tree.Add(Category.CreateFakeEmpty());
             tree.Add(Category.CreateFakeTotal());
 
@@ -64,23 +67,31 @@ namespace FinCtrl.Application.Statistic
         /// <exception cref="ValidationException">Группировка не выбрана или неизвестна.</exception>
         public async Task<List<MainStatisticGroupItem>> Calculate(DateRange dateRange, GroupingType groupingType, int[]? tagIds = null)
         {
-            // Проверка до выборки: без платежей группировка не вызывается, и ошибка зависела бы от данных.
-            if (groupingType == GroupingType.NotSelected || !Enum.IsDefined(groupingType))
-            {
-                throw new ValidationException("Не выбран тип группировки периодов");
-            }
+            ValidateGrouping(groupingType);
 
-            var payments = await _paymentService.GetByDateRange(dateRange, tagIds);
+            var savingsIds = GetSavingsCategoryIds(await _categoryService.GetCategoriesTree());
+            return await Calculate(dateRange, groupingType, tagIds, savingsIds);
+        }
+
+        private async Task<List<MainStatisticGroupItem>> Calculate(
+            DateRange dateRange, GroupingType groupingType, int[]? tagIds, IReadOnlySet<int> savingsIds)
+        {
+            ValidateGrouping(groupingType);
+
+            var payments = (await _paymentService.GetByDateRange(dateRange, tagIds))
+                .Select(x => (Payment: x, Category: GetReportCategory(x, savingsIds)))
+                .ToList();
 
             var fakePaymentsSummary = payments
-                .GroupBy(x => GetDateForGrouping(x.PaymentDate, groupingType))
+                .GroupBy(x => GetDateForGrouping(x.Payment.PaymentDate, groupingType))
                 .Select(x => new MainStatisticGroupItem()
                 {
                     Period = new DateRange(x.Key.Date, GetEndOfPeriod(x.Key.Date, groupingType)),
                     Category = Category.CreateFakeTotal(),
-                    TotalSum = x.Where(x => x.CalculatedCategory?.IsIncludeInTotalResults() ?? false)
-                                .Sum(y => y.PaymentSum),
-                    Payments = x.Where(x => x.CalculatedCategory?.IsIncludeInTotalResults() ?? false)
+                    TotalSum = x.Where(x => x.Category.IsIncludeInTotalResults())
+                                .Sum(y => y.Payment.PaymentSum),
+                    Payments = x.Where(x => x.Category.IsIncludeInTotalResults())
+                                .Select(x => x.Payment)
                                 .OrderByDescending(x => x.PaymentDate)
                                 .ToList()
                 });
@@ -88,21 +99,55 @@ namespace FinCtrl.Application.Statistic
             var result = payments
                 .GroupBy(x => new
                 {
-                    Date = GetDateForGrouping(x.PaymentDate, groupingType),
-                    Category = x.CalculatedCategory ?? _nullCategory,
+                    Date = GetDateForGrouping(x.Payment.PaymentDate, groupingType),
+                    x.Category,
                 })
                 .Select(x => new MainStatisticGroupItem()
                 {
                     Period = new DateRange(x.Key.Date, GetEndOfPeriod(x.Key.Date, groupingType)),
                     Category = x.Key.Category,
-                    TotalSum = x.Sum(y => y.PaymentSum),
-                    Payments = x.OrderByDescending(x => x.PaymentDate).ToList()
+                    TotalSum = x.Sum(y => y.Payment.PaymentSum),
+                    Payments = x.Select(y => y.Payment).OrderByDescending(y => y.PaymentDate).ToList()
                 })
                 .Union(fakePaymentsSummary)
                 .OrderBy(x => x.Category?.OrderIndex ?? _nullCategory.OrderIndex)
                 .ToList();
 
             return result;
+        }
+
+        // Проверка до выборки: без платежей группировка не вызывается, и ошибка зависела бы от данных.
+        private static void ValidateGrouping(GroupingType groupingType)
+        {
+            if (groupingType == GroupingType.NotSelected || !Enum.IsDefined(groupingType))
+            {
+                throw new ValidationException("Не выбран тип группировки периодов");
+            }
+        }
+
+        /// <summary>«Накопления» и все их потомки: перевод с такой категорией остаётся в «Накоплениях».</summary>
+        private IReadOnlySet<int> GetSavingsCategoryIds(List<Category> tree)
+        {
+            var ids = _categoryService.GetAllChildCategories(CategoryIds.Savings, tree).Select(x => x.CategoryId).ToHashSet();
+            ids.Add(CategoryIds.Savings);
+            return ids;
+        }
+
+        /// <summary>
+        /// Строка отчёта платежа: перевод между своими счетами — «Переводы», если его итоговая категория не «Накопления»
+        /// и не их потомок (в т.ч. перевод без категории или со старой категорией траты/дохода); иначе — итоговая
+        /// категория или «Без категории».
+        /// </summary>
+        private Category GetReportCategory(Payment payment, IReadOnlySet<int> savingsIds)
+        {
+            var category = payment.CalculatedCategory;
+            if (payment.PaymentType == PaymentTypeEnum.Transfer
+                && (category is null || !savingsIds.Contains(category.CategoryId)))
+            {
+                return _transfersCategory;
+            }
+
+            return category ?? _nullCategory;
         }
 
         // Ячейка категории = её собственные платежи + платежи всех потомков; ячейки есть для всех периодов.

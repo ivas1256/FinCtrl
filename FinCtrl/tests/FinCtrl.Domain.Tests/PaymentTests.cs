@@ -68,7 +68,8 @@ public class PaymentTests
     [Theory]
     [InlineData(PaymentTypeEnum.Income, 150)]
     [InlineData(PaymentTypeEnum.Income, -150)]
-    [InlineData(PaymentTypeEnum.CardTransfer, 150)]
+    [InlineData(PaymentTypeEnum.Transfer, 150)]
+    [InlineData(PaymentTypeEnum.Transfer, -150)]
     public void NormalizeSumSign_NotSpending_KeepsSum(PaymentTypeEnum type, int sum)
     {
         var payment = new Payment { PaymentType = type, PaymentSum = sum };

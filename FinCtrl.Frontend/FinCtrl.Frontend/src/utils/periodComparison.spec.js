@@ -15,6 +15,7 @@ import {
   SAVINGS_CATEGORY_ID
 } from './periodComparison'
 import { formatDelta } from './format'
+import { TRANSFERS_ID } from './heatmap'
 
 // Примеры из СР §7: S_П → S_Т
 const cell = (sPrev, sCur) => {
@@ -116,6 +117,11 @@ describe('magnitude / семантика', () => {
     expect(getSemantics({ categoryId: 90, isOnlyIncome: false }, true)).toBe(Semantics.Savings)
   })
 
+  it('getSemantics: «Переводы» — своя семантика, не доходная', () => {
+    expect(getSemantics({ categoryId: TRANSFERS_ID, isOnlyIncome: false })).toBe(Semantics.Transfer)
+    expect(isIncomeSemantics(Semantics.Transfer)).toBe(false)
+  })
+
   it('доходная семантика цвета — у доходов и «Накоплений»', () => {
     expect(isIncomeSemantics(Semantics.Income)).toBe(true)
     expect(isIncomeSemantics(Semantics.Savings)).toBe(true)
@@ -179,6 +185,13 @@ describe('deltaCellView', () => {
       .toMatchObject({ arrow: '▼', tone: DeltaTone.Bad })
   })
 
+  it('«Переводы»: рост и снижение — серые, новая — «новые переводы»', () => {
+    expect(deltaCellView(node(-1000, -5000), Semantics.Transfer)).toMatchObject({ arrow: '▲', tone: DeltaTone.Neutral })
+    expect(deltaCellView(node(-5000, -1000), Semantics.Transfer)).toMatchObject({ arrow: '▼', tone: DeltaTone.Neutral })
+    expect(deltaCellView(node(0, -3800), Semantics.Transfer))
+      .toMatchObject({ tone: DeltaTone.Neutral, hiddenText: 'новые переводы', pct: 'new' })
+  })
+
   it('«Накопления»: рост — зелёный', () => {
     expect(deltaCellView(node(1000, 2000), Semantics.Savings)).toMatchObject({ arrow: '▲', tone: DeltaTone.Good })
   })
@@ -231,5 +244,6 @@ describe('ячейка Δ: интерактивность и aria-label', () => 
     expect(deltaAriaLabel('Подарки', phrase, view(0, -3800))).toContain('новая трата на 3\u00A0800\u00A0₽.')
     expect(deltaAriaLabel('Рынок', phrase, view(-30000, -30050))).toContain('рост на 50\u00A0₽, менее 1\u00A0%.')
     expect(deltaAriaLabel('Связь', phrase, view(-1000, -1000))).toBe('Связь: октябрь против сентября, без изменений. Открыть сравнение')
+    expect(deltaAriaLabel('Переводы', phrase, view(0, -3800, Semantics.Transfer))).toContain('новые переводы на 3 800 ₽.')
   })
 })

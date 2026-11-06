@@ -33,10 +33,26 @@ public class CategoryTests
     }
 
     [Fact]
+    public void IsIncludeInTotalResults_FakeTransfersCategory_ReturnsFalse()
+    {
+        Assert.False(Category.CreateFakeTransfers().IsIncludeInTotalResults());
+    }
+
+    [Fact]
+    public void CreateFakeTransfers_NameAndOrderBeforeUncategorized()
+    {
+        var transfers = Category.CreateFakeTransfers();
+
+        Assert.Equal(("Переводы", CategoryIds.FakeTransfers), (transfers.CategoryName, transfers.CategoryId));
+        Assert.True(transfers.OrderIndex < Category.CreateFakeEmpty().OrderIndex);
+    }
+
+    [Fact]
     public void IsFake_FakeCategories_ReturnsTrue()
     {
         Assert.True(Category.CreateFakeEmpty().IsFake);
         Assert.True(Category.CreateFakeTotal().IsFake);
+        Assert.True(Category.CreateFakeTransfers().IsFake);
         Assert.False(new Category(1).IsFake);
     }
 

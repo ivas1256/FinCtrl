@@ -11,6 +11,10 @@ export const catColor = (index) => PALETTE[(index || 0) % PALETTE.length]
 // Id фейковой категории «Без категории» (CategoryIds.FakeEmpty на backend = int.MaxValue - 1)
 export const UNCATEGORIZED_ID = 2147483646
 
+// Id фейковой категории «Переводы» (CategoryIds.FakeTransfers на backend = int.MaxValue - 2): переводы между своими
+// счетами, кроме отнесённых к «Накоплениям»; в «Итого» не входит
+export const TRANSFERS_ID = 2147483645
+
 export const DEFAULT_CATEGORY_COLOR = '#808080'
 
 // Цвет категории задаётся на странице "Категории"; по умолчанию — серый

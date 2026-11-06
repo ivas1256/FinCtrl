@@ -103,6 +103,17 @@ describe('PaymentCategoryRow', () => {
         expect(cells[1].attributes('aria-pressed')).toBe('true')
     })
 
+    it('«Переводы» выводятся приглушённым именем и серой Δ', () => {
+        const transfers = {
+            categoryId: 2147483645, categoryName: 'Переводы', periods: {}, children: [],
+            comparison: { previous: -1000, current: -5000 }
+        }
+        const wrapper = mountRow({ category: transfers, showDelta: true })
+        expect(wrapper.find('.hm-cat-name-muted').text()).toBe('Переводы')
+        expect(wrapper.find('.hm-delta').classes()).toContain('hm-delta-neutral')
+        expect(wrapper.find('.hm-cat-name-root').exists()).toBe(false)
+    })
+
     it('«Без категории» выводится приглушённым именем обычного веса', () => {
         const uncategorized = { categoryId: 2147483646, categoryName: 'Без категории', periods: {}, children: [] }
         const wrapper = mountRow({ category: uncategorized })

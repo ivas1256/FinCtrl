@@ -50,14 +50,24 @@ namespace FinCtrl.Domain
             OrderIndex = CategoryIds.FakeTotal
         };
 
-        /// <summary>Фейковая категория отчёта («Без категории» или итог), которой нет в БД.</summary>
-        public bool IsFake => CategoryId is CategoryIds.FakeEmpty or CategoryIds.FakeTotal;
+        /// <summary>Фейковая категория «Переводы» для переводов между своими счетами (сортируется перед «Без категории»).</summary>
+        public static Category CreateFakeTransfers() => new Category(CategoryIds.FakeTransfers)
+        {
+            CategoryName = "Переводы",
+            OrderIndex = CategoryIds.FakeTransfers
+        };
 
-        /// <summary>Входят ли платежи категории в итоги трат: не доходная, не «Накопления» и не «Без категории».</summary>
+        /// <summary>Фейковая категория отчёта («Переводы», «Без категории» или итог), которой нет в БД.</summary>
+        public bool IsFake => CategoryId is CategoryIds.FakeTransfers or CategoryIds.FakeEmpty or CategoryIds.FakeTotal;
+
+        /// <summary>
+        /// Входят ли платежи категории в итоги трат: не доходная, не «Накопления», не «Переводы» и не «Без категории».
+        /// </summary>
         public bool IsIncludeInTotalResults()
         {
             return !IsOnlyIncome
                 && CategoryId != CategoryIds.Savings
+                && CategoryId != CategoryIds.FakeTransfers
                 && CategoryId != CategoryIds.FakeEmpty;
         }
 

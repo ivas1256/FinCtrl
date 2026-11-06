@@ -31,16 +31,17 @@ namespace FinCtrl.Website.Controllers.AccountsApi
         {
             var newAccount = Account.CreateNew(dto.ExcelAccountName, _timeProvider.GetLocalNow().DateTime);
             newAccount.DisplayName = dto.DisplayName;
+            newAccount.IsSavings = dto.IsSavings;
             var id = await _accountService.Create(newAccount);
 
             return Ok(AccountDto.FromModel(await _accountService.GetById(id)));
         }
 
-        /// <summary>Правит названия счёта; 404 — счёт не найден, 409 — название в файле занято.</summary>
+        /// <summary>Правит названия и признак «накопительный» счёта; 404 — счёт не найден, 409 — название в файле занято.</summary>
         [HttpPut("{accountId}")]
         public async Task<IActionResult> Update(int accountId, AccountDto dto)
         {
-            var toUpdate = Account.CreateFromExisting(accountId, dto.ExcelAccountName, dto.DisplayName);
+            var toUpdate = Account.CreateFromExisting(accountId, dto.ExcelAccountName, dto.DisplayName, dto.IsSavings);
             await _accountService.Update(toUpdate);
 
             return NoContent();

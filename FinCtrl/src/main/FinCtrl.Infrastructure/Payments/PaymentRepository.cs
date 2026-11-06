@@ -31,6 +31,9 @@ namespace FinCtrl.Infrastructure.Payments
                 p.LastUpdatedAt AS PaymentLastUpdatedAt,
                 p.ExcludeFromStats,
 
+                tr.TransferId,
+                CASE WHEN tr.OutPaymentId = p.PaymentId THEN tr.InPaymentId ELSE tr.OutPaymentId END AS TransferPairPaymentId,
+
                 ps.PaymentSourceId AS PaymentSource_PaymentSourceId,
                 ps.PaymentSourceName AS PaymentSource_PaymentSourceName,
                 ps.Description AS PaymentSource_Description,
@@ -42,6 +45,7 @@ namespace FinCtrl.Infrastructure.Payments
                 a.AccountId AS Account_AccountId,
                 a.ExcelAccountName AS Account_ExcelAccountName,
                 a.DisplayName AS Account_DisplayName,
+                a.IsSavings AS Account_IsSavings,
                 a.CreatedAt AS Account_CreatedAt,
                 a.LastUpdatedAt AS Account_LastUpdatedAt,
 
@@ -64,7 +68,9 @@ namespace FinCtrl.Infrastructure.Payments
             LEFT JOIN PaymentSources ps ON p.PaymentSourceId = ps.PaymentSourceId
             LEFT JOIN Accounts a ON p.AccountId = a.AccountId
             LEFT JOIN Categories c ON p.PaymentCategoryCategoryId = c.CategoryId
-            LEFT JOIN Categories c_ps ON c_ps.CategoryId = ps.CategoryId";
+            LEFT JOIN Categories c_ps ON c_ps.CategoryId = ps.CategoryId
+            -- OutPaymentId и InPaymentId уникальны: платёж входит не больше чем в один перевод, строки не размножаются
+            LEFT JOIN Transfers tr ON tr.OutPaymentId = p.PaymentId OR tr.InPaymentId = p.PaymentId";
 
         public async Task<Payment?> Get(int paymentId)
         {
@@ -201,9 +207,12 @@ namespace FinCtrl.Infrastructure.Payments
 
         public async Task Update(params Payment[] payments)
         {
+            // Сумма пишется нормализованной (расход — отрицательная, см. Payment.NormalizeSumSign): иначе расход, сохранённый
+            // с положительной суммой, при смене типа на Transfer стал бы поступлением
             var sql = @"UPDATE dbo.Payments
                 SET
                   PaymentType = @PaymentType
+                 ,PaymentSum = @PaymentSum
                  ,PaymentSourceId = @PaymentSourceId
                  ,AccountId = @AccountId
                  ,PaymentCategoryCategoryId = @PaymentCategoryId
@@ -219,6 +228,7 @@ namespace FinCtrl.Infrastructure.Payments
                 {
                     payment.PaymentId,
                     payment.PaymentType,
+                    payment.PaymentSum,
                     payment.PaymentSource?.PaymentSourceId,
                     AccountId = payment.Account?.AccountId,
                     PaymentCategoryId = payment.PaymentCategory?.CategoryId,
@@ -229,12 +239,33 @@ namespace FinCtrl.Infrastructure.Payments
             }
         }
 
-        public async Task<Payment?> FindDuplicate(decimal paymentSum, DateTime paymentDate)
+        public async Task<List<Payment>> GetTransferCandidates(int paymentId, decimal absSum, DateTime from, DateTime to, int? excludeAccountId)
         {
-            var sql = $"{SelectPayment} WHERE p.PaymentSum = @paymentSum AND p.PaymentDate = @paymentDate AND p.IsDeleted = 0";
+            // tr — связь кандидата из SelectPayment; tr.InPaymentId IS NULL — перевод-списание без второй стороны
+            var sql = $@"{SelectPayment}
+                WHERE p.IsDeleted = 0
+                    AND p.PaymentId <> @paymentId
+                    AND ABS(p.PaymentSum) = @absSum
+                    AND p.PaymentDate >= @from
+                    AND p.PaymentDate < @to
+                    AND (@excludeAccountId IS NULL OR p.AccountId IS NULL OR p.AccountId <> @excludeAccountId)
+                    AND (tr.TransferId IS NULL OR tr.InPaymentId IS NULL
+                         OR tr.OutPaymentId = @paymentId OR tr.InPaymentId = @paymentId)";
 
-            var dto = await FirstOrDefault<PaymentDto>(sql, new { paymentSum, paymentDate });
-            return dto?.MapToPayment();
+            return (await Query<PaymentDto>(sql, new { paymentId, absSum, from, to, excludeAccountId }))
+                .Select(x => x.MapToPayment())
+                .ToList();
+        }
+
+        public async Task<List<Payment>> GetByDateAndSums(IReadOnlyCollection<decimal> paymentSums, DateTime paymentDate)
+        {
+            var sql = $@"{SelectPayment}
+                WHERE p.PaymentSum IN @paymentSums AND p.PaymentDate = @paymentDate AND p.IsDeleted = 0
+                ORDER BY p.PaymentId";
+
+            return (await Query<PaymentDto>(sql, new { paymentSums, paymentDate }))
+                .Select(x => x.MapToPayment())
+                .ToList();
         }
 
         public async Task<List<Payment>> GetBySource(int PaymentSourceId)

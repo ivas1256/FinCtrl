@@ -2,6 +2,7 @@ using FinCtrl.Application.Accounts;
 using FinCtrl.Application.Categories;
 using FinCtrl.Application.Payments;
 using FinCtrl.Application.Tags;
+using FinCtrl.Application.Transfers;
 using FinCtrl.Common;
 using FinCtrl.Common.Application;
 using FinCtrl.Domain;
@@ -19,6 +20,7 @@ public class PaymentServiceTests
     private readonly ICategoryRepository _categoryRepository = Substitute.For<ICategoryRepository>();
     private readonly IAccountRepository _accountRepository = Substitute.For<IAccountRepository>();
     private readonly ITagRepository _tagRepository = Substitute.For<ITagRepository>();
+    private readonly ITransferRepository _transferRepository = Substitute.For<ITransferRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ITransaction _transaction = Substitute.For<ITransaction>();
     private readonly PaymentService _service;
@@ -35,7 +37,7 @@ public class PaymentServiceTests
 
         _unitOfWork.BeginTransaction(Arg.Any<CancellationToken>()).Returns(_transaction);
 
-        _service = new PaymentService(_paymentRepository, _categoryRepository, _accountRepository, _tagRepository, _unitOfWork, timeProvider);
+        _service = new PaymentService(_paymentRepository, _categoryRepository, _accountRepository, _tagRepository, _transferRepository, _unitOfWork, timeProvider);
     }
 
     [Fact]
@@ -368,5 +370,89 @@ public class PaymentServiceTests
             Account = new Account { AccountId = 5 },
             PaymentSource = new PaymentSource(3, categoryId: 8)
         });
+    }
+
+    private static readonly DateTime DuplicateDate = new(2025, 10, 1);
+
+    private void SetDuplicateCandidates(params Payment[] candidates) =>
+        _paymentRepository.GetByDateAndSums(Arg.Is<IReadOnlyCollection<decimal>>(s => s.SequenceEqual(new[] { -150m })), DuplicateDate)
+            .Returns(candidates.ToList());
+
+    [Fact]
+    public async Task FindDuplicate_SameDateAndSumOnOtherAccount_NotDuplicate()
+    {
+        SetDuplicateCandidates(new Payment { PaymentId = 1, Account = new Account { AccountId = 7 } });
+
+        Assert.Null(await _service.FindDuplicate(-150m, DuplicateDate, 5, PaymentTypeEnum.Spending));
+    }
+
+    [Fact]
+    public async Task FindDuplicate_SameAccount_ReturnsIt()
+    {
+        var sameAccount = new Payment { PaymentId = 2, Account = new Account { AccountId = 5 } };
+        SetDuplicateCandidates(new Payment { PaymentId = 1, Account = new Account { AccountId = 7 } }, sameAccount);
+
+        Assert.Same(sameAccount, await _service.FindDuplicate(-150m, DuplicateDate, 5, PaymentTypeEnum.Spending));
+    }
+
+    [Fact]
+    public async Task FindDuplicate_SameAccountAndWithoutAccount_PrefersSameAccount()
+    {
+        var sameAccount = new Payment { PaymentId = 2, Account = new Account { AccountId = 5 } };
+        SetDuplicateCandidates(new Payment { PaymentId = 1, Account = null }, sameAccount);
+
+        Assert.Same(sameAccount, await _service.FindDuplicate(-150m, DuplicateDate, 5, PaymentTypeEnum.Spending));
+    }
+
+    [Fact]
+    public async Task FindDuplicate_OnlyWithoutAccount_ReturnsItForAccountFill()
+    {
+        var withoutAccount = new Payment { PaymentId = 2, Account = null };
+        SetDuplicateCandidates(new Payment { PaymentId = 1, Account = new Account { AccountId = 7 } }, withoutAccount);
+
+        Assert.Same(withoutAccount, await _service.FindDuplicate(-150m, DuplicateDate, 5, PaymentTypeEnum.Spending));
+    }
+
+    [Fact]
+    public async Task FindDuplicate_RowWithoutAccount_ReturnsFirstCandidateWithAnyAccount()
+    {
+        var first = new Payment { PaymentId = 1, Account = new Account { AccountId = 7 } };
+        SetDuplicateCandidates(first, new Payment { PaymentId = 2, Account = null });
+
+        Assert.Same(first, await _service.FindDuplicate(-150m, DuplicateDate, null, PaymentTypeEnum.Spending));
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(null)]
+    public async Task FindDuplicate_NoCandidates_ReturnsNull(int? accountId)
+    {
+        SetDuplicateCandidates();
+
+        Assert.Null(await _service.FindDuplicate(-150m, DuplicateDate, accountId, PaymentTypeEnum.Spending));
+    }
+
+    [Fact]
+    public async Task FindDuplicate_SpendingWithPositiveSum_AlsoSearchesNormalizedSum()
+    {
+        // Правка платежа сохраняет расход нормализованным (−150), а файл по-прежнему даёт +150
+        var normalized = new Payment { PaymentId = 3, Account = null };
+        _paymentRepository.GetByDateAndSums(Arg.Is<IReadOnlyCollection<decimal>>(s => s.OrderBy(x => x).SequenceEqual(new[] { -150m, 150m })), DuplicateDate)
+            .Returns(new List<Payment> { normalized });
+
+        Assert.Same(normalized, await _service.FindDuplicate(150m, DuplicateDate, null, PaymentTypeEnum.Spending));
+    }
+
+    [Theory]
+    [InlineData(150, PaymentTypeEnum.Income)]
+    [InlineData(-150, PaymentTypeEnum.Spending)]
+    public async Task FindDuplicate_IncomeOrNegativeSpending_SearchesOnlyRawSum(decimal sum, PaymentTypeEnum type)
+    {
+        _paymentRepository.GetByDateAndSums(default!, default).ReturnsForAnyArgs(new List<Payment>());
+
+        await _service.FindDuplicate(sum, DuplicateDate, null, type);
+
+        await _paymentRepository.Received(1).GetByDateAndSums(
+            Arg.Is<IReadOnlyCollection<decimal>>(s => s.SequenceEqual(new[] { sum })), DuplicateDate);
     }
 }

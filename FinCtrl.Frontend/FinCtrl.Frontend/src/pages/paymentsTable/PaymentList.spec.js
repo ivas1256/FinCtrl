@@ -53,13 +53,21 @@ describe('PaymentList', () => {
         expect(wrapper.find('.payment-description').text()).toBe('Нет описания')
     })
 
-    it('цвет суммы зависит от типа платежа', () => {
+    it('цвет суммы зависит от знака суммы, в т.ч. у переводов', () => {
         const wrapper = mount(PaymentList, {
-            props: { payments: [payment({ paymentId: 1 }), payment({ paymentId: 2, paymentType: 2, paymentSum: 500 })] }
+            props: {
+                payments: [
+                    payment({ paymentId: 1 }),
+                    payment({ paymentId: 2, paymentType: 0, paymentSum: 500 }),
+                    payment({ paymentId: 3, paymentType: 2, paymentSum: -500 }),
+                    payment({ paymentId: 4, paymentType: 2, paymentSum: 500 })
+                ]
+            }
         })
         const amounts = wrapper.findAll('.payment-amount')
-        expect(amounts[0].classes()).toContain('text-danger')
+        expect(amounts.map(a => a.classes().includes('text-danger'))).toEqual([true, false, true, false])
         expect(amounts[1].classes()).toContain('text-success')
+        expect(amounts[3].classes()).toContain('text-success')
     })
 
     it('кнопка правки отдаёт платеж в edit-payment', async () => {

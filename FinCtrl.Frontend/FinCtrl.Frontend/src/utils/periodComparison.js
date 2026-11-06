@@ -2,6 +2,7 @@
 // (узел.comparison.current/previous, знаковые: расход < 0, поступление > 0).
 
 import { roundHalfAwayFromZero, formatDeltaSpoken } from './format'
+import { TRANSFERS_ID } from './heatmap'
 
 // id категории «Накопления» (CategoryIds.Savings на backend)
 export const SAVINGS_CATEGORY_ID = 33
@@ -9,11 +10,14 @@ export const SAVINGS_CATEGORY_ID = 33
 export const Semantics = Object.freeze({
     Expense: 'expense',
     Income: 'income',
-    Savings: 'savings'
+    Savings: 'savings',
+    // «Переводы»: не траты и не доходы — Δ всегда серая
+    Transfer: 'transfer'
 })
 
 // Семантика строки. Потомки «Накоплений» наследуют её — inSavings передаёт вызывающий при обходе дерева
 export const getSemantics = (node, inSavings = false) => {
+    if (node.categoryId === TRANSFERS_ID) return Semantics.Transfer
     if (inSavings || node.categoryId === SAVINGS_CATEGORY_ID) return Semantics.Savings
     return node.isOnlyIncome ? Semantics.Income : Semantics.Expense
 }
@@ -87,15 +91,20 @@ const HIDDEN_TEXT = {
     [ComparisonState.None]: 'нет данных в обоих периодах'
 }
 
-// Представление ячейки Δ (СР §2.4): { state, arrow, rub, pct, tone, hiddenText }.
+// «Переводы» — не траты: вместо «новая трата»
+const TRANSFER_NEW_TEXT = 'новые переводы'
+
+// Представление ячейки Δ (СР §2.4): { state, arrow, rub, pct, tone, hiddenText, semantics }.
+// У «Переводов» tone всегда neutral: рост переводов — ни хорошо, ни плохо.
 // rub/pct — для formatSignedRoundedCurrency/formatDeltaPercent; при state = none показывается «—»
 export const deltaCellView = (node, semantics) => {
     const result = compareNode(node, semantics)
     const arrow = result.state === ComparisonState.None
         ? ''
         : result.direction > 0 ? '▲' : result.direction < 0 ? '▼' : '•'
+    const isTransfer = semantics === Semantics.Transfer
     let tone = DeltaTone.Neutral
-    if (result.direction !== 0) {
+    if (result.direction !== 0 && !isTransfer) {
         const grew = result.direction > 0
         tone = grew !== isIncomeSemantics(semantics) ? DeltaTone.Bad : DeltaTone.Good
     }
@@ -105,7 +114,8 @@ export const deltaCellView = (node, semantics) => {
         rub: result.deltaRub,
         pct: result.pct,
         tone,
-        hiddenText: HIDDEN_TEXT[result.state]
+        hiddenText: isTransfer && result.state === ComparisonState.New ? TRANSFER_NEW_TEXT : HIDDEN_TEXT[result.state],
+        semantics
     }
 }
 
@@ -133,8 +143,11 @@ const SPOKEN_STATE = {
 // aria-label ячейки Δ (СР §2.4): "Продукты: октябрь против сентября, снижение на 6 550 ₽, минус 21 %. Открыть сравнение".
 // phrase — formatComparisonPhrase из periodHeader
 export const deltaAriaLabel = (name, phrase, view) => {
+    const spokenState = view.semantics === Semantics.Transfer && view.state === ComparisonState.New
+        ? `${TRANSFER_NEW_TEXT} на`
+        : SPOKEN_STATE[view.state]
     const change = view.state === ComparisonState.Flat
         ? 'без изменений'
-        : `${SPOKEN_STATE[view.state]} ${formatDeltaSpoken(view.rub, view.pct)}`
+        : `${spokenState} ${formatDeltaSpoken(view.rub, view.pct)}`
     return `${name}: ${phrase}, ${change}. Открыть сравнение`
 }

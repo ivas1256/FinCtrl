@@ -23,12 +23,20 @@ public class EditPaymentRequest
     /// <summary>Теги; <c>null</c> — не трогать, пустой или непустой список — заменить набор целиком.</summary>
     public List<int>? TagIds { get; set; }
 
+    /// <summary>Перевод между своими счетами; <c>null</c> — не трогать, <c>false</c> — тип по знаку суммы, связь удаляется.</summary>
+    public bool? IsTransfer { get; set; }
+
+    /// <summary>Вторая сторона перевода; <c>null</c> — не трогать, <c>0</c> — отвязать.</summary>
+    public int? TransferPairPaymentId { get; set; }
+
     public PaymentEdit ToModel(int paymentId) => new(paymentId)
     {
         CategoryId = CategoryId,
         AccountId = AccountId,
         Description = Description,
         ExcludeFromStats = ExcludeFromStats,
-        TagIds = TagIds
+        TagIds = TagIds,
+        IsTransfer = IsTransfer,
+        TransferPairPaymentId = TransferPairPaymentId
     };
 }

@@ -60,7 +60,7 @@ public class PaymentsImportServiceTests
         _paymentSourceService.Create(Arg.Any<PaymentSource>()).Returns(2);
         _paymentSourceService.GetById(2).Returns(cafe);
         _paymentService.Create(Arg.Any<Payment>()).Returns(100, 101, 102);
-        _paymentService.FindDuplicate(-300m, PaymentDate).Returns(new Payment { PaymentId = 7, Account = _card });
+        _paymentService.FindDuplicate(-300m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(new Payment { PaymentId = 7, Account = _card });
         SetRows(
             new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
             new ExcelPayment(PaymentDate, -200m, "Кафе", "INV-2", "OK", "Списание", "Карта"),
@@ -181,7 +181,7 @@ public class PaymentsImportServiceTests
     public async Task Upload_DuplicateWithoutAccount_FillsAccountInsteadOfCreating()
     {
         var existing = new Payment { PaymentId = 10, PaymentSum = -150m, PaymentDate = PaymentDate, Account = null };
-        _paymentService.FindDuplicate(-150m, PaymentDate).Returns(existing);
+        _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existing);
         SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
@@ -191,18 +191,80 @@ public class PaymentsImportServiceTests
     }
 
     [Fact]
-    public async Task Upload_DuplicateWithAccount_LeavesPaymentUntouched()
+    public async Task Upload_DuplicateOnSameAccount_LeavesPaymentUntouched()
     {
-        var otherAccount = new Account(7, "Другая", "Другая", Now, null);
-        var existing = new Payment { PaymentId = 10, PaymentSum = -150m, PaymentDate = PaymentDate, Account = otherAccount };
-        _paymentService.FindDuplicate(-150m, PaymentDate).Returns(existing);
+        var existing = new Payment { PaymentId = 10, PaymentSum = -150m, PaymentDate = PaymentDate, Account = _card };
+        _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existing);
         SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
         await _paymentService.DidNotReceive().Create(Arg.Any<Payment>());
         await _paymentService.DidNotReceiveWithAnyArgs().Update();
-        Assert.Same(otherAccount, existing.Account);
+        Assert.Same(_card, existing.Account);
+    }
+
+    [Fact]
+    public async Task Upload_NoDuplicateOnRowAccount_CreatesPayment()
+    {
+        // Платёж с той же датой и суммой на другом счёте FindDuplicate не возвращает — строка импортируется
+        _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns((Payment?)null);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _paymentService.Received(1).FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending);
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.Account == _card));
+    }
+
+    [Fact]
+    public async Task Upload_TransferDuplicateWithoutAccount_FillsAccountAndKeepsTransferType()
+    {
+        var existing = new Payment
+        {
+            PaymentId = 10, PaymentType = PaymentTypeEnum.Transfer, PaymentSum = -150m, PaymentDate = PaymentDate, Account = null
+        };
+        _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existing);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _paymentService.Received(1).Update(Arg.Is<Payment[]>(ps =>
+            ps.Length == 1 && ps[0] == existing && ps[0].Account == _card && ps[0].PaymentType == PaymentTypeEnum.Transfer));
+    }
+
+    [Fact]
+    public async Task Upload_TransferDuplicateOnSameAccount_SkipsWithoutUpdate()
+    {
+        var existing = new Payment
+        {
+            PaymentId = 10, PaymentType = PaymentTypeEnum.Transfer, PaymentSum = 150m, PaymentDate = PaymentDate, Account = _card
+        };
+        _paymentService.FindDuplicate(150m, PaymentDate, 5, PaymentTypeEnum.Income).Returns(existing);
+        SetRows(new ExcelPayment(PaymentDate, 150m, "Магазин", "INV-1", "OK", "Пополнение", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _paymentService.DidNotReceive().Create(Arg.Any<Payment>());
+        await _paymentService.DidNotReceiveWithAnyArgs().Update();
+        Assert.Equal(PaymentTypeEnum.Transfer, existing.PaymentType);
+    }
+
+    [Fact]
+    public async Task Upload_SameRowTwiceInFile_SecondRowSkipped()
+    {
+        // Вторая строка находит первую, созданную в той же транзакции, и тихо пропускается
+        var created = new Payment { PaymentId = 100, PaymentSum = -150m, PaymentDate = PaymentDate, Account = _card };
+        _paymentService.Create(Arg.Any<Payment>()).Returns(100);
+        _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns((Payment?)null, created);
+        SetRows(
+            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _paymentService.Received(1).Create(Arg.Any<Payment>());
+        await _paymentService.DidNotReceiveWithAnyArgs().Update();
     }
 
     [Fact]
@@ -223,7 +285,7 @@ public class PaymentsImportServiceTests
     public async Task Upload_ErrorOnSecondRow_DoesNotCommitAndDisposesTransaction()
     {
         var failingDate = PaymentDate.AddDays(1);
-        _paymentService.FindDuplicate(-200m, failingDate).ThrowsAsync(new InvalidOperationException("ошибка БД"));
+        _paymentService.FindDuplicate(-200m, failingDate, 5, PaymentTypeEnum.Spending).ThrowsAsync(new InvalidOperationException("ошибка БД"));
         SetRows(
             new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
             new ExcelPayment(failingDate, -200m, "Магазин", "INV-2", "OK", "Списание", "Карта"));
@@ -253,8 +315,8 @@ public class PaymentsImportServiceTests
     {
         var existingWithoutAccount = new Payment { PaymentId = 10, PaymentSum = -200m, PaymentDate = PaymentDate, Account = null };
         var existingWithAccount = new Payment { PaymentId = 11, PaymentSum = -300m, PaymentDate = PaymentDate, Account = _card };
-        _paymentService.FindDuplicate(-200m, PaymentDate).Returns(existingWithoutAccount);
-        _paymentService.FindDuplicate(-300m, PaymentDate).Returns(existingWithAccount);
+        _paymentService.FindDuplicate(-200m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existingWithoutAccount);
+        _paymentService.FindDuplicate(-300m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existingWithAccount);
         SetRows(
             new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
             new ExcelPayment(PaymentDate, -200m, "Магазин", "INV-2", "OK", "Списание", "Карта"),
@@ -311,7 +373,7 @@ public class PaymentsImportServiceTests
     public async Task Upload_DuplicateWithoutAccountAndRowWithoutAccount_SkipsRow()
     {
         var existing = new Payment { PaymentId = 10, PaymentSum = -150m, PaymentDate = PaymentDate, Account = null };
-        _paymentService.FindDuplicate(-150m, PaymentDate).Returns(existing);
+        _paymentService.FindDuplicate(-150m, PaymentDate, null, PaymentTypeEnum.Spending).Returns(existing);
         SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "", null));
 
         await _service.Upload("file.csv", new MemoryStream());
@@ -342,7 +404,7 @@ public class PaymentsImportServiceTests
         await _service.Upload("file.xlsx", new MemoryStream());
 
         await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentType == PaymentTypeEnum.Spending && p.PaymentSum == 150m));
-        await _paymentService.Received(1).FindDuplicate(150m, PaymentDate);
+        await _paymentService.Received(1).FindDuplicate(150m, PaymentDate, 5, PaymentTypeEnum.Spending);
     }
 
     [Fact]

@@ -21,6 +21,8 @@ public class PaymentDtoTests
             PaymentCreatedAt = Created,
             PaymentLastUpdatedAt = Updated,
             ExcludeFromStats = true,
+            TransferId = 4,
+            TransferPairPaymentId = 11,
             PaymentSourceId = 3,
             PaymentSource_PaymentSourceId = 3,
             PaymentSource_PaymentSourceName = "Магазин",
@@ -40,6 +42,7 @@ public class PaymentDtoTests
             Account_AccountId = 5,
             Account_ExcelAccountName = "Карта *1234",
             Account_DisplayName = "Основная",
+            Account_IsSavings = true,
             Account_CreatedAt = Created,
             Account_LastUpdatedAt = Updated,
             PaymentCategoryCategoryId = 7,
@@ -62,6 +65,7 @@ public class PaymentDtoTests
         Assert.Equal(Created, payment.CreatedAt);
         Assert.Equal(Updated, payment.LastUpdatedAt);
         Assert.True(payment.ExcludeFromStats);
+        Assert.Equal((4, 11), (payment.TransferId, payment.TransferPairPaymentId));
 
         var source = Assert.IsType<PaymentSource>(payment.PaymentSource);
         Assert.Equal((3, "Магазин", "у дома", Created, (DateTime?)Updated),
@@ -75,6 +79,7 @@ public class PaymentDtoTests
         var account = Assert.IsType<Account>(payment.Account);
         Assert.Equal((5, "Карта *1234", "Основная", Created, (DateTime?)Updated),
             (account.AccountId, account.ExcelAccountName, account.DisplayName, account.CreatedAt, account.LastUpdatedAt));
+            Assert.True(account.IsSavings);
 
         var category = Assert.IsType<Category>(payment.PaymentCategory);
         Assert.Equal((7, "Еда", (int?)1, false, 2, Created, (DateTime?)Updated),
@@ -93,6 +98,8 @@ public class PaymentDtoTests
 
         Assert.Null(payment.PaymentSource);
         Assert.Null(payment.Account);
+        Assert.Null(payment.TransferId);
+        Assert.Null(payment.TransferPairPaymentId);
         Assert.Null(payment.PaymentCategory);
         Assert.Null(payment.CalculatedCategory);
     }

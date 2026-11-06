@@ -102,7 +102,7 @@ namespace FinCtrl.Application.PaymentsImport
                 payment.PaymentType = PaymentTypeEnum.Income;
             }
 
-            var existingPayment = await _paymentService.FindDuplicate(payment.PaymentSum, payment.PaymentDate);
+            var existingPayment = await _paymentService.FindDuplicate(payment.PaymentSum, payment.PaymentDate, account?.AccountId, payment.PaymentType);
             if (existingPayment is null)
             {
                 payment.PaymentId = await _paymentService.Create(payment);

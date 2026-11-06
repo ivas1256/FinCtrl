@@ -73,13 +73,30 @@ public class PaymentsApiControllerTests
     [Fact]
     public async Task EditPayment_RouteId_EditsPaymentWithRouteIdAndReturnsNoContent()
     {
-        var request = new EditPaymentRequest { AccountId = 0, Description = "Обед", TagIds = [1] };
+        var request = new EditPaymentRequest { AccountId = 0, Description = "Обед", TagIds = [1], IsTransfer = true, TransferPairPaymentId = 20 };
 
         var result = await _controller.EditPayment(10, request);
 
         Assert.IsType<NoContentResult>(result);
         await _paymentService.Received(1).Edit(Arg.Is<PaymentEdit>(e =>
-            e.PaymentId == 10 && e.AccountId == 0 && e.Description == "Обед" && e.CategoryId == null && e.TagIds!.SequenceEqual(new[] { 1 })));
+            e.PaymentId == 10 && e.AccountId == 0 && e.Description == "Обед" && e.CategoryId == null && e.TagIds!.SequenceEqual(new[] { 1 })
+            && e.IsTransfer == true && e.TransferPairPaymentId == 20));
+    }
+
+    [Fact]
+    public async Task GetTransferCandidates_Candidates_MapsToDtoInServiceOrder()
+    {
+        _paymentService.GetTransferCandidates(10).Returns(new List<Payment>
+        {
+            new() { PaymentId = 21, PaymentSum = 500m, Account = new Account(5, "Вклад", "Вклад", default, null) { IsSavings = true } },
+            new() { PaymentId = 20, PaymentSum = 500m }
+        });
+
+        var result = await _controller.GetTransferCandidates(10);
+
+        var dtos = Assert.IsType<List<PaymentDto>>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(new[] { 21, 20 }, dtos.Select(d => d.PaymentId));
+        Assert.True(dtos[0].Account!.IsSavings);
     }
 
     [Fact]

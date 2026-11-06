@@ -21,4 +21,15 @@ public record PaymentEdit(int PaymentId)
 
     /// <summary>Теги; <c>null</c> — не трогать, список (в т.ч. пустой) — заменить набор целиком.</summary>
     public IReadOnlyCollection<int>? TagIds { get; init; }
+
+    /// <summary>
+    /// Перевод между своими счетами; <c>null</c> — не трогать. <c>true</c> — тип <see cref="Domain.PaymentTypeEnum.Transfer"/>,
+    /// <c>false</c> — тип по знаку суммы, связь со второй стороной удаляется (вторая сторона остаётся переводом).
+    /// </summary>
+    public bool? IsTransfer { get; init; }
+
+    /// <summary>
+    /// Вторая сторона перевода; <c>null</c> — не трогать, <c>0</c> — отвязать. Вторая сторона тоже становится переводом.
+    /// </summary>
+    public int? TransferPairPaymentId { get; init; }
 }

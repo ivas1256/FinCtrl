@@ -19,11 +19,12 @@ public class AccountTests
     [Fact]
     public void CreateFromExisting_Fields_SetsIdAndNamesWithoutDates()
     {
-        var account = Account.CreateFromExisting(5, "Карта *1234", "Основная карта");
+        var account = Account.CreateFromExisting(5, "Карта *1234", "Основная карта", true);
 
         Assert.Equal(5, account.AccountId);
         Assert.Equal("Карта *1234", account.ExcelAccountName);
         Assert.Equal("Основная карта", account.DisplayName);
+        Assert.True(account.IsSavings);
         Assert.Equal(default, account.CreatedAt);
         Assert.Null(account.LastUpdatedAt);
     }

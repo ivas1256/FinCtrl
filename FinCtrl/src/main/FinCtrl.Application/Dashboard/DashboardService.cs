@@ -206,9 +206,11 @@ namespace FinCtrl.Application.Dashboard
 
         // ── Helpers ────────────────────────────────────────────────────────
 
+        // Траты: списания с категорией, входящей в итоги; переводы между своими счетами — не траты при любой категории
         private static List<Payment> FilterSpendings(List<Payment> payments)
             => payments
                 .Where(p => p.PaymentSum < 0
+                    && p.PaymentType != PaymentTypeEnum.Transfer
                     && (p.CalculatedCategory?.IsIncludeInTotalResults() ?? false))
                 .ToList();
 

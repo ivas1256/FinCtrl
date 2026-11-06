@@ -30,11 +30,17 @@
                                 <label class="form-label mb-1">Название счета в excel файле</label>
                                 <input type="text" class="form-control form-control-sm" v-model="newAccount.excelAccountName">
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label mb-1">Отображаемое название</label>
                                 <input type="text" class="form-control form-control-sm" v-model="newAccount.displayName">
                             </div>
-                            <div class="col-md-4 d-flex gap-2">
+                            <div class="col-md-2">
+                                <div class="form-check mb-1">
+                                    <input id="new-account-is-savings" type="checkbox" class="form-check-input" v-model="newAccount.isSavings">
+                                    <label for="new-account-is-savings" class="form-check-label">Накопительный</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 d-flex gap-2">
                                 <button class="btn btn-success btn-sm" :disabled="saving" @click="createAccount">Создать</button>
                                 <button class="btn btn-outline-secondary btn-sm" @click="cancelCreate">Отмена</button>
                             </div>
@@ -48,6 +54,7 @@
                                     <th width="80">ID</th>
                                     <th>Название счета в excel файле</th>
                                     <th>Отображаемое название</th>
+                                    <th width="140" class="text-center" title="Перевод на накопительный счёт относится к «Накоплениям»">Накопительный</th>
                                     <th width="140">Дата создания</th>
                                     <th width="120" class="text-center">Действия</th>
                                 </tr>
@@ -67,6 +74,14 @@
                                             type="text"
                                             class="form-control form-control-sm"
                                             v-model="account.displayName"
+                                        >
+                                    </td>
+                                    <td class="text-center">
+                                        <input
+                                            type="checkbox"
+                                            class="form-check-input"
+                                            :aria-label="`Накопительный счет ${account.displayName}`"
+                                            v-model="account.isSavings"
                                         >
                                     </td>
                                     <td class="created-date">
@@ -114,12 +129,13 @@ const accounts = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const creating = ref(false)
-const newAccount = ref({ excelAccountName: '', displayName: '' })
+const newAccount = ref({ excelAccountName: '', displayName: '', isSavings: false })
 const { error, showError, clearAlerts } = useAlerts()
 
 const hasChanges = (account) =>
     account.excelAccountName !== account.originalExcelAccountName ||
-    account.displayName !== account.originalDisplayName
+    account.displayName !== account.originalDisplayName ||
+    account.isSavings !== account.originalIsSavings
 
 const loadAccounts = async () => {
     loading.value = true
@@ -129,7 +145,8 @@ const loadAccounts = async () => {
         accounts.value = response.data.map(account => ({
             ...account,
             originalExcelAccountName: account.excelAccountName,
-            originalDisplayName: account.displayName
+            originalDisplayName: account.displayName,
+            originalIsSavings: account.isSavings
         }))
     } catch (error) {
         console.error('Ошибка загрузки счетов:', error)
@@ -140,7 +157,7 @@ const loadAccounts = async () => {
 }
 
 const startCreate = () => {
-    newAccount.value = { excelAccountName: '', displayName: '' }
+    newAccount.value = { excelAccountName: '', displayName: '', isSavings: false }
     creating.value = true
 }
 
@@ -158,7 +175,8 @@ const createAccount = async () => {
     try {
         await axios.post(APP_CONFIG.apiBaseUrl + '/api/AccountsApi', {
             excelAccountName: newAccount.value.excelAccountName.trim(),
-            displayName: newAccount.value.displayName.trim()
+            displayName: newAccount.value.displayName.trim(),
+            isSavings: newAccount.value.isSavings
         })
         creating.value = false
         await loadAccounts()
@@ -176,10 +194,12 @@ const saveAccount = async (account) => {
     try {
         await axios.put(`${APP_CONFIG.apiBaseUrl}/api/AccountsApi/${account.accountId}`, {
             excelAccountName: account.excelAccountName,
-            displayName: account.displayName
+            displayName: account.displayName,
+            isSavings: account.isSavings
         })
         account.originalExcelAccountName = account.excelAccountName
         account.originalDisplayName = account.displayName
+        account.originalIsSavings = account.isSavings
     } catch (error) {
         console.error('Ошибка сохранения счета:', error)
         showError(getErrorMessage(error, 'Ошибка сохранения'))

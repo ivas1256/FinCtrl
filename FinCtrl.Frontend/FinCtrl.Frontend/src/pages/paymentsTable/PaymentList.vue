@@ -18,7 +18,7 @@
                         {{ payment.paymentSource?.description }}
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <span :class="['payment-amount', payment.paymentType === 1 ? 'text-danger' : 'text-success']">
+                        <span :class="['payment-amount', payment.paymentSum < 0 ? 'text-danger' : 'text-success']">
                             {{ formatCurrency(payment.paymentSum) }}
                         </span>
                         <button 

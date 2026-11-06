@@ -77,7 +77,7 @@ public class AccountServiceTests
     [Fact]
     public async Task Update_ExistingAccount_SavesWithUpdatedAt()
     {
-        await _service.Update(Account.CreateFromExisting(5, "Карта", "Новое имя"));
+        await _service.Update(Account.CreateFromExisting(5, "Карта", "Новое имя", false));
 
         await _repository.Received(1).Update(Arg.Is<Account[]>(a =>
             a.Length == 1 && a[0].DisplayName == "Новое имя" && a[0].LastUpdatedAt == Now));
@@ -86,7 +86,7 @@ public class AccountServiceTests
     [Fact]
     public async Task Update_UnknownAccount_ThrowsNotFoundException()
     {
-        await Assert.ThrowsAsync<NotFoundException>(() => _service.Update(Account.CreateFromExisting(99, "Вклад", "Вклад")));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.Update(Account.CreateFromExisting(99, "Вклад", "Вклад", false)));
 
         await _repository.DidNotReceiveWithAnyArgs().Update();
     }
@@ -96,7 +96,7 @@ public class AccountServiceTests
     {
         _repository.GetById(6).Returns(new Account(6, "Вклад", "Вклад", Now, null));
 
-        await Assert.ThrowsAsync<ConflictException>(() => _service.Update(Account.CreateFromExisting(6, "Карта", "Вклад")));
+        await Assert.ThrowsAsync<ConflictException>(() => _service.Update(Account.CreateFromExisting(6, "Карта", "Вклад", false)));
 
         await _repository.DidNotReceiveWithAnyArgs().Update();
     }
@@ -104,7 +104,7 @@ public class AccountServiceTests
     [Fact]
     public async Task Update_EmptyDisplayName_ThrowsValidationException()
     {
-        await Assert.ThrowsAsync<ValidationException>(() => _service.Update(Account.CreateFromExisting(5, "Карта", "")));
+        await Assert.ThrowsAsync<ValidationException>(() => _service.Update(Account.CreateFromExisting(5, "Карта", "", false)));
     }
 
     [Fact]
