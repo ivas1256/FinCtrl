@@ -93,8 +93,9 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
   импорте (get-or-create по имени), CRUD-эндпоинт умеет только читать и
   редактировать (create/delete нет — источники берутся только из импорта).
 - **Account** ("Счёт", добавлено 2026-09-08) — именно банковский счёт.
-  Поля: `AccountId, ExcelAccountName (как называется в файле банка — ключ
-  для get-or-create при импорте), DisplayName (что показывается в UI),
+  Поля: `AccountId, ExcelAccountName (как называется в файле банка),
+  AccountNumber (номер счёта из файла — ключ get-or-create при импорте, задача 0038),
+  DisplayName (что показывается в UI),
   IsSavings (накопительный счёт, задача 0037), CreatedAt, LastUpdatedAt`. В отличие от `PaymentSource`, здесь полный
   CRUD (создание/редактирование/удаление) через отдельную страницу.
 - **Category** — дерево (`ParentCategoryId`), `IsOnlyIncome`,
@@ -107,7 +108,8 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 - `PaymentSources`: PaymentSourceId PK, PaymentSourceName, CategoryId FK,
   CreatedAt, LastUpdatedAt, Description, Classification (NVARCHAR(200) NULL),
   IsAiClassified (BIT, default 0; миграция 0004).
-- `Accounts`: AccountId PK, ExcelAccountName (уникальный индекс),
+- `Accounts`: AccountId PK, ExcelAccountName (с миграции 0006 не уникально),
+  AccountNumber (NVARCHAR(50) NULL, уникальный фильтрованный индекс `UQ_Accounts_AccountNumber`; миграция 0006),
   DisplayName, IsSavings (BIT, default 0; миграция 0005), CreatedAt, LastUpdatedAt.
 - `Payments`: PaymentId PK, PaymentType, PaymentSum, PaymentDate,
   PaymentSourceId FK, AccountId FK → Accounts, PaymentCategoryCategoryId
@@ -133,11 +135,17 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 |---|---|
 | 1 (A) | Дата |
 | 3 (C) | Название счёта (для get-or-create Account) |
-| 4 (D) | Номер операции |
+| 4 (D) | Номер счёта (ключ get-or-create Account, задача 0038) |
 | 7 (G) | Название источника платежа |
 | 8 (H) | Сумма |
 | 10 (J) | Статус |
 | 13 (M) | Тип ("Списание"/"Пополнение") |
+
+**Счёт при импорте (с задачи 0038)** сопоставляется по номеру из колонки D:
+найден по номеру → он; иначе самый старый счёт с тем же названием **без номера**
+(создан до появления номеров) получает номер; иначе создаётся счёт с названием
+(без названия — с номером вместо названия) и номером. Строка без номера — прежний
+get-or-create по названию. CSV номер не читает.
 
 **Паттерн get-or-create** (используется одинаково и для `PaymentSource`,
 и для `Account`): получить по имени (`GetByName`/`GetByExcelName` — единственные методы
@@ -541,3 +549,10 @@ Characterization-тесты на места, не покрытые профил�
 - Правка: `PUT api/PaymentsApi/{id}` — `IsTransfer` (`false` — тип по знаку, связь удаляется, вторая сторона остаётся переводом без пары) и `TransferPairPaymentId` (`0` — отвязать; вторая сторона тоже становится переводом). 400 — сам платёж / тот же знак / не найдена / указана не у перевода; 409 — вторая сторона уже связана с другим платежом. Всё — в транзакции `PaymentService.Edit`. `GET api/PaymentsApi/{id}/transfer-candidates` — противоположный знак (после нормализации), та же сумма по модулю, ±5 дней, не тот же счёт (без счёта подходят), не связанные с другим платежом; по близости даты.
 - Модалка главной: галочка «Перевод между своими счетами», select «Вторая сторона» (+ «Не указывать»); если счёт второй стороны накопительный — категория переключается на «Накопления», снятие галочки возвращает прежнюю (`utils/transferCategory.js`). В `PaymentList` цвет суммы — по знаку.
 - Аналитика: фейковая категория `CategoryIds.FakeTransfers` (`int.MaxValue - 2`, строка «Переводы» перед «Без категории»). `MainStatisticService` относит перевод к «Переводам», если его итоговая категория не «Накопления» и не их потомок (в т.ч. перевод без категории или со старой категорией); такие переводы не попадают ни в свою категорию, ни в «ВСЕГО» (`IsIncludeInTotalResults` → `false`). Переводы с категорией «Накопления» остаются в «Накоплениях». Frontend: `TRANSFERS_ID` (`utils/heatmap.js`), `Semantics.Transfer` — Δ всегда серая, «новые переводы»; карточка «Итого» без «Переводов»; имя строки приглушено. Дашборд: `FilterSpendings` исключает `PaymentType == Transfer`.
+
+## Номер счёта (задача 0038, 2026-11-06)
+- БД (миграция `0006_account_number.sql`): `Accounts.AccountNumber` (`NVARCHAR(50) NULL`), уникальный фильтрованный индекс `UQ_Accounts_AccountNumber`; уникальность `ExcelAccountName` снята — ключом стал номер.
+- Domain: `Account.AccountNumber`, `Account.NormalizeAccountNumber` (trim, пусто → `null`), параметр в `CreateNew`/`CreateFromExisting`. `ExcelPayment.InvoiceNumber` (колонка D, нигде не использовался) переименован в `AccountNumber`; CSV номер не передаёт.
+- Application: `AccountService` — 409 при занятом номере (по названию конфликта больше нет), номер необязателен, ≤ 50 символов; `GetByAccountNumber`, `GetWithoutNumberByExcelName`. `PaymentsImportService` — get-or-create счёта по номеру с дозаполнением номера legacy-счёту с тем же названием (см. «Импорт из Excel/CSV»); кэш на файл — отдельно по номеру и по названию.
+- API: `AccountDto.accountNumber` (`[StringLength(50)]`). Frontend: «Счета» — колонка и поле «Номер счета» (пустое → `null`).
+- Номер в данные платежа (`SelectPayment`/`PaymentDto`) не добавлен.
