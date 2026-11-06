@@ -42,7 +42,7 @@
 - [x] Сборка, тесты, ручная проверка в preview
 
 - [x] Документация `project-summary.md`
-- [ ] PR
+- [x] PR — https://github.com/ivas1256/FinCtrl/pull/41
 
 ## Тесты
 | Что тестируем | Сценарии |
