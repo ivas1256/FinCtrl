@@ -18,9 +18,9 @@ Backend — шаги 1–4, frontend — шаги 5–6.
 - [x] 2. Infrastructure `PaymentDto`: свойства `TransferPairAccount_*`, маппинг в `Payment.TransferPairAccount` (`Account?`, `null`, если id нет)
 - [x] 3. Domain `Payment.TransferPairAccount`
 - [x] 4. Website `PaymentDto.TransferPairAccount` (`AccountDto?`) в `FromModel`
-- [ ] 5. `PaymentList.vue`: у перевода строка «A → B» (по знаку нормализованной суммы: списание — свой счёт → счёт пары; поступление — наоборот), «не указан» при отсутствии; логику вынести в чистую функцию в `src/utils/` и покрыть тестом
-- [ ] 6. `PaymentsTable.vue`: подпись текущей второй стороны, не найденной среди кандидатов, — с её счётом
-- [ ] Юнит-тесты (см. таблицу)
+- [x] 5. `PaymentList.vue`: у перевода строка «A → B» (по знаку нормализованной суммы: списание — свой счёт → счёт пары; поступление — наоборот), «не указан» при отсутствии; логику вынести в чистую функцию в `src/utils/` и покрыть тестом
+- [x] 6. `PaymentsTable.vue`: подпись текущей второй стороны, не найденной среди кандидатов, — с её счётом
+- [x] Юнит-тесты (см. таблицу)
 - [ ] Сборка + тесты + ручная проверка (Definition of Done)
 - [ ] Обновить `project-summary.md`
 - [ ] PR

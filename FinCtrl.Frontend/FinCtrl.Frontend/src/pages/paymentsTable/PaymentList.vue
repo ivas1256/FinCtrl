@@ -41,6 +41,11 @@
                     </div>
                 </div>
 
+                <!-- Направление перевода между своими счетами -->
+                <div v-if="getTransferDirection(payment)" class="payment-transfer small text-muted mt-1">
+                    {{ getTransferDirection(payment) }}
+                </div>
+
                 <!-- Теги -->
                 <div v-if="payment.tags && payment.tags.length > 0" class="mt-1">
                     <span
@@ -57,6 +62,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatCurrency, formatLongDate } from '../../utils/format'
+import { getTransferDirection } from '../../utils/transferDirection'
 
 const props = defineProps({
     payments: {

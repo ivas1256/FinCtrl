@@ -503,7 +503,8 @@ const transferPairOptions = computed(() => {
     const options = transferCandidates.value.map(c => ({ paymentId: c.paymentId, label: formatTransferCandidate(c) }))
     const pairId = editingPayment.value?.originalTransferPairPaymentId
     if (pairId && !options.some(o => o.paymentId === pairId)) {
-        options.unshift({ paymentId: pairId, label: `Связанная операция #${pairId}` })
+        const accountName = editingPayment.value.transferPairAccount?.displayName || 'счёт не указан'
+        options.unshift({ paymentId: pairId, label: `Связанная операция · ${accountName}` })
     }
     return options
 })
@@ -526,7 +527,10 @@ const applyTransferCategory = () => {
     const pair = transferCandidates.value.find(c => c.paymentId === payment.transferPairPaymentId)
     const result = resolveTransferCategory({
         isTransfer: payment.isTransfer,
-        pairIsSavings: !!pair?.account?.isSavings,
+        pairIsSavings: !!(pair
+            ? pair.account?.isSavings
+            : payment.transferPairPaymentId && payment.transferPairPaymentId === payment.originalTransferPairPaymentId
+                && payment.transferPairAccount?.isSavings),
         categoryId: payment.categoryId,
         auto: transferCategoryAuto.value
     })
