@@ -44,11 +44,53 @@ public class AccountServiceTests
     }
 
     [Fact]
-    public async Task Create_DuplicateExcelName_ThrowsConflictException()
+    public async Task Create_DuplicateAccountNumber_ThrowsConflictException()
     {
-        _repository.Exists("Карта").Returns(true);
+        _repository.GetByAccountNumber("40817").Returns(_card);
 
-        await Assert.ThrowsAsync<ConflictException>(() => _service.Create(Account.CreateNew("Карта", Now)));
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => _service.Create(Account.CreateNew("Вклад", Now, "40817")));
+
+        Assert.Contains("40817", ex.Message);
+        await _repository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Fact]
+    public async Task Create_SameExcelNameAsAnotherAccount_CreatesAccount()
+    {
+        _repository.Create(Arg.Any<Account>()).Returns(6);
+
+        var id = await _service.Create(Account.CreateNew("Карта", Now, "40817"));
+
+        Assert.Equal(6, id);
+        await _repository.Received(1).Create(Arg.Is<Account>(a => a.ExcelAccountName == "Карта" && a.AccountNumber == "40817"));
+    }
+
+    [Fact]
+    public async Task Create_WithoutAccountNumber_DoesNotCheckNumber()
+    {
+        await _service.Create(Account.CreateNew("Вклад", Now));
+
+        await _repository.DidNotReceiveWithAnyArgs().GetByAccountNumber(default!);
+        await _repository.Received(1).Create(Arg.Is<Account>(a => a.AccountNumber == null));
+    }
+
+    [Fact]
+    public async Task Create_WhitespaceAccountNumberSetDirectly_SavesNull()
+    {
+        var account = Account.CreateNew("Вклад", Now);
+        account.AccountNumber = "  ";
+
+        await _service.Create(account);
+
+        await _repository.Received(1).Create(Arg.Is<Account>(a => a.AccountNumber == null));
+    }
+
+    [Fact]
+    public async Task Create_TooLongAccountNumber_ThrowsValidationException()
+    {
+        var account = Account.CreateNew("Вклад", Now, new string('1', AccountService.MaxNumberLength + 1));
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.Create(account));
 
         await _repository.DidNotReceiveWithAnyArgs().Create(default!);
     }
@@ -92,13 +134,34 @@ public class AccountServiceTests
     }
 
     [Fact]
-    public async Task Update_ExcelNameOfAnotherAccount_ThrowsConflictException()
+    public async Task Update_AccountNumberOfAnotherAccount_ThrowsConflictException()
+    {
+        _repository.GetById(6).Returns(new Account(6, "Вклад", "Вклад", Now, null));
+        _repository.GetByAccountNumber("40817").Returns(_card);
+
+        await Assert.ThrowsAsync<ConflictException>(() => _service.Update(Account.CreateFromExisting(6, "Вклад", "Вклад", false, "40817")));
+
+        await _repository.DidNotReceiveWithAnyArgs().Update();
+    }
+
+    [Fact]
+    public async Task Update_OwnAccountNumber_Saves()
+    {
+        _repository.GetByAccountNumber("40817").Returns(_card);
+
+        await _service.Update(Account.CreateFromExisting(5, "Карта", "Карта", false, "40817"));
+
+        await _repository.Received(1).Update(Arg.Is<Account[]>(a => a.Length == 1 && a[0].AccountNumber == "40817"));
+    }
+
+    [Fact]
+    public async Task Update_ExcelNameOfAnotherAccount_Saves()
     {
         _repository.GetById(6).Returns(new Account(6, "Вклад", "Вклад", Now, null));
 
-        await Assert.ThrowsAsync<ConflictException>(() => _service.Update(Account.CreateFromExisting(6, "Карта", "Вклад", false)));
+        await _service.Update(Account.CreateFromExisting(6, "Карта", "Вклад", false));
 
-        await _repository.DidNotReceiveWithAnyArgs().Update();
+        await _repository.Received(1).Update(Arg.Is<Account[]>(a => a.Length == 1 && a[0].AccountId == 6));
     }
 
     [Fact]

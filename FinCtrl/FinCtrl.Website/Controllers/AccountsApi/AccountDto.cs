@@ -15,6 +15,10 @@ namespace FinCtrl.Website.Controllers.AccountsApi
         [StringLength(255, ErrorMessage = "Отображаемое название счёта — не длиннее 255 символов")]
         public string DisplayName { get; set; } = string.Empty;
 
+        /// <summary>Номер счёта из банковского файла; необязателен, уникален.</summary>
+        [StringLength(50, ErrorMessage = "Номер счёта — не длиннее 50 символов")]
+        public string? AccountNumber { get; set; }
+
         /// <summary>Накопительный счёт (вклад).</summary>
         public bool IsSavings { get; set; }
 
@@ -26,6 +30,7 @@ namespace FinCtrl.Website.Controllers.AccountsApi
             AccountId = account.AccountId,
             ExcelAccountName = account.ExcelAccountName,
             DisplayName = account.DisplayName,
+            AccountNumber = account.AccountNumber,
             IsSavings = account.IsSavings,
             CreatedAt = account.CreatedAt,
             LastUpdatedAt = account.LastUpdatedAt

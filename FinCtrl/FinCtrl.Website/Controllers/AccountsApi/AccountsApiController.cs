@@ -25,11 +25,11 @@ namespace FinCtrl.Website.Controllers.AccountsApi
                 .Select(AccountDto.FromModel));
         }
 
-        /// <summary>Создаёт счёт; 409 — счёт с таким названием в файле уже есть.</summary>
+        /// <summary>Создаёт счёт; 409 — счёт с таким номером уже есть.</summary>
         [HttpPost]
         public async Task<IActionResult> Create(AccountDto dto)
         {
-            var newAccount = Account.CreateNew(dto.ExcelAccountName, _timeProvider.GetLocalNow().DateTime);
+            var newAccount = Account.CreateNew(dto.ExcelAccountName, _timeProvider.GetLocalNow().DateTime, dto.AccountNumber);
             newAccount.DisplayName = dto.DisplayName;
             newAccount.IsSavings = dto.IsSavings;
             var id = await _accountService.Create(newAccount);
@@ -37,11 +37,11 @@ namespace FinCtrl.Website.Controllers.AccountsApi
             return Ok(AccountDto.FromModel(await _accountService.GetById(id)));
         }
 
-        /// <summary>Правит названия и признак «накопительный» счёта; 404 — счёт не найден, 409 — название в файле занято.</summary>
+        /// <summary>Правит названия, номер и признак «накопительный» счёта; 404 — счёт не найден, 409 — номер занят.</summary>
         [HttpPut("{accountId}")]
         public async Task<IActionResult> Update(int accountId, AccountDto dto)
         {
-            var toUpdate = Account.CreateFromExisting(accountId, dto.ExcelAccountName, dto.DisplayName, dto.IsSavings);
+            var toUpdate = Account.CreateFromExisting(accountId, dto.ExcelAccountName, dto.DisplayName, dto.IsSavings, dto.AccountNumber);
             await _accountService.Update(toUpdate);
 
             return NoContent();

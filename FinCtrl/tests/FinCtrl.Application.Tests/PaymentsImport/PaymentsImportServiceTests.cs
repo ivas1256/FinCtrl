@@ -62,10 +62,10 @@ public class PaymentsImportServiceTests
         _paymentService.Create(Arg.Any<Payment>()).Returns(100, 101, 102);
         _paymentService.FindDuplicate(-300m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(new Payment { PaymentId = 7, Account = _card });
         SetRows(
-            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
-            new ExcelPayment(PaymentDate, -200m, "Кафе", "INV-2", "OK", "Списание", "Карта"),
-            new ExcelPayment(PaymentDate.AddDays(1), -50m, "Кафе", "INV-3", "OK", "Списание", "Карта"),
-            new ExcelPayment(PaymentDate, -300m, "Магазин", "INV-4", "OK", "Списание", "Карта"));
+            new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate, -200m, "Кафе", null, "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate.AddDays(1), -50m, "Кафе", null, "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate, -300m, "Магазин", null, "OK", "Списание", "Карта"));
 
         var result = await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -83,7 +83,7 @@ public class PaymentsImportServiceTests
         _paymentSourceService.GetById(2).Returns(cafe);
         _classificationService.Classify(Arg.Any<IReadOnlyList<PaymentSource>>(), Arg.Any<CancellationToken>())
             .Returns("сервис недоступен");
-        SetRows(new ExcelPayment(PaymentDate, -200m, "Кафе", "INV-2", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -200m, "Кафе", null, "OK", "Списание", "Карта"));
 
         var result = await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -99,7 +99,7 @@ public class PaymentsImportServiceTests
     [Fact]
     public async Task Upload_FileName_SelectsFormatByExtension()
     {
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("выписка.XLSX", new MemoryStream());
 
@@ -130,7 +130,7 @@ public class PaymentsImportServiceTests
     [Fact]
     public async Task Upload_NoDuplicate_CreatesPaymentWithSourceAccountAndType()
     {
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -153,7 +153,7 @@ public class PaymentsImportServiceTests
         _paymentSourceService.GetById(2).Returns(newSource);
         _accountService.Create(Arg.Any<Account>()).Returns(6);
         _accountService.GetById(6).Returns(newAccount);
-        SetRows(new ExcelPayment(PaymentDate, 300m, "Кафе", "INV-2", "OK", "Пополнение", "Счёт"));
+        SetRows(new ExcelPayment(PaymentDate, 300m, "Кафе", null, "OK", "Пополнение", "Счёт"));
 
         await _service.Upload("file.csv", new MemoryStream());
 
@@ -167,8 +167,8 @@ public class PaymentsImportServiceTests
     public async Task Upload_SameSourceAndAccountInSeveralRows_LoadsThemOnce()
     {
         SetRows(
-            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
-            new ExcelPayment(PaymentDate.AddDays(1), -200m, "Магазин", "INV-2", "OK", "Списание", "Карта"));
+            new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate.AddDays(1), -200m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -182,7 +182,7 @@ public class PaymentsImportServiceTests
     {
         var existing = new Payment { PaymentId = 10, PaymentSum = -150m, PaymentDate = PaymentDate, Account = null };
         _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existing);
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -195,7 +195,7 @@ public class PaymentsImportServiceTests
     {
         var existing = new Payment { PaymentId = 10, PaymentSum = -150m, PaymentDate = PaymentDate, Account = _card };
         _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existing);
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -209,7 +209,7 @@ public class PaymentsImportServiceTests
     {
         // Платёж с той же датой и суммой на другом счёте FindDuplicate не возвращает — строка импортируется
         _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns((Payment?)null);
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -225,7 +225,7 @@ public class PaymentsImportServiceTests
             PaymentId = 10, PaymentType = PaymentTypeEnum.Transfer, PaymentSum = -150m, PaymentDate = PaymentDate, Account = null
         };
         _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existing);
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -241,7 +241,7 @@ public class PaymentsImportServiceTests
             PaymentId = 10, PaymentType = PaymentTypeEnum.Transfer, PaymentSum = 150m, PaymentDate = PaymentDate, Account = _card
         };
         _paymentService.FindDuplicate(150m, PaymentDate, 5, PaymentTypeEnum.Income).Returns(existing);
-        SetRows(new ExcelPayment(PaymentDate, 150m, "Магазин", "INV-1", "OK", "Пополнение", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, 150m, "Магазин", null, "OK", "Пополнение", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -258,8 +258,8 @@ public class PaymentsImportServiceTests
         _paymentService.Create(Arg.Any<Payment>()).Returns(100);
         _paymentService.FindDuplicate(-150m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns((Payment?)null, created);
         SetRows(
-            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
-            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+            new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -271,8 +271,8 @@ public class PaymentsImportServiceTests
     public async Task Upload_AllRowsImported_CommitsSingleTransaction()
     {
         SetRows(
-            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
-            new ExcelPayment(PaymentDate.AddDays(1), -200m, "Магазин", "INV-2", "OK", "Списание", "Карта"));
+            new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate.AddDays(1), -200m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -287,8 +287,8 @@ public class PaymentsImportServiceTests
         var failingDate = PaymentDate.AddDays(1);
         _paymentService.FindDuplicate(-200m, failingDate, 5, PaymentTypeEnum.Spending).ThrowsAsync(new InvalidOperationException("ошибка БД"));
         SetRows(
-            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
-            new ExcelPayment(failingDate, -200m, "Магазин", "INV-2", "OK", "Списание", "Карта"));
+            new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"),
+            new ExcelPayment(failingDate, -200m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => _service.Upload("file.xlsx", new MemoryStream()));
 
@@ -300,7 +300,7 @@ public class PaymentsImportServiceTests
     [Fact]
     public async Task Upload_Cancelled_DoesNotImportOrCommit()
     {
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"));
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -318,9 +318,9 @@ public class PaymentsImportServiceTests
         _paymentService.FindDuplicate(-200m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existingWithoutAccount);
         _paymentService.FindDuplicate(-300m, PaymentDate, 5, PaymentTypeEnum.Spending).Returns(existingWithAccount);
         SetRows(
-            new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"),
-            new ExcelPayment(PaymentDate, -200m, "Магазин", "INV-2", "OK", "Списание", "Карта"),
-            new ExcelPayment(PaymentDate, -300m, "Магазин", "INV-3", "OK", "Списание", "Карта"));
+            new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate, -200m, "Магазин", null, "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate, -300m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -334,7 +334,7 @@ public class PaymentsImportServiceTests
     [Fact]
     public async Task Upload_Parsed_ClosesStream()
     {
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", "Карта"));
         var stream = new MemoryStream();
 
         await _service.Upload("file.xlsx", stream);
@@ -360,7 +360,7 @@ public class PaymentsImportServiceTests
     [InlineData("  ")]
     public async Task Upload_RowWithoutAccountName_CreatesPaymentWithoutAccount(string? accountName)
     {
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "Списание", accountName));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "Списание", accountName));
 
         await _service.Upload("file.csv", new MemoryStream());
 
@@ -374,7 +374,7 @@ public class PaymentsImportServiceTests
     {
         var existing = new Payment { PaymentId = 10, PaymentSum = -150m, PaymentDate = PaymentDate, Account = null };
         _paymentService.FindDuplicate(-150m, PaymentDate, null, PaymentTypeEnum.Spending).Returns(existing);
-        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "INV-1", "OK", "", null));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", null, "OK", "", null));
 
         await _service.Upload("file.csv", new MemoryStream());
 
@@ -388,7 +388,7 @@ public class PaymentsImportServiceTests
     [InlineData(300, PaymentTypeEnum.Income)]
     public async Task Upload_TypeNotSpendingOrIncome_TypeBySumSign(decimal sum, PaymentTypeEnum expectedType)
     {
-        SetRows(new ExcelPayment(PaymentDate, sum, "Магазин", "INV-1", "OK", "Перевод", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, sum, "Магазин", null, "OK", "Перевод", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -399,7 +399,7 @@ public class PaymentsImportServiceTests
     public async Task Upload_SpendingTypeWithPositiveSum_TypeFromFileAndSumAsIs()
     {
         // Тип из файла приоритетнее знака суммы; знак суммы при импорте не меняется — его приводит NormalizeSumSign при чтении.
-        SetRows(new ExcelPayment(PaymentDate, 150m, "Магазин", "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, 150m, "Магазин", null, "OK", "Списание", "Карта"));
 
         await _service.Upload("file.xlsx", new MemoryStream());
 
@@ -412,7 +412,7 @@ public class PaymentsImportServiceTests
     {
         // Фиксирует текущее поведение: пустая ячейка источника в xlsx даёт SourceName = null, и импорт падает
         // необработанным исключением (500) вместо ValidationException — см. «Вне объёма» в plan.md задачи 0023.
-        SetRows(new ExcelPayment(PaymentDate, -150m, null!, "INV-1", "OK", "Списание", "Карта"));
+        SetRows(new ExcelPayment(PaymentDate, -150m, null!, null, "OK", "Списание", "Карта"));
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => _service.Upload("file.xlsx", new MemoryStream()));
 
@@ -428,12 +428,113 @@ public class PaymentsImportServiceTests
         var emptySource = new PaymentSource(9, "", null, null, Now, null);
         _paymentSourceService.Create(Arg.Any<PaymentSource>()).Returns(9);
         _paymentSourceService.GetById(9).Returns(emptySource);
-        SetRows(new ExcelPayment(PaymentDate, -150m, "", "INV-1", "OK", "", null));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "", null, "OK", "", null));
 
         await _service.Upload("file.csv", new MemoryStream());
 
         await _paymentSourceService.Received(1).Create(Arg.Is<PaymentSource>(s => s.PaymentSourceName == ""));
         await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentSource == emptySource));
+    }
+
+    [Fact]
+    public async Task Upload_KnownAccountNumber_UsesAccountFoundByNumber()
+    {
+        var byNumber = new Account(7, "Карта", "Карта", Now, null) { AccountNumber = "40817" };
+        _accountService.GetByAccountNumber("40817").Returns(byNumber);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", " 40817 ", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _accountService.DidNotReceiveWithAnyArgs().GetByExcelName(default!);
+        await _accountService.DidNotReceiveWithAnyArgs().GetWithoutNumberByExcelName(default!);
+        await _accountService.DidNotReceiveWithAnyArgs().Create(default!);
+        await _accountService.DidNotReceiveWithAnyArgs().Update(default!);
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.Account == byNumber));
+    }
+
+    [Fact]
+    public async Task Upload_UnknownNumberAndLegacyAccountWithSameName_FillsNumber()
+    {
+        var legacy = new Account(5, "Карта", "Моя карта", Now, null);
+        _accountService.GetWithoutNumberByExcelName("Карта").Returns(legacy);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "40817", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _accountService.Received(1).Update(Arg.Is<Account>(a => a.AccountId == 5 && a.AccountNumber == "40817" && a.DisplayName == "Моя карта"));
+        await _accountService.DidNotReceiveWithAnyArgs().Create(default!);
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.Account == legacy));
+    }
+
+    [Fact]
+    public async Task Upload_UnknownNumberWithoutLegacyAccount_CreatesAccountWithNumber()
+    {
+        var created = new Account(8, "Карта", "Карта", Now, null) { AccountNumber = "40817" };
+        _accountService.Create(Arg.Any<Account>()).Returns(8);
+        _accountService.GetById(8).Returns(created);
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "40817", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _accountService.Received(1).Create(Arg.Is<Account>(a =>
+            a.ExcelAccountName == "Карта" && a.AccountNumber == "40817" && a.CreatedAt == Now));
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.Account == created));
+    }
+
+    [Fact]
+    public async Task Upload_NumberWithoutName_CreatesAccountNamedByNumber()
+    {
+        _accountService.Create(Arg.Any<Account>()).Returns(8);
+        _accountService.GetById(8).Returns(new Account(8, "40817", "40817", Now, null));
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "40817", "OK", "Списание", null));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _accountService.Received(1).GetWithoutNumberByExcelName("40817");
+        await _accountService.Received(1).Create(Arg.Is<Account>(a => a.ExcelAccountName == "40817" && a.AccountNumber == "40817"));
+    }
+
+    [Fact]
+    public async Task Upload_SameNumberInSeveralRows_LoadsAccountOnce()
+    {
+        _accountService.GetByAccountNumber("40817").Returns(_card);
+        SetRows(
+            new ExcelPayment(PaymentDate, -150m, "Магазин", "40817", "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate.AddDays(1), -200m, "Магазин", "40817", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _accountService.Received(1).GetByAccountNumber("40817");
+        await _paymentService.Received(2).Create(Arg.Is<Payment>(p => p.Account == _card));
+    }
+
+    [Fact]
+    public async Task Upload_SameNameDifferentNumbers_UsesDifferentAccounts()
+    {
+        var first = new Account(7, "Карта", "Карта", Now, null) { AccountNumber = "111" };
+        var second = new Account(8, "Карта", "Карта", Now, null) { AccountNumber = "222" };
+        _accountService.GetByAccountNumber("111").Returns(first);
+        _accountService.GetByAccountNumber("222").Returns(second);
+        SetRows(
+            new ExcelPayment(PaymentDate, -150m, "Магазин", "111", "OK", "Списание", "Карта"),
+            new ExcelPayment(PaymentDate, -200m, "Магазин", "222", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentSum == -150m && p.Account == first));
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.PaymentSum == -200m && p.Account == second));
+    }
+
+    [Fact]
+    public async Task Upload_RowWithoutNumber_FindsAccountByName()
+    {
+        SetRows(new ExcelPayment(PaymentDate, -150m, "Магазин", "  ", "OK", "Списание", "Карта"));
+
+        await _service.Upload("file.xlsx", new MemoryStream());
+
+        await _accountService.DidNotReceiveWithAnyArgs().GetByAccountNumber(default!);
+        await _accountService.Received(1).GetByExcelName("Карта");
+        await _paymentService.Received(1).Create(Arg.Is<Payment>(p => p.Account == _card));
     }
 
     private void SetRows(params ExcelPayment[] rows) =>

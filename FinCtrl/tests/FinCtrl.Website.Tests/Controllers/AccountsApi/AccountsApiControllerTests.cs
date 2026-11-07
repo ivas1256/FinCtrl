@@ -26,27 +26,29 @@ public class AccountsApiControllerTests
     public async Task Create_Dto_CreatesAccountWithDisplayNameAndTimeAndReturnsSaved()
     {
         _accountService.Create(Arg.Any<Account>()).Returns(5);
-        _accountService.GetById(5).Returns(new Account(5, "Карта *1234", "Основная", Now, null));
-        var dto = new AccountDto { AccountId = 99, ExcelAccountName = "Карта *1234", DisplayName = "Основная", IsSavings = true };
+        _accountService.GetById(5).Returns(new Account(5, "Карта *1234", "Основная", Now, null) { AccountNumber = "40817" });
+        var dto = new AccountDto { AccountId = 99, ExcelAccountName = "Карта *1234", DisplayName = "Основная", IsSavings = true, AccountNumber = " 40817 " };
 
         var result = await _controller.Create(dto);
 
         await _accountService.Received(1).Create(Arg.Is<Account>(a =>
-            a.AccountId == 0 && a.ExcelAccountName == "Карта *1234" && a.DisplayName == "Основная" && a.IsSavings && a.CreatedAt == Now));
+            a.AccountId == 0 && a.ExcelAccountName == "Карта *1234" && a.DisplayName == "Основная" && a.IsSavings && a.CreatedAt == Now
+            && a.AccountNumber == "40817"));
         var saved = Assert.IsType<AccountDto>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.Equal((5, "Основная", Now), (saved.AccountId, saved.DisplayName, saved.CreatedAt));
+        Assert.Equal((5, "Основная", Now, "40817"), (saved.AccountId, saved.DisplayName, saved.CreatedAt, saved.AccountNumber));
     }
 
     [Fact]
     public async Task Update_RouteId_UpdatesAccountWithRouteIdAndReturnsNoContent()
     {
-        var dto = new AccountDto { AccountId = 99, ExcelAccountName = "Карта *1234", DisplayName = "Основная", IsSavings = true };
+        var dto = new AccountDto { AccountId = 99, ExcelAccountName = "Карта *1234", DisplayName = "Основная", IsSavings = true, AccountNumber = "40817" };
 
         var result = await _controller.Update(5, dto);
 
         Assert.IsType<NoContentResult>(result);
         await _accountService.Received(1).Update(Arg.Is<Account>(a =>
-            a.AccountId == 5 && a.ExcelAccountName == "Карта *1234" && a.DisplayName == "Основная" && a.IsSavings));
+            a.AccountId == 5 && a.ExcelAccountName == "Карта *1234" && a.DisplayName == "Основная" && a.IsSavings
+            && a.AccountNumber == "40817"));
     }
 
     [Fact]
