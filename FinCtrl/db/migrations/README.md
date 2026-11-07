@@ -43,3 +43,7 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\0001_initial.sql
   (классификация источника, `NVARCHAR(200) NULL`) и `PaymentSources.IsAiClassified`
   (`BIT NOT NULL DEFAULT 0`: классификацию проставила LLM, ручная правка
   сбрасывает флаг). Идемпотентна. Нужно накатить на dev2.
+- `0006_account_number.sql` — колонка `Accounts.AccountNumber` (`NVARCHAR(50) NULL`,
+  номер счёта из колонки D xlsx; уникальный фильтрованный индекс `UQ_Accounts_AccountNumber`),
+  снята уникальность `ExcelAccountName` — импорт сопоставляет счёт по номеру. Идемпотентна.
+  Накатывать с `-I`.

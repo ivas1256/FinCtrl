@@ -26,7 +26,7 @@ namespace FinCtrl.Infrastructure.PaymentsImport
                                date: GetCellValue<DateTime>(ws, row, 1, "дата операции")
                                 , sum: GetCellValue<decimal>(ws, row, 8, "сумма операции")
                                 , sourceName: ws.Cells[row, 7].GetValue<string>()
-                                , invoiceNumber: ws.Cells[row, 4].GetValue<string>()
+                                , accountNumber: ws.Cells[row, 4].GetValue<string?>()
                                 , status: ws.Cells[row, 10].GetValue<string>()
                                 , type: ws.Cells[row, 13].GetValue<string>()
                                 , accountName: ws.Cells[row, 3].GetValue<string>()

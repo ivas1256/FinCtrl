@@ -30,6 +30,25 @@ public class AccountTests
     }
 
     [Fact]
+    public void CreateNew_AccountNumber_TrimsNumber()
+    {
+        var account = Account.CreateNew("Карта", Now, " 40817810 ");
+
+        Assert.Equal("40817810", account.AccountNumber);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void CreateFromExisting_EmptyAccountNumber_NumberIsNull(string? accountNumber)
+    {
+        var account = Account.CreateFromExisting(5, "Карта", "Карта", false, accountNumber);
+
+        Assert.Null(account.AccountNumber);
+    }
+
+    [Fact]
     public void Updated_SetsLastUpdatedAtToPassedTime()
     {
         var account = new Account(5, "Карта", "Карта", Now.AddDays(-1), null);

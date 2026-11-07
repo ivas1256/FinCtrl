@@ -8,6 +8,9 @@ namespace FinCtrl.Application.Accounts
         // Длина колонок ExcelAccountName/DisplayName в БД (NVARCHAR(255))
         internal const int MaxNameLength = 255;
 
+        // Длина колонки AccountNumber в БД (NVARCHAR(50))
+        internal const int MaxNumberLength = 50;
+
         private readonly IAccountRepository _repository;
         private readonly TimeProvider _timeProvider;
 
@@ -33,24 +36,29 @@ namespace FinCtrl.Application.Accounts
             return await _repository.GetByExcelName(excelAccountName);
         }
 
+        public async Task<Account?> GetWithoutNumberByExcelName(string excelAccountName)
+        {
+            return await _repository.GetWithoutNumberByExcelName(excelAccountName);
+        }
+
+        public async Task<Account?> GetByAccountNumber(string accountNumber)
+        {
+            return await _repository.GetByAccountNumber(accountNumber);
+        }
+
         public async Task<int> Create(Account account)
         {
-            ValidateNames(account);
-
-            if (await _repository.Exists(account.ExcelAccountName))
-                throw new ConflictException($"Счёт с названием в файле «{account.ExcelAccountName}» уже существует");
+            Validate(account);
+            await EnsureNumberIsFree(account);
 
             return await _repository.Create(account);
         }
 
         public async Task Update(Account account)
         {
-            ValidateNames(account);
+            Validate(account);
             await GetById(account.AccountId);
-
-            var sameName = await _repository.GetByExcelName(account.ExcelAccountName);
-            if (sameName is not null && sameName.AccountId != account.AccountId)
-                throw new ConflictException($"Счёт с названием в файле «{account.ExcelAccountName}» уже существует");
+            await EnsureNumberIsFree(account);
 
             account.Updated(_timeProvider.GetLocalNow().DateTime);
             await _repository.Update(account);
@@ -68,13 +76,29 @@ namespace FinCtrl.Application.Accounts
             await _repository.Delete(account);
         }
 
-        private static void ValidateNames(Account account)
+        // Ключ счёта — номер (с задачи 0038); названия могут повторяться.
+        private async Task EnsureNumberIsFree(Account account)
         {
+            if (account.AccountNumber is null)
+                return;
+
+            var sameNumber = await _repository.GetByAccountNumber(account.AccountNumber);
+            if (sameNumber is not null && sameNumber.AccountId != account.AccountId)
+                throw new ConflictException($"Счёт с номером «{account.AccountNumber}» уже существует");
+        }
+
+        private static void Validate(Account account)
+        {
+            account.AccountNumber = Account.NormalizeAccountNumber(account.AccountNumber);
+
             if (string.IsNullOrWhiteSpace(account.ExcelAccountName) || string.IsNullOrWhiteSpace(account.DisplayName))
                 throw new ValidationException("Название счёта в excel-файле и отображаемое название обязательны");
 
             if (account.ExcelAccountName.Length > MaxNameLength || account.DisplayName.Length > MaxNameLength)
                 throw new ValidationException($"Названия счёта должны быть не длиннее {MaxNameLength} символов");
+
+            if (account.AccountNumber?.Length > MaxNumberLength)
+                throw new ValidationException($"Номер счёта должен быть не длиннее {MaxNumberLength} символов");
         }
     }
 }

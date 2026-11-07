@@ -24,7 +24,7 @@ public class CsvFileFormatTests
         Assert.Equal(new DateTime(2025, 10, 1), rows[0].Date);
         Assert.Equal(-150m, rows[0].Sum);
         Assert.Equal("Магазин; у дома", rows[0].SourceName);
-        Assert.Equal("INV-1", rows[0].InvoiceNumber);
+        Assert.Null(rows[0].AccountNumber);
         Assert.Equal("OK", rows[0].Status);
         Assert.Equal("Кафе", rows[1].SourceName);
         Assert.Equal(300m, rows[1].Sum);

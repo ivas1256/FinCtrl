@@ -43,3 +43,4 @@
 | 0036 | `feature/0036-ai-payment-source-classification` | `.ai-tasks/feature/0036-ai-payment-source-classification/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/40 |
 | 0037 | `feature/0037-transfers-between-accounts` | `.ai-tasks/feature/0037-transfers-between-accounts/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/41 |
 | 0039 | `feature/0039-transfer-accounts-in-list` | `.ai-tasks/feature/0039-transfer-accounts-in-list/` | на ревью | [#43](https://github.com/ivas1256/FinCtrl/pull/43) |
+| 0038 | `feature/0038-account-number` | `.ai-tasks/feature/0038-account-number/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/42 |
