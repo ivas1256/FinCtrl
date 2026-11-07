@@ -305,7 +305,6 @@ import { Modal } from 'bootstrap'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
 import { computeMaxValue, splitTotalNode, hasAnySum } from '../../utils/heatmap'
 import { formatCurrency, formatSignedCurrency, formatShortDate, toInputDate } from '../../utils/format'
-import { resolveTransferCategory } from '../../utils/transferCategory'
 import {
     formatPeriodHeader,
     formatComparisonHeader,
@@ -488,8 +487,6 @@ const modalError = ref(null)
 const TRANSFER_PAYMENT_TYPE = 2
 const transferCandidates = ref([])
 const transferCandidatesLoading = ref(false)
-// Автоподстановка «Накоплений»: null или { previousCategoryId } — см. utils/transferCategory.js
-const transferCategoryAuto = ref(null)
 
 const formatTransferCandidate = (payment) => [
     formatShortDate(payment.paymentDate),
@@ -522,25 +519,8 @@ const loadTransferCandidates = async (paymentId) => {
     }
 }
 
-const applyTransferCategory = () => {
-    const payment = editingPayment.value
-    const pair = transferCandidates.value.find(c => c.paymentId === payment.transferPairPaymentId)
-    const result = resolveTransferCategory({
-        isTransfer: payment.isTransfer,
-        pairIsSavings: !!(pair
-            ? pair.account?.isSavings
-            : payment.transferPairPaymentId && payment.transferPairPaymentId === payment.originalTransferPairPaymentId
-                && payment.transferPairAccount?.isSavings),
-        categoryId: payment.categoryId,
-        auto: transferCategoryAuto.value
-    })
-    payment.categoryId = result.categoryId
-    transferCategoryAuto.value = result.auto
-}
-
 const onTransferToggle = async (checked) => {
     editingPayment.value.isTransfer = checked
-    applyTransferCategory()
     if (checked && transferCandidates.value.length === 0) {
         await loadTransferCandidates(editingPayment.value.paymentId)
     }
@@ -548,7 +528,6 @@ const onTransferToggle = async (checked) => {
 
 const onTransferPairChange = (value) => {
     editingPayment.value.transferPairPaymentId = value === '' ? '' : Number(value)
-    applyTransferCategory()
 }
 
 // Спиннер вместо таблицы: пока грузятся категории (до первого запроса) и во время запроса платежей
@@ -677,7 +656,6 @@ const openEditModal = (payment) => {
     }
     modalError.value = null
     transferCandidates.value = []
-    transferCategoryAuto.value = null
 
     Modal.getOrCreateInstance(document.getElementById('editPaymentModal')).show()
 

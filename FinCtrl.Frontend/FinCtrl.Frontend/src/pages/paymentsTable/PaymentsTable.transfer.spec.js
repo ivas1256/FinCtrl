@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { SAVINGS_CATEGORY_ID } from '../../utils/periodComparison'
 
 vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }))
 // jsdom не рисует модалки Bootstrap — достаточно, чтобы show/hide не падали
@@ -104,16 +103,16 @@ describe('PaymentsTable: перевод между своими счетами �
         wrapper.unmount()
     })
 
-    it('вторая сторона на накопительном счёте подставляет «Накопления», снятие галочки возвращает прежнюю категорию', async () => {
+    it('вторая сторона на накопительном счёте не меняет категорию', async () => {
         const wrapper = await openModal()
         await transferCheckbox(wrapper).setValue(true)
         await flushPromises()
 
         await pairSelect(wrapper).setValue('20')
-        expect(categorySelect(wrapper).props('modelValue')).toBe(SAVINGS_CATEGORY_ID)
-
-        await transferCheckbox(wrapper).setValue(false)
         expect(categorySelect(wrapper).props('modelValue')).toBe(FOOD)
+
+        const body = await savePayment(wrapper)
+        expect(body).toMatchObject({ IsTransfer: true, TransferPairPaymentId: 20, CategoryId: FOOD })
         wrapper.unmount()
     })
 
