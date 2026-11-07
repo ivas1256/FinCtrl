@@ -10,3 +10,6 @@ Thumbs.db
 # Логи и отладочные дампы с реальными данными
 FinCtrl/FinCtrl.Website/internal-nlog.txt
 FinCtrl/FinCtrl.Website/items.json
+
+# Полные логи сборки/тестов из .claude/scripts/check.mjs
+.ai-tmp/

@@ -15,11 +15,15 @@ FinCtrl — личное приложение для учёта финансов
 
 ## Регламент работы над задачей
 
-**Обязателен для любой задачи, меняющей код** (ветка, папка задачи в `.ai-tasks/`, тесты, сборка, PR, журнал `.ai-tasks/tasks.md`). Полный текст:
+**Обязателен для любой задачи, меняющей код** (ветка, папка задачи в `.ai-tasks/`, тесты, сборка, PR, журнал `.ai-tasks/tasks.md`): текст — `.ai-docs/workflow/task-workflow.md`.
 
-@.ai-docs/workflow/task-workflow.md
+**Любую задачу, меняющую код в `FinCtrl/` или `FinCtrl.Frontend/`, выполнять через скил `do-task`** (`.claude/skills/do-task/`). Он загружает регламент и распределяет работу: код пишут агенты `backend-dev` / `frontend-dev` (`.claude/agents/`), главная сессия ведёт регламент, контракт API, коммиты, ручную проверку и PR. Правки только в `.ai-docs/`, `.ai-tasks/`, `CLAUDE.md` — без скила, но тоже не напрямую в `main`.
+
+**Сборка и тесты — только `node .claude/scripts/check.mjs backend|frontend|all`** (`--no-tests` — только сборка, `--filter <выражение>` — точечный прогон тестов). Скрипт печатает одну строку при успехе и суть ошибок при провале, полный лог пишет в `.ai-tmp/check-<часть>.log`. Прямой `dotnet build/test`, `npm run build/test` и `vitest` блокирует хук `.claude/hooks/guard-raw-builds.mjs`: их вывод забивает контекст. Разбор длинного лога — агент `build-runner` (Haiku).
 
 ## Команды
+
+Команды ниже — для человека в терминале; агенту сборку и тесты запускать через `check.mjs` (см. выше).
 
 Backend (из `FinCtrl/`):
 ```bash
@@ -39,7 +43,7 @@ npm run test    # Vitest (jsdom), тесты *.spec.js рядом с кодом
 
 В `.claude/launch.json` описаны preview-конфигурации `backend` и `frontend` для команд выше.
 
-`.claude/settings.json` подключает хук `.claude/hooks/pre-pr-check.mjs`: на `git push` / `gh pr create` он выполняет автоматическую часть «Проверки перед PR» (сборка/тесты затронутых частей, гигиена диффа, папка задачи) и блокирует команду при провале — см. регламент, раздел 4.
+`.claude/settings.json` подключает два хука на Bash/PowerShell: `guard-raw-builds.mjs` (запрет прямых сборок, см. выше) и `pre-pr-check.mjs`. Второй на `git push` / `gh pr create` выполняет автоматическую часть «Проверки перед PR» (сборка/тесты затронутых частей через функции `check.mjs`, гигиена диффа, папка задачи) и блокирует команду при провале — см. регламент, раздел 4.
 
 Backend-тесты — xUnit + NSubstitute в `FinCtrl/tests/FinCtrl.<Проект>.Tests/` (`FinCtrl.Domain.Tests`, `FinCtrl.Common.Tests`, `FinCtrl.Application.Tests`, `FinCtrl.Infrastructure.Tests`, `FinCtrl.Website.Tests`); текущее время в Domain/Application — только через `TimeProvider` (в тестах `FakeTimeProvider`). Frontend-тесты — Vitest + `@vue/test-utils` + `jsdom`, файлы `*.spec.js` рядом с тестируемым кодом. Линтера пока нет ни в backend, ни во frontend.
 

@@ -105,6 +105,33 @@ public class PaymentDtoTests
     }
 
     [Fact]
+    public void MapToPayment_TransferPairAccount_MappedWhenIdPresent()
+    {
+        var row = new PaymentDto
+        {
+            TransferPairAccount_AccountId = 9,
+            TransferPairAccount_ExcelAccountName = "Копилка *9",
+            TransferPairAccount_DisplayName = "Накопления",
+            TransferPairAccount_IsSavings = true,
+            TransferPairAccount_CreatedAt = Created,
+            TransferPairAccount_LastUpdatedAt = Updated
+        };
+
+        var account = Assert.IsType<Account>(row.MapToPayment().TransferPairAccount);
+
+        Assert.Equal((9, "Копилка *9", "Накопления", true, Created, (DateTime?)Updated),
+            (account.AccountId, account.ExcelAccountName, account.DisplayName, account.IsSavings, account.CreatedAt, account.LastUpdatedAt));
+    }
+
+    [Fact]
+    public void MapToPayment_NoTransferPairAccountId_TransferPairAccountIsNull()
+    {
+        var row = new PaymentDto { TransferPairAccount_DisplayName = "лишнее" };
+
+        Assert.Null(row.MapToPayment().TransferPairAccount);
+    }
+
+    [Fact]
     public void MapToPayment_ReferencesWithoutNames_SourceCategoryNullAndNamesEmpty()
     {
         var row = new PaymentDto
