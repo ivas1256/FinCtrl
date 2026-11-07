@@ -27,13 +27,13 @@ namespace FinCtrl.Application.Statistic
         {
             var range = dateRange ?? GetDefaultRange();
             var tree = await _categoryService.GetCategoriesTree();
-            var savingsIds = GetSavingsCategoryIds(tree);
-            var items = await Calculate(range, groupingType, tagIds, savingsIds);
+            var savings = GetSavings(tree);
+            var items = await Calculate(range, groupingType, tagIds, savings);
 
             // П часто лежит вне фильтра дат, поэтому суммы сравнения — отдельной выборкой за [начало П, D + 1).
             var comparison = GetComparison(range, groupingType);
             var comparisonItems = await Calculate(
-                new DateRange(comparison.Previous.Range.From, comparison.Current.Range.To), groupingType, tagIds, savingsIds);
+                new DateRange(comparison.Previous.Range.From, comparison.Current.Range.To), groupingType, tagIds, savings);
 
             tree.Add(Category.CreateFakeTransfers());
             tree.Add(Category.CreateFakeEmpty());
@@ -69,17 +69,17 @@ namespace FinCtrl.Application.Statistic
         {
             ValidateGrouping(groupingType);
 
-            var savingsIds = GetSavingsCategoryIds(await _categoryService.GetCategoriesTree());
-            return await Calculate(dateRange, groupingType, tagIds, savingsIds);
+            var savings = GetSavings(await _categoryService.GetCategoriesTree());
+            return await Calculate(dateRange, groupingType, tagIds, savings);
         }
 
         private async Task<List<MainStatisticGroupItem>> Calculate(
-            DateRange dateRange, GroupingType groupingType, int[]? tagIds, IReadOnlySet<int> savingsIds)
+            DateRange dateRange, GroupingType groupingType, int[]? tagIds, SavingsInfo savings)
         {
             ValidateGrouping(groupingType);
 
             var payments = (await _paymentService.GetByDateRange(dateRange, tagIds))
-                .Select(x => (Payment: x, Category: GetReportCategory(x, savingsIds)))
+                .Select(x => (Payment: x, Category: GetReportCategory(x, savings)))
                 .ToList();
 
             var fakePaymentsSummary = payments
@@ -125,30 +125,57 @@ namespace FinCtrl.Application.Statistic
             }
         }
 
-        /// <summary>«Накопления» и все их потомки: перевод с такой категорией остаётся в «Накоплениях».</summary>
-        private IReadOnlySet<int> GetSavingsCategoryIds(List<Category> tree)
+        /// <summary>«Накопления» (узел дерева, если он есть) и все их потомки: перевод с такой категорией остаётся в «Накоплениях».</summary>
+        private SavingsInfo GetSavings(List<Category> tree)
         {
             var ids = _categoryService.GetAllChildCategories(CategoryIds.Savings, tree).Select(x => x.CategoryId).ToHashSet();
             ids.Add(CategoryIds.Savings);
-            return ids;
+            return new SavingsInfo(ids, FindCategory(tree, CategoryIds.Savings));
+        }
+
+        private static Category? FindCategory(IEnumerable<Category> categories, int categoryId)
+        {
+            foreach (var category in categories)
+            {
+                if (category.CategoryId == categoryId)
+                {
+                    return category;
+                }
+
+                var found = FindCategory(category.Children, categoryId);
+                if (found is not null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
-        /// Строка отчёта платежа: перевод между своими счетами — «Переводы», если его итоговая категория не «Накопления»
-        /// и не их потомок (в т.ч. перевод без категории или со старой категорией траты/дохода); иначе — итоговая
-        /// категория или «Без категории».
+        /// Строка отчёта платежа: любая операция по накопительному счёту (<c>Account.IsSavings</c>) — «Накопления»
+        /// (если их нет в дереве, правило не действует); перевод между своими счетами — «Переводы», если его итоговая
+        /// категория не «Накопления» и не их потомок (в т.ч. перевод без категории или со старой категорией траты/дохода);
+        /// иначе — итоговая категория или «Без категории».
         /// </summary>
-        private Category GetReportCategory(Payment payment, IReadOnlySet<int> savingsIds)
+        private Category GetReportCategory(Payment payment, SavingsInfo savings)
         {
+            if (payment.Account?.IsSavings == true && savings.Category is not null)
+            {
+                return savings.Category;
+            }
+
             var category = payment.CalculatedCategory;
             if (payment.PaymentType == PaymentTypeEnum.Transfer
-                && (category is null || !savingsIds.Contains(category.CategoryId)))
+                && (category is null || !savings.Ids.Contains(category.CategoryId)))
             {
                 return _transfersCategory;
             }
 
             return category ?? _nullCategory;
         }
+
+        private record SavingsInfo(IReadOnlySet<int> Ids, Category? Category);
 
         // Ячейка категории = её собственные платежи + платежи всех потомков; ячейки есть для всех периодов.
         // Суммы сравнения — по тому же правилу, без списков платежей.

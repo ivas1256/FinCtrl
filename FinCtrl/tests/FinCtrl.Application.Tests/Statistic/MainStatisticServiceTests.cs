@@ -636,6 +636,88 @@ public class MainStatisticServiceTests
         Assert.True(table.Tree.IndexOf(transfers) < table.Tree.FindIndex(n => n.Category.CategoryId == CategoryIds.FakeEmpty));
     }
 
+    [Fact]
+    public async Task Calculate_SpendingAndIncomeOnSavingsAccount_InSavingsNotInTotalOrOwnCategory()
+    {
+        var savings = GivenSavingsInTree();
+        var salary = new Category(3) { IsOnlyIncome = true, OrderIndex = 3 };
+        GivenPayments(
+            Spending(-100, new DateTime(2026, 1, 5)),
+            OnSavingsAccount(Spending(-30, new DateTime(2026, 1, 6), _food)),
+            OnSavingsAccount(Spending(7, new DateTime(2026, 1, 7), salary)),
+            OnSavingsAccount(Transfer(-5000, new DateTime(2026, 1, 8), _food)));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(-5023, Assert.Single(result, x => x.Category.CategoryId == savings.CategoryId).TotalSum);
+        Assert.Equal(-100, Assert.Single(result, x => x.Category.CategoryId == 1).TotalSum);
+        Assert.DoesNotContain(result, x => x.Category.CategoryId == 3);
+        Assert.DoesNotContain(result, x => x.Category.CategoryId == CategoryIds.FakeTransfers);
+        Assert.Equal(-100, Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTotal).TotalSum);
+    }
+
+    [Fact]
+    public async Task Calculate_TransferPairSavingsAndRegularAccount_InSavingsAndTransfers()
+    {
+        var savings = GivenSavingsInTree();
+        GivenPayments(
+            OnSavingsAccount(Transfer(5000, new DateTime(2026, 1, 6), null)),
+            Transfer(-5000, new DateTime(2026, 1, 6), null));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(5000, Assert.Single(result, x => x.Category.CategoryId == savings.CategoryId).TotalSum);
+        Assert.Equal(-5000, Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTransfers).TotalSum);
+    }
+
+    [Fact]
+    public async Task Calculate_SavingsCategoryWithoutAccount_StaysInSavings()
+    {
+        var savings = GivenSavingsInTree();
+        GivenPayments(Spending(-40, new DateTime(2026, 1, 6), new Category(CategoryIds.Savings)));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(-40, Assert.Single(result, x => x.Category.CategoryId == savings.CategoryId).TotalSum);
+        Assert.Equal(0, Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTotal).TotalSum);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_SavingsAccountPayment_InSavingsRowCellAndComparison()
+    {
+        GivenSavingsInTree();
+        GivenNow(new DateTime(2026, 1, 20, 12, 0, 0));
+        GivenPayments(
+            Spending(-100, new DateTime(2026, 1, 5)),
+            OnSavingsAccount(Spending(-30, new DateTime(2026, 1, 6), _food)));
+
+        var table = await _service.GetPaymentsTable(TableRange, GroupingType.Month);
+
+        var savingsNode = Assert.Single(table.Tree, n => n.Category.CategoryId == CategoryIds.Savings);
+        Assert.Equal(-30, savingsNode.Cells["012026"].TotalSum);
+        Assert.Equal(-30, savingsNode.Comparison.Current);
+        Assert.Equal(-100, table.Tree.Single(n => n.Category.CategoryId == 1).Comparison.Current);
+        Assert.Equal(-100, table.Tree.Single(n => n.Category.CategoryId == CategoryIds.FakeTotal).Cells["012026"].TotalSum);
+    }
+
+    private Category GivenSavingsInTree()
+    {
+        var savings = new Category(CategoryIds.Savings) { CategoryName = "Накопления", OrderIndex = 4 };
+        _categoryService.GetCategoriesTree().Returns(_ =>
+        {
+            var tree = BuildTree();
+            tree.Add(savings);
+            return tree;
+        });
+        return savings;
+    }
+
+    private static Payment OnSavingsAccount(Payment payment)
+    {
+        payment.Account = new Account { AccountId = 9, IsSavings = true };
+        return payment;
+    }
+
     private static Payment Transfer(decimal sum, DateTime date, Category? category) => new()
     {
         PaymentType = PaymentTypeEnum.Transfer,

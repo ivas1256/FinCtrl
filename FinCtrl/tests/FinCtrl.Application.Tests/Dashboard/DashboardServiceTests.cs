@@ -60,7 +60,8 @@ public class DashboardServiceTests
             Spending(-1000, Today, new Category(CategoryIds.Savings)),   // накопления — не учитываются
             Spending(500, Today, food),                  // доход — не учитывается
             Spending(-7, Today, category: null),         // без категории — не учитывается
-            Transfer(-5000, Today, food)                 // перевод между своими счетами — не трата
+            Transfer(-5000, Today, food),                // перевод между своими счетами — не трата
+            new Payment { PaymentSum = -900, PaymentDate = Today, PaymentCategory = food, Account = new Account { IsSavings = true } } // накопительный счёт
         });
 
         var summary = await _service.GetSummary();
