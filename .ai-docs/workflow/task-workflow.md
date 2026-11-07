@@ -42,6 +42,8 @@
 - **Backend**: xUnit-проект `FinCtrl/tests/FinCtrl.Application.Tests/` (+ при необходимости `FinCtrl.Website.Tests/`), добавленный в `FinCtrl.Backend.sln`; моки — NSubstitute или Moq. Запуск: `dotnet test FinCtrl.Backend.sln`.
 - **Frontend**: Vitest + `@vue/test-utils` + `jsdom`, скрипт `"test": "vitest run"` в `package.json`; тесты рядом с кодом (`*.spec.js`) или в `src/__tests__/`. Запуск: `npm run test`.
 
+Команды выше — для человека. Агент Claude Code запускает сборку и тесты только через `node .claude/scripts/check.mjs backend|frontend|all` (`--no-tests`, `--filter <выражение>`): короткий итог, полный лог — в `.ai-tmp/`. Прямые `dotnet build/test`, `npm run build/test` и `vitest` блокирует хук `guard-raw-builds.mjs`. Распределение работы между агентами — скил `do-task` (`.claude/skills/do-task/SKILL.md`).
+
 ### Что покрывать юнит-тестами
 - Новая/изменённая бизнес-логика в `FinCtrl.Application` (сервисы) — обязательно, с мокнутыми репозиториями: основной сценарий, граничные случаи, ошибки/валидация.
 - Нетривиальная логика контроллеров (маппинг DTO, построение дерева, семантика null в `EditPaymentRequest`).

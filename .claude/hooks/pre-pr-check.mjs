@@ -4,12 +4,11 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { buildBackend, buildFrontend, hasBackendTests, hasFrontendTests, testBackend, testFrontend } from '../scripts/check.mjs';
 
 const BASE = 'main';
 const BACKEND = 'FinCtrl/';
 const FRONTEND = 'FinCtrl.Frontend/';
-const FRONTEND_APP = 'FinCtrl.Frontend/FinCtrl.Frontend';
-const SOLUTION = 'FinCtrl/FinCtrl.Backend.sln';
 const SUMMARY_DOC = '.ai-docs/project/project-summary.md';
 // Правки только в этих путях не требуют папки задачи (регламент, вводная часть).
 const DOCS_ONLY = [/^\.ai-docs\//, /^\.ai-tasks\//, /^CLAUDE\.md$/];
@@ -120,13 +119,14 @@ function checkDiff(nameStatus) {
   return errors;
 }
 
-// --- сборка и тесты затронутых частей ---
+// --- сборка и тесты затронутых частей (общая логика с .claude/scripts/check.mjs) ---
+const report = (what, step) => `${what} упал:\n${step.details.join('\n')}`;
+
 function checkBackend(changed, notes) {
   const errors = [];
   // --no-incremental: иначе предупреждения в уже собранных проектах не выводятся.
-  const build = run('dotnet', ['build', SOLUTION, '--no-incremental', '-nologo', '-v', 'q', '-clp:NoSummary']);
-  if (build.code !== 0)
-    return [`dotnet build ${SOLUTION} упал:\n${tail(build.out.split(/\r?\n/).filter((l) => /error/i.test(l)).join('\n') || build.out)}`];
+  const build = buildBackend(root, { noIncremental: true });
+  if (!build.ok) return [report('dotnet build', build)];
 
   const changedCs = changed.filter((f) => f.startsWith(BACKEND)).map((f) => f.toLowerCase());
   const warnings = new Set();
@@ -139,10 +139,10 @@ function checkBackend(changed, notes) {
   if (warnings.size)
     errors.push(`Предупреждения сборки в изменённых файлах:\n${[...warnings].join('\n')}`);
 
-  if (/Tests?\.csproj/.test(readFileSync(join(root, SOLUTION), 'utf8'))) {
-    const test = run('dotnet', ['test', SOLUTION, '--no-build', '-nologo', '-v', 'q']);
-    if (test.code !== 0) errors.push(`dotnet test упал:\n${tail(test.out)}`);
-    else notes.push('backend: build + test');
+  if (hasBackendTests(root)) {
+    const test = testBackend(root);
+    if (!test.ok) errors.push(report('dotnet test', test));
+    else notes.push(`backend: build + ${test.summary}`);
   } else {
     notes.push('backend: build (тестового проекта в .sln пока нет)');
   }
@@ -151,13 +151,12 @@ function checkBackend(changed, notes) {
 
 function checkFrontend(notes) {
   const errors = [];
-  const build = run('npm', ['--prefix', FRONTEND_APP, 'run', 'build'], { shell: true });
-  if (build.code !== 0) return [`npm run build упал:\n${tail(build.out)}`];
-  const pkg = JSON.parse(readFileSync(join(root, FRONTEND_APP, 'package.json'), 'utf8'));
-  if (pkg.scripts?.test) {
-    const test = run('npm', ['--prefix', FRONTEND_APP, 'run', 'test'], { shell: true });
-    if (test.code !== 0) errors.push(`npm run test упал:\n${tail(test.out)}`);
-    else notes.push('frontend: build + test');
+  const build = buildFrontend(root);
+  if (!build.ok) return [report('npm run build', build)];
+  if (hasFrontendTests(root)) {
+    const test = testFrontend(root);
+    if (!test.ok) errors.push(report('npm run test', test));
+    else notes.push(`frontend: build + ${test.summary}`);
   } else {
     notes.push('frontend: build (скрипта test пока нет)');
   }
