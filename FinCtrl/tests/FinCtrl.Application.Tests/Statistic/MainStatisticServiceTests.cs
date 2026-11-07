@@ -695,8 +695,8 @@ public class MainStatisticServiceTests
 
         var savingsNode = Assert.Single(table.Tree, n => n.Category.CategoryId == CategoryIds.Savings);
         Assert.Equal(-30, savingsNode.Cells["012026"].TotalSum);
-        Assert.Equal(-30, savingsNode.Comparison.Current);
-        Assert.Equal(-100, table.Tree.Single(n => n.Category.CategoryId == 1).Comparison.Current);
+        Assert.Equal(-30, savingsNode.Comparison!.Current);
+        Assert.Equal(-100, table.Tree.Single(n => n.Category.CategoryId == 1).Comparison!.Current);
         Assert.Equal(-100, table.Tree.Single(n => n.Category.CategoryId == CategoryIds.FakeTotal).Cells["012026"].TotalSum);
     }
 
