@@ -63,14 +63,23 @@ namespace FinCtrl.Infrastructure.Payments
                 c_ps.IsOnlyIncome AS PaymentSourceCategory_IsOnlyIncome,
                 c_ps.OrderIndex AS PaymentSourceCategory_OrderIndex,
                 c_ps.CreatedAt AS PaymentSourceCategory_CreatedAt,
-                c_ps.LastUpdatedAt AS PaymentSourceCategory_LastUpdatedAt
+                c_ps.LastUpdatedAt AS PaymentSourceCategory_LastUpdatedAt,
+
+                pa.AccountId AS TransferPairAccount_AccountId,
+                pa.ExcelAccountName AS TransferPairAccount_ExcelAccountName,
+                pa.DisplayName AS TransferPairAccount_DisplayName,
+                pa.IsSavings AS TransferPairAccount_IsSavings,
+                pa.CreatedAt AS TransferPairAccount_CreatedAt,
+                pa.LastUpdatedAt AS TransferPairAccount_LastUpdatedAt
             FROM Payments p
             LEFT JOIN PaymentSources ps ON p.PaymentSourceId = ps.PaymentSourceId
             LEFT JOIN Accounts a ON p.AccountId = a.AccountId
             LEFT JOIN Categories c ON p.PaymentCategoryCategoryId = c.CategoryId
             LEFT JOIN Categories c_ps ON c_ps.CategoryId = ps.CategoryId
             -- OutPaymentId и InPaymentId уникальны: платёж входит не больше чем в один перевод, строки не размножаются
-            LEFT JOIN Transfers tr ON tr.OutPaymentId = p.PaymentId OR tr.InPaymentId = p.PaymentId";
+            LEFT JOIN Transfers tr ON tr.OutPaymentId = p.PaymentId OR tr.InPaymentId = p.PaymentId
+            LEFT JOIN Payments pp ON pp.PaymentId = CASE WHEN tr.OutPaymentId = p.PaymentId THEN tr.InPaymentId ELSE tr.OutPaymentId END
+            LEFT JOIN Accounts pa ON pa.AccountId = pp.AccountId";
 
         public async Task<Payment?> Get(int paymentId)
         {

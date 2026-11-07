@@ -39,6 +39,14 @@ namespace FinCtrl.Infrastructure.Payments
         public DateTime Account_CreatedAt { get; set; }
         public DateTime? Account_LastUpdatedAt { get; set; }
 
+        // Счёт второй стороны перевода
+        public int? TransferPairAccount_AccountId { get; set; }
+        public string? TransferPairAccount_ExcelAccountName { get; set; }
+        public string? TransferPairAccount_DisplayName { get; set; }
+        public bool? TransferPairAccount_IsSavings { get; set; }
+        public DateTime? TransferPairAccount_CreatedAt { get; set; }
+        public DateTime? TransferPairAccount_LastUpdatedAt { get; set; }
+
         // Category fields
         public int Category_CategoryId { get; set; }
         public string? Category_CategoryName { get; set; }
@@ -112,6 +120,19 @@ namespace FinCtrl.Infrastructure.Payments
                     IsSavings = Account_IsSavings,
                     CreatedAt = Account_CreatedAt,
                     LastUpdatedAt = Account_LastUpdatedAt,
+                };
+            }
+
+            if (TransferPairAccount_AccountId.HasValue)
+            {
+                payment.TransferPairAccount = new Account
+                {
+                    AccountId = TransferPairAccount_AccountId.Value,
+                    ExcelAccountName = TransferPairAccount_ExcelAccountName ?? string.Empty,
+                    DisplayName = TransferPairAccount_DisplayName ?? string.Empty,
+                    IsSavings = TransferPairAccount_IsSavings ?? false,
+                    CreatedAt = TransferPairAccount_CreatedAt ?? default,
+                    LastUpdatedAt = TransferPairAccount_LastUpdatedAt,
                 };
             }
 

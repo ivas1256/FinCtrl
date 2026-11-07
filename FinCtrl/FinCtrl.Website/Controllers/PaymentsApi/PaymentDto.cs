@@ -41,6 +41,9 @@ public class PaymentDto
     /// <summary>Вторая сторона перевода; <c>null</c> — платёж не в переводе или вторая сторона не указана.</summary>
     public int? TransferPairPaymentId { get; set; }
 
+    /// <summary>Счёт второй стороны перевода; <c>null</c> — пары нет или у неё нет счёта.</summary>
+    public AccountDto? TransferPairAccount { get; set; }
+
     public static PaymentDto FromModel(Payment payment)
     {
         var effectiveCategory = payment.CalculatedCategory;
@@ -62,7 +65,8 @@ public class PaymentDto
             ExcludeFromStats = payment.ExcludeFromStats,
             Tags = payment.Tags.Select(TagDto.FromModel).ToList(),
             TransferId = payment.TransferId,
-            TransferPairPaymentId = payment.TransferPairPaymentId
+            TransferPairPaymentId = payment.TransferPairPaymentId,
+            TransferPairAccount = payment.TransferPairAccount is null ? null : AccountDto.FromModel(payment.TransferPairAccount)
         };
     }
 }

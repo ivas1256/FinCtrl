@@ -49,6 +49,21 @@ public class PaymentDtoTests
     }
 
     [Fact]
+    public void FromModel_TransferPairAccount_MappedOrNull()
+    {
+        var withPair = PaymentDto.FromModel(new Payment
+        {
+            TransferPairAccount = new Account(6, "40818", "Копилка", SourceCreatedAt, null) { IsSavings = true }
+        });
+        var without = PaymentDto.FromModel(new Payment());
+
+        Assert.Equal(6, withPair.TransferPairAccount!.AccountId);
+        Assert.Equal("Копилка", withPair.TransferPairAccount.DisplayName);
+        Assert.True(withPair.TransferPairAccount.IsSavings);
+        Assert.Null(without.TransferPairAccount);
+    }
+
+    [Fact]
     public void FromModel_FullPayment_MapsAllFields()
     {
         var payment = new Payment

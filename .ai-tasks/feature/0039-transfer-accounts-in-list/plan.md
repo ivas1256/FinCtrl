@@ -8,11 +8,16 @@
   - Website — `Controllers/PaymentsApi/PaymentDto.cs` (`FromModel`)
 - Frontend: `src/pages/paymentsTable/PaymentList.vue`, `src/pages/paymentsTable/PaymentsTable.vue` (подпись второй стороны в модалке)
 
+## Контракт API
+- `GET api/PaymentsApi` (и все ответы с `PaymentDto` Website): новое поле `transferPairAccount: AccountDto | null` — та же форма, что у `account` (`accountId`, `excelAccountName`, `displayName`, `isSavings`, `createdAt`, `lastUpdatedAt`). `null` — нет пары (`transferPairPaymentId == null`) или у второй стороны нет счёта. Новых маршрутов и кодов ошибок нет.
+
+Backend — шаги 1–4, frontend — шаги 5–6.
+
 ## Шаги
-- [ ] 1. `SelectPayment`: `LEFT JOIN Payments pp` (вторая сторона — `CASE WHEN tr.OutPaymentId = p.PaymentId THEN tr.InPaymentId ELSE tr.OutPaymentId END`) и `LEFT JOIN Accounts pa ON pa.AccountId = pp.AccountId`; колонки `TransferPairAccount_*` (id, название, `IsSavings` и остальные поля счёта по образцу `Account_*`)
-- [ ] 2. Infrastructure `PaymentDto`: свойства `TransferPairAccount_*`, маппинг в `Payment.TransferPairAccount` (`Account?`, `null`, если id нет)
-- [ ] 3. Domain `Payment.TransferPairAccount`
-- [ ] 4. Website `PaymentDto.TransferPairAccount` (`AccountDto?`) в `FromModel`
+- [x] 1. `SelectPayment`: `LEFT JOIN Payments pp` (вторая сторона — `CASE WHEN tr.OutPaymentId = p.PaymentId THEN tr.InPaymentId ELSE tr.OutPaymentId END`) и `LEFT JOIN Accounts pa ON pa.AccountId = pp.AccountId`; колонки `TransferPairAccount_*` (id, название, `IsSavings` и остальные поля счёта по образцу `Account_*`)
+- [x] 2. Infrastructure `PaymentDto`: свойства `TransferPairAccount_*`, маппинг в `Payment.TransferPairAccount` (`Account?`, `null`, если id нет)
+- [x] 3. Domain `Payment.TransferPairAccount`
+- [x] 4. Website `PaymentDto.TransferPairAccount` (`AccountDto?`) в `FromModel`
 - [ ] 5. `PaymentList.vue`: у перевода строка «A → B» (по знаку нормализованной суммы: списание — свой счёт → счёт пары; поступление — наоборот), «не указан» при отсутствии; логику вынести в чистую функцию в `src/utils/` и покрыть тестом
 - [ ] 6. `PaymentsTable.vue`: подпись текущей второй стороны, не найденной среди кандидатов, — с её счётом
 - [ ] Юнит-тесты (см. таблицу)
