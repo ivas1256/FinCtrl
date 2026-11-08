@@ -15,6 +15,14 @@ export const UNCATEGORIZED_ID = 2147483646
 // счетами, кроме отнесённых к «Накоплениям»; в «Итого» не входит
 export const TRANSFERS_ID = 2147483645
 
+// id категории «Накопления» (CategoryIds.Savings на backend)
+export const SAVINGS_CATEGORY_ID = 33
+
+// Узлы вне тепловой карты (вместе с потомками): «Переводы», «Без категории», «Накопления».
+// В шкалу (computeMaxValue) не входят и фоном не подсвечиваются
+export const isHeatExcluded = (node) =>
+  [TRANSFERS_ID, UNCATEGORIZED_ID, SAVINGS_CATEGORY_ID].includes(node?.categoryId)
+
 export const DEFAULT_CATEGORY_COLOR = '#808080'
 
 // Цвет категории задаётся на странице "Категории"; по умолчанию — серый
@@ -41,10 +49,12 @@ export const heatClass = (value, maxV) => {
   return ''
 }
 
-// Пересчитывается каждый раз при загрузке данных, включает родительские и дочерние строки
+// Пересчитывается каждый раз при загрузке данных, включает родительские и дочерние строки,
+// кроме исключённых веток (isHeatExcluded)
 export const computeMaxValue = (tree) => {
   let max = 0
   const traverse = (nodes) => (nodes || []).forEach(node => {
+    if (isHeatExcluded(node)) return
     Object.values(node.periods || {}).forEach(p => {
       const abs = Math.abs(p.totalSum || 0)
       if (abs > max) max = abs

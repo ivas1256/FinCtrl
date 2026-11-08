@@ -11,7 +11,10 @@ import {
   heatAlpha,
   heatStyle,
   heatClass,
-  computeMaxValue
+  computeMaxValue,
+  isHeatExcluded,
+  TRANSFERS_ID,
+  SAVINGS_CATEGORY_ID
 } from './heatmap'
 
 describe('catColor', () => {
@@ -102,6 +105,31 @@ describe('computeMaxValue', () => {
     ]
 
     expect(computeMaxValue(tree)).toBe(12.5)
+  })
+
+  it('не учитывает «Переводы», «Без категории» и «Накопления» с потомками', () => {
+    const tree = [
+      { categoryId: 1, periods: { a: { totalSum: -50 } } },
+      { categoryId: TRANSFERS_ID, periods: { a: { totalSum: -900 } } },
+      { categoryId: UNCATEGORIZED_ID, periods: { a: { totalSum: -800 } } },
+      {
+        categoryId: SAVINGS_CATEGORY_ID,
+        periods: { a: { totalSum: -700 } },
+        children: [{ categoryId: 34, periods: { a: { totalSum: -600 } } }]
+      }
+    ]
+
+    expect(computeMaxValue(tree)).toBe(50)
+  })
+})
+
+describe('isHeatExcluded', () => {
+  it('исключает служебные строки и «Накопления», обычные категории — нет', () => {
+    expect(isHeatExcluded({ categoryId: TRANSFERS_ID })).toBe(true)
+    expect(isHeatExcluded({ categoryId: UNCATEGORIZED_ID })).toBe(true)
+    expect(isHeatExcluded({ categoryId: SAVINGS_CATEGORY_ID })).toBe(true)
+    expect(isHeatExcluded({ categoryId: 1 })).toBe(false)
+    expect(isHeatExcluded(null)).toBe(false)
   })
 })
 

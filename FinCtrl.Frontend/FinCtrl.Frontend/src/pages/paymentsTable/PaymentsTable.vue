@@ -95,7 +95,16 @@
                     <tfoot v-if="totalNode">
                         <tr class="hm-total-row">
                             <td class="hm-cat-cell hm-total-label">Итого</td>
-                            <td class="hm-total-amt" v-for="period in periodHeaders" :key="period.key">
+                            <td
+                                v-for="period in periodHeaders"
+                                :key="period.key"
+                                class="hm-total-amt"
+                                :class="{ interactive: hasTotalPayments(period.key), selected: isTotalSelected(period.key) }"
+                                v-bind="totalCellAttrs(period)"
+                                @click="hasTotalPayments(period.key) && selectTotalCell(period)"
+                                @keydown.enter.prevent="hasTotalPayments(period.key) && $event.currentTarget.click()"
+                                @keydown.space.prevent="hasTotalPayments(period.key) && $event.currentTarget.click()"
+                            >
                                 {{ formatSignedCurrency(totalNode.periods?.[period.key]?.totalSum || 0) }}
                             </td>
                             <DeltaCell
@@ -303,7 +312,7 @@ import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import { Modal } from 'bootstrap'
 import PaymentSourcesList from './PaymentSourcesList.vue' // Добавляем импорт нового компонента
-import { computeMaxValue, splitTotalNode, hasAnySum } from '../../utils/heatmap'
+import { computeMaxValue, splitTotalNode, hasAnySum, TOTAL_CATEGORY_ID } from '../../utils/heatmap'
 import { formatCurrency, formatSignedCurrency, formatShortDate, toInputDate } from '../../utils/format'
 import {
     formatPeriodHeader,
@@ -580,6 +589,25 @@ const handleCellClick = (payments, categoryName, periodName, totalSum, categoryI
     }, 100)
 }
 
+// Ячейка «Итого»: платежи, вошедшие в итог периода (узел «ВСЕГО» ответа api/PaymentsApi)
+const totalPeriod = (periodKey) => totalNode.value?.periods?.[periodKey]
+const hasTotalPayments = (periodKey) => (totalPeriod(periodKey)?.payments?.length || 0) > 0
+const isTotalSelected = (periodKey) =>
+    selectedCategoryId.value === TOTAL_CATEGORY_ID && selectedPeriodKey.value === periodKey
+const totalCellAttrs = (period) => {
+    if (!hasTotalPayments(period.key)) return {}
+    return {
+        tabindex: 0,
+        role: 'button',
+        'aria-label': `Итого, ${period.name}: ${formatSignedCurrency(totalPeriod(period.key)?.totalSum || 0)}`,
+        'aria-pressed': isTotalSelected(period.key) ? 'true' : 'false'
+    }
+}
+const selectTotalCell = (period) => {
+    const data = totalPeriod(period.key)
+    handleCellClick(data.payments, 'Итого', period.name, data.totalSum || 0, TOTAL_CATEGORY_ID, period.key)
+}
+
 const clearSelection = () => {
     selectedPayments.value = []
     selectedCellData.categoryName = ''
@@ -707,7 +735,7 @@ const savePayment = async () => {
             if (category && periodData && period) {
                 handleCellClick(
                     periodData.payments || [],
-                    category.categoryName,
+                    category.categoryId === TOTAL_CATEGORY_ID ? 'Итого' : category.categoryName,
                     period.name,
                     periodData.totalSum || 0,
                     category.categoryId,
@@ -855,6 +883,14 @@ onMounted(() => {
     color: var(--fc-accent-text);
     white-space: nowrap;
     padding: 9px 12px;
+}
+.hm-total-amt.interactive { cursor: pointer; }
+.hm-total-amt.interactive:hover { outline: 1px solid var(--fc-text-secondary); outline-offset: -1px; }
+.hm-total-amt.selected,
+.hm-total-amt.selected:hover,
+.hm-total-amt.interactive:focus-visible {
+    outline: 2px solid var(--fc-accent-text);
+    outline-offset: -2px;
 }
 
 .hm-legend {

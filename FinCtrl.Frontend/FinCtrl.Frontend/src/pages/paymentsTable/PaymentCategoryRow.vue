@@ -41,7 +41,7 @@
                     heatClass(cellSum(period.key), maxValue),
                     { selected: isSelected(period.key), interactive: !isEmpty(period.key) }
                 ]"
-                :style="heatStyle(cellSum(period.key), maxValue)"
+                :style="heatExcluded ? {} : heatStyle(cellSum(period.key), maxValue)"
                 v-bind="cellAttrs(period)"
                 @click="!isEmpty(period.key) && handleCellClick(
                     category.periods[period.key]?.payments || [],
@@ -92,7 +92,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { categoryColor, heatClass, heatStyle, TRANSFERS_ID, UNCATEGORIZED_ID } from '../../utils/heatmap'
+import { categoryColor, heatClass, heatStyle, isHeatExcluded, TRANSFERS_ID, UNCATEGORIZED_ID } from '../../utils/heatmap'
 import { formatSignedCurrency } from '../../utils/format'
 import { getSemantics, Semantics } from '../../utils/periodComparison'
 import DeltaCell from './DeltaCell.vue'
@@ -162,6 +162,10 @@ const isExpanded = ref(true)
 const hasChildren = computed(() => !!props.category.children && props.category.children.length > 0)
 
 const semantics = computed(() => getSemantics(props.category, props.inSavings))
+
+// «Переводы», «Без категории», «Накопления» и их потомки — вне тепловой карты: без фона
+const heatExcluded = computed(() =>
+    semantics.value === Semantics.Savings || isHeatExcluded(props.category))
 
 const shouldShow = computed(() => props.level === 0 || props.parentExpanded)
 

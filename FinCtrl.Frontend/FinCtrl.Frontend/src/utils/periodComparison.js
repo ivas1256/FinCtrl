@@ -2,10 +2,9 @@
 // (узел.comparison.current/previous, знаковые: расход < 0, поступление > 0).
 
 import { roundHalfAwayFromZero, formatDeltaSpoken } from './format'
-import { TRANSFERS_ID } from './heatmap'
+import { TRANSFERS_ID, SAVINGS_CATEGORY_ID } from './heatmap'
 
-// id категории «Накопления» (CategoryIds.Savings на backend)
-export const SAVINGS_CATEGORY_ID = 33
+export { SAVINGS_CATEGORY_ID }
 
 export const Semantics = Object.freeze({
     Expense: 'expense',
