@@ -82,15 +82,18 @@ namespace FinCtrl.Application.Statistic
                 .Select(x => (Payment: x, Category: GetReportCategory(x, savings)))
                 .ToList();
 
+            // Потомки «Накоплений» тоже не входят во «ВСЕГО» (IsIncludeInTotalResults знает только сами «Накопления»).
+            bool IsInTotal(Category category) => category.IsIncludeInTotalResults() && !savings.Ids.Contains(category.CategoryId);
+
             var fakePaymentsSummary = payments
                 .GroupBy(x => GetDateForGrouping(x.Payment.PaymentDate, groupingType))
                 .Select(x => new MainStatisticGroupItem()
                 {
                     Period = new DateRange(x.Key.Date, GetEndOfPeriod(x.Key.Date, groupingType)),
                     Category = Category.CreateFakeTotal(),
-                    TotalSum = x.Where(x => x.Category.IsIncludeInTotalResults())
+                    TotalSum = x.Where(x => IsInTotal(x.Category))
                                 .Sum(y => y.Payment.PaymentSum),
-                    Payments = x.Where(x => x.Category.IsIncludeInTotalResults())
+                    Payments = x.Where(x => IsInTotal(x.Category))
                                 .Select(x => x.Payment)
                                 .OrderByDescending(x => x.PaymentDate)
                                 .ToList()
@@ -153,19 +156,20 @@ namespace FinCtrl.Application.Statistic
         }
 
         /// <summary>
-        /// Строка отчёта платежа: любая операция по накопительному счёту (<c>Account.IsSavings</c>) — «Накопления»
-        /// (если их нет в дереве, правило не действует); перевод между своими счетами — «Переводы», если его итоговая
-        /// категория не «Накопления» и не их потомок (в т.ч. перевод без категории или со старой категорией траты/дохода);
-        /// иначе — итоговая категория или «Без категории».
+        /// Строка отчёта платежа: любая операция по накопительному счёту (<c>Account.IsSavings</c>) — её итоговая категория,
+        /// если это потомок «Накоплений» (например, «Накопления → Проценты»), иначе сами «Накопления» — посторонняя категория
+        /// игнорируется (если «Накоплений» нет в дереве, правило не действует); перевод между своими счетами — «Переводы»,
+        /// если его итоговая категория не «Накопления» и не их потомок (в т.ч. перевод без категории или со старой категорией
+        /// траты/дохода); иначе — итоговая категория или «Без категории».
         /// </summary>
         private Category GetReportCategory(Payment payment, SavingsInfo savings)
         {
+            var category = payment.CalculatedCategory;
             if (payment.Account?.IsSavings == true && savings.Category is not null)
             {
-                return savings.Category;
+                return category is not null && savings.Ids.Contains(category.CategoryId) ? category : savings.Category;
             }
 
-            var category = payment.CalculatedCategory;
             if (payment.PaymentType == PaymentTypeEnum.Transfer
                 && (category is null || !savings.Ids.Contains(category.CategoryId)))
             {

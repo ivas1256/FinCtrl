@@ -700,6 +700,56 @@ public class MainStatisticServiceTests
         Assert.Equal(-100, table.Tree.Single(n => n.Category.CategoryId == CategoryIds.FakeTotal).Cells["012026"].TotalSum);
     }
 
+    [Fact]
+    public async Task Calculate_SavingsAccountWithSavingsSubcategory_InSubcategoryNotInTotal()
+    {
+        GivenSavingsWithInterestInTree();
+        var interest = new Category(41) { ParentCategoryId = CategoryIds.Savings, OrderIndex = 5 };
+        GivenPayments(
+            Spending(-100, new DateTime(2026, 1, 5)),
+            OnSavingsAccount(Spending(12, new DateTime(2026, 1, 6), interest)),
+            OnSavingsAccount(new Payment
+            {
+                PaymentSum = 8,
+                PaymentDate = new DateTime(2026, 1, 7),
+                PaymentSource = new PaymentSource(5, "Проценты по вкладу", null, null, default, null) { PaymentSourceCategory = interest }
+            }),
+            OnSavingsAccount(Spending(-5000, new DateTime(2026, 1, 8), _food)));
+
+        var result = await _service.Calculate(AnyRange, GroupingType.Month);
+
+        Assert.Equal(20, Assert.Single(result, x => x.Category.CategoryId == 41).TotalSum);
+        Assert.Equal(-5000, Assert.Single(result, x => x.Category.CategoryId == CategoryIds.Savings).TotalSum);
+        Assert.Equal(-100, Assert.Single(result, x => x.Category.CategoryId == CategoryIds.FakeTotal).TotalSum);
+    }
+
+    [Fact]
+    public async Task GetPaymentsTable_SavingsAccountWithSavingsSubcategory_InSubcategoryAndSavingsRows()
+    {
+        GivenSavingsWithInterestInTree();
+        GivenPayments(
+            OnSavingsAccount(Spending(12, new DateTime(2026, 1, 6), new Category(41) { ParentCategoryId = CategoryIds.Savings })),
+            OnSavingsAccount(Spending(-30, new DateTime(2026, 1, 7), _food)));
+
+        var table = await _service.GetPaymentsTable(TableRange, GroupingType.Month);
+
+        var savingsNode = Assert.Single(table.Tree, n => n.Category.CategoryId == CategoryIds.Savings);
+        Assert.Equal(-18, savingsNode.Cells["012026"].TotalSum);
+        Assert.Equal(12, Assert.Single(savingsNode.Children).Cells["012026"].TotalSum);
+    }
+
+    private void GivenSavingsWithInterestInTree()
+    {
+        _categoryService.GetCategoriesTree().Returns(_ =>
+        {
+            var tree = BuildTree();
+            var savings = new Category(CategoryIds.Savings) { CategoryName = "Накопления", OrderIndex = 4 };
+            savings.Children.Add(new Category(41) { CategoryName = "Проценты", ParentCategoryId = CategoryIds.Savings, OrderIndex = 5 });
+            tree.Add(savings);
+            return tree;
+        });
+    }
+
     private Category GivenSavingsInTree()
     {
         var savings = new Category(CategoryIds.Savings) { CategoryName = "Накопления", OrderIndex = 4 };
