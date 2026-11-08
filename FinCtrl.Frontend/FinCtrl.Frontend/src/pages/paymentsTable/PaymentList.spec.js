@@ -22,8 +22,23 @@ describe('PaymentList', () => {
         expect(wrapper.find('.payment-transfer').text()).toBe('Карта → Вклад')
     })
 
-    it('у обычного платежа строки нет', () => {
+    it('у перевода направление — первая строка карточки, отдельного счёта нет', () => {
+        const wrapper = mount(PaymentList, {
+            props: { payments: [payment({ paymentType: 2, transferPairAccount: { displayName: 'Вклад' } })] }
+        })
+        const item = wrapper.find('.payment-item').element
+        expect(item.firstElementChild.classList.contains('payment-transfer')).toBe(true)
+        expect(wrapper.find('.payment-account').exists()).toBe(false)
+    })
+
+    it('у обычного платежа строки перевода нет, выводится счёт', () => {
         const wrapper = mount(PaymentList, { props: { payments: [payment()] } })
         expect(wrapper.find('.payment-transfer').exists()).toBe(false)
+        expect(wrapper.find('.payment-account').text()).toBe('Счёт: Карта')
+    })
+
+    it('у платежа без счёта выводится «не указан»', () => {
+        const wrapper = mount(PaymentList, { props: { payments: [payment({ account: null })] } })
+        expect(wrapper.find('.payment-account').text()).toBe('Счёт: не указан')
     })
 })

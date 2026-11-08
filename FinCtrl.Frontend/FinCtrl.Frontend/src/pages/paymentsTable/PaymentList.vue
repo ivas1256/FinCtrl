@@ -11,7 +11,12 @@
             
             <!-- Список платежей -->
             <div v-for="payment in payments" :key="payment.paymentId" class="payment-item mb-2 p-2 border rounded">
-                <!-- Первая строка: источник, сумма, кнопка -->
+                <!-- Направление перевода между своими счетами — первой строкой -->
+                <div v-if="getTransferDirection(payment)" class="payment-transfer small fw-semibold mb-1">
+                    {{ getTransferDirection(payment) }}
+                </div>
+
+                <!-- Источник, сумма, кнопка -->
                 <div class="d-flex justify-content-between align-items-center mb-1" :data-id="payment.paymentId">
                     <div class="payment-source fw-medium">
                         {{ payment.paymentSource?.paymentSourceName || 'Не указан' }}
@@ -31,19 +36,17 @@
                     </div>
                 </div>
                 
-                <!-- Вторая строка: категория и описание -->
+                <!-- Категория, счёт (у перевода он уже в первой строке) и описание -->
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="payment-category small text-muted">
                         Категория: <strong>{{ getCategoryName(payment.effectiveCategory) }}</strong>
+                        <span v-if="!getTransferDirection(payment)" class="payment-account ms-2">
+                            Счёт: <strong>{{ getAccountName(payment) }}</strong>
+                        </span>
                     </div>
                     <div class="payment-description small text-muted flex-grow-1 ms-3 text-end">
                         {{ payment.paymentDescription || 'Нет описания' }}
                     </div>
-                </div>
-
-                <!-- Направление перевода между своими счетами -->
-                <div v-if="getTransferDirection(payment)" class="payment-transfer small text-muted mt-1">
-                    {{ getTransferDirection(payment) }}
                 </div>
 
                 <!-- Теги -->
@@ -91,6 +94,8 @@ const groupedPayments = computed(() => {
 })
 
 const getCategoryName = (category) => category?.categoryName || 'Без категории'
+
+const getAccountName = (payment) => payment.account?.displayName || 'не указан'
 
 const getDateTotal = (payments) => payments.reduce((sum, payment) => sum + payment.paymentSum, 0)
 </script>
