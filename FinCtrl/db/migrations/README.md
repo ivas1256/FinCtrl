@@ -50,6 +50,8 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\0001_initial.sql
 - `0007_savings_by_accounts.sql` — данные: снимает собственную категорию «Накопления» (id 33)
   у операций 2026 года и «Проценты на остаток» у операций со счётом (строка «Накопления» теперь
   считается по накопительным счетам). Файл в UTF-8 с BOM, идемпотентна. Накатывать с `-I`.
-- `0008_receipt_items.sql` — таблица `ReceiptItems` (позиции кассового чека: `PaymentId` FK на
-  `Payments`, `ItemName`, `Price` — цена за единицу, `Quantity` DECIMAL(18,3), `Unit` — единица как в
-  чеке, `TotalPrice`, `CreatedAt`, `LastUpdatedAt`), индекс `IX_ReceiptItems_PaymentId`. Идемпотентна.
+- `0008_receipt_items.sql` — справочник единиц измерения `Units` (уникальное `UnitName` как в чеке,
+  заполняется шт., кг, г, л, мл) и таблица `ReceiptItems` (позиции кассового чека: `PaymentId` FK на
+  `Payments`, `ItemName`, `Price` — цена за единицу, `Quantity` DECIMAL(18,3), `UnitId` FK на `Units`,
+  `TotalPrice`, `CreatedAt`, `LastUpdatedAt`), индексы по `PaymentId` и `UnitId`. Файл в UTF-8 с BOM,
+  идемпотентна. Накатывать с `-I`.
