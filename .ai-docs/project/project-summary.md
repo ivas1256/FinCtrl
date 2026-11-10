@@ -123,8 +123,10 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
   CreatedAt. Каскада нет.
 - `ReceiptItems` (миграция 0008): ReceiptItemId PK, PaymentId FK → Payments (индекс `IX_ReceiptItems_PaymentId`,
   у платежа много позиций), ItemName NVARCHAR(500), Price DECIMAL(18,2) — цена за единицу, Quantity DECIMAL(18,3),
-  Unit NVARCHAR(20) — единица как в чеке («кг», «шт.»…), TotalPrice DECIMAL(18,2), CreatedAt, LastUpdatedAt NULL.
+  UnitId FK → Units (индекс `IX_ReceiptItems_UnitId`), TotalPrice DECIMAL(18,2), CreatedAt, LastUpdatedAt NULL.
   Каскада нет. Кодом пока не используется (задача 0041 — только схема).
+- `Units` (миграция 0008): UnitId PK, UnitName NVARCHAR(20) (уникальный `UQ_Units_UnitName`; как в чеке — «кг», «шт.»),
+  CreatedAt, LastUpdatedAt NULL. Миграция заполняет шт., кг, г, л, мл; остальные — get-or-create по названию при импорте.
 
 ## Импорт из Excel/CSV
 
@@ -572,5 +574,5 @@ Characterization-тесты на места, не покрытые профил�
 - Не сделано: категория «Проценты на остаток» не удалена — на неё ссылаются источники и через них старые операции без счёта.
 
 ## Позиции чеков (задача 0041, 2026-11-10)
-- Миграция `0008_receipt_items.sql`: таблица `ReceiptItems` — позиции кассового чека, привязанные к платежу (`PaymentId` FK, без каскада). Поля как в чеке: название, цена за единицу, количество + единица измерения строкой, итоговая цена; плюс `CreatedAt`/`LastUpdatedAt`. Заголовок чека (продавец, ИНН, фискальные реквизиты) не хранится.
+- Миграция `0008_receipt_items.sql`: таблица `ReceiptItems` — позиции кассового чека, привязанные к платежу (`PaymentId` FK, без каскада). Поля как в чеке: название, цена за единицу, количество, единица измерения (FK на справочник `Units`), итоговая цена; плюс `CreatedAt`/`LastUpdatedAt`. Заголовок чека (продавец, ИНН, фискальные реквизиты) не хранится.
 - Не сделано: Domain/репозиторий/API и разбор чеков (.eml от ОФД) — отдельными задачами.
