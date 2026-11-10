@@ -33,7 +33,7 @@
 - [x] 12. Backend: `Payment.HasReceipt` — `SelectPayment` (`EXISTS ReceiptItems`), `PaymentDto` Infrastructure + `MapToPayment`, `PaymentDto` Website + `FromModel`; тесты
 - [x] 13. Frontend: кнопка 🧾 в `PaymentList.vue` `disabled` при `!payment.hasReceipt`, title «Чека нет»; тесты
 - [x] 14. `check.mjs all`, ручная проверка (8270 — активна, 8269 — неактивна)
-- [ ] PR (не делается: пользователь просил без коммита)
+- [x] Коммит и PR (по запросу пользователя после завершения UI)
 
 ## Ручная проверка
 На dev2 (`FinCtrl_db_dev2`), 2026-11-10:
@@ -90,4 +90,4 @@
 - `hasReceipt` нет в `TopPaymentDto` дашборда (отдельная урезанная модель) — не нужно, пока там нет кнопки чека.
 
 ## Итог
-Таблицы `Units` и `ReceiptItems` созданы миграцией 0008 и накатаны на dev2. Добавлено API чтения чека `GET api/PaymentsApi/{paymentId}/receipt` с юнит-тестами `ReceiptService`. На главной добавлен просмотр чека: кнопка 🧾 в `PaymentList` и модалка `ReceiptModal` в виде бумажного чека. Изменения API и UI не закоммичены (по запросу пользователя).
+Таблицы `Units` и `ReceiptItems` созданы миграцией 0008 и накатаны на dev2. Добавлено API чтения чека `GET api/PaymentsApi/{paymentId}/receipt` с юнит-тестами `ReceiptService`. На главной добавлен просмотр чека: кнопка 🧾 в `PaymentList` и модалка `ReceiptModal` в виде бумажного чека. Платёж отдаёт признак `hasReceipt`, кнопка у платежа без чека неактивна. Изменения закоммичены и отправлены на ревью.
