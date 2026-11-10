@@ -1,5 +1,6 @@
 using FinCtrl.Application.Payments;
 using FinCtrl.Application.PaymentsImport;
+using FinCtrl.Application.Receipts;
 using FinCtrl.Application.Statistic;
 using FinCtrl.Common;
 using FinCtrl.Domain;
@@ -26,7 +27,7 @@ public class PaymentsApiControllerTests
             .Returns(new PaymentsTable());
         _paymentService.GetListPaged(default, default, default, default, default!, default!, default, default, default)
             .ReturnsForAnyArgs((new List<Payment>(), 0));
-        _controller = new PaymentsApiController(_mainStatisticService, _paymentService, _paymentsImportService);
+        _controller = new PaymentsApiController(_mainStatisticService, _paymentService, _paymentsImportService, Substitute.For<IReceiptService>());
     }
 
     [Fact]

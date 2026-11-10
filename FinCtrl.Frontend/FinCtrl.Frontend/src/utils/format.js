@@ -125,3 +125,8 @@ export const formatDeltaSpoken = (deltaRub, pct) => {
     const sign = rounded > 0 ? 'плюс ' : rounded < 0 ? 'минус ' : ''
     return `${rub}, ${sign}${integerFormat.format(Math.abs(rounded))}${NBSP}%`
 }
+
+const quantityFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 3 })
+
+// Количество (не деньги): без валюты и лишних нулей — 2, 0,624
+export const formatQuantity = (value) => quantityFormat.format(value || 0)

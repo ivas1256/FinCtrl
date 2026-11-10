@@ -41,4 +41,21 @@ describe('PaymentList', () => {
         const wrapper = mount(PaymentList, { props: { payments: [payment({ account: null })] } })
         expect(wrapper.find('.payment-account').text()).toBe('Счёт: не указан')
     })
+
+    it('при hasReceipt кнопка чека активна и эмитит open-receipt с платежом', async () => {
+        const p = payment({ hasReceipt: true })
+        const wrapper = mount(PaymentList, { props: { payments: [p] } })
+        const button = wrapper.find('button[title="Открыть чек"]')
+        expect(button.attributes('disabled')).toBeUndefined()
+        await button.trigger('click')
+        expect(wrapper.emitted('open-receipt')[0]).toEqual([p])
+    })
+
+    it.each([[{ hasReceipt: false }], [{}]])('без чека (%o) кнопка отключена и не эмитит', async (extra) => {
+        const wrapper = mount(PaymentList, { props: { payments: [payment(extra)] } })
+        const button = wrapper.find('button[title="Чека нет"]')
+        expect(button.attributes('disabled')).toBeDefined()
+        await button.trigger('click')
+        expect(wrapper.emitted('open-receipt')).toBeUndefined()
+    })
 })

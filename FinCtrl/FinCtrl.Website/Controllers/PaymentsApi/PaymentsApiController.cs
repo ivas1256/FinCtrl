@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using FinCtrl.Application.Payments;
 using FinCtrl.Application.PaymentsImport;
+using FinCtrl.Application.Receipts;
 using FinCtrl.Application.Statistic;
 using FinCtrl.Common;
 using FinCtrl.Domain.Statistic;
@@ -15,12 +16,14 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
         private readonly IMainStatisticService _mainStatisticService;
         private readonly IPaymentService _paymentService;
         private readonly IPaymentsImportService _paymentsImportService;
+        private readonly IReceiptService _receiptService;
 
-        public PaymentsApiController(IMainStatisticService mainStatisticService, IPaymentService paymentService, IPaymentsImportService paymentsImportService)
+        public PaymentsApiController(IMainStatisticService mainStatisticService, IPaymentService paymentService, IPaymentsImportService paymentsImportService, IReceiptService receiptService)
         {
             _mainStatisticService = mainStatisticService;
             _paymentService = paymentService;
             _paymentsImportService = paymentsImportService;
+            _receiptService = receiptService;
         }
 
         /// <summary>
@@ -63,6 +66,20 @@ namespace FinCtrl.Website.Controllers.PaymentsApi
             var candidates = await _paymentService.GetTransferCandidates(paymentId);
 
             return Ok(candidates.Select(PaymentDto.FromModel).ToList());
+        }
+
+        /// <summary>
+        /// Чек платежа: позиции (по <c>ReceiptItemId</c>) и их итоговая сумма; без позиций — пустой список и сумма 0.
+        /// 404 — платёж не найден или удалён.
+        /// </summary>
+        [HttpGet("{paymentId:int}/receipt")]
+        [ProducesResponseType(typeof(ReceiptDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetReceipt(int paymentId)
+        {
+            var receipt = await _receiptService.GetByPaymentId(paymentId);
+
+            return Ok(ReceiptDto.FromModel(receipt));
         }
 
         /// <summary>

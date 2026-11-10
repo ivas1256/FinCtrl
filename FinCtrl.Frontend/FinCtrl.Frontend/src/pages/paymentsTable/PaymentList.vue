@@ -26,6 +26,14 @@
                         <span :class="['payment-amount', payment.paymentSum < 0 ? 'text-danger' : 'text-success']">
                             {{ formatCurrency(payment.paymentSum) }}
                         </span>
+                        <button
+                            class="btn btn-sm btn-outline-secondary"
+                            @click="$emit('open-receipt', payment)"
+                            :disabled="!payment.hasReceipt"
+                            :title="payment.hasReceipt ? 'Открыть чек' : 'Чека нет'"
+                        >
+                            🧾
+                        </button>
                         <button 
                             class="btn btn-sm btn-outline-primary"
                             @click="$emit('edit-payment', payment)"
@@ -78,7 +86,7 @@ const props = defineProps({
     }
 })
 
-defineEmits(['edit-payment'])
+defineEmits(['edit-payment', 'open-receipt'])
 
 // Платежи по дням (YYYY-MM-DD) в порядке поступления
 const groupedPayments = computed(() => {

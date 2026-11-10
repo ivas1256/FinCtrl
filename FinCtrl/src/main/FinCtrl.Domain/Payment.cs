@@ -38,6 +38,9 @@ namespace FinCtrl.Domain
         public Category? PaymentCategory { get; set; }
         public string? PaymentDescription { get;  set; }
         public bool ExcludeFromStats { get; set; }
+
+        /// <summary>У платежа есть позиции чека; только чтение из БД, не пишется.</summary>
+        public bool HasReceipt { get; set; }
         public DateTime CreatedAt { get;  set; }
         public DateTime? LastUpdatedAt { get; set; }
         public List<Tag> Tags { get; set; } = new();

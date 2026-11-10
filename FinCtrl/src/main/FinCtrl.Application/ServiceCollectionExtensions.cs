@@ -8,6 +8,7 @@ using FinCtrl.Application.Statistic;
 using FinCtrl.Application.Dashboard;
 using FinCtrl.Application.Accounts;
 using FinCtrl.Application.Tags;
+using FinCtrl.Application.Receipts;
 
 namespace FinCtrl.Application
 {
@@ -22,6 +23,7 @@ namespace FinCtrl.Application
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IAccountService, AccountService>();
             services.AddScoped<ITagService, TagService>();
+            services.AddScoped<IReceiptService, ReceiptService>();
 
             services.AddScoped<IPaymentSourceClassificationService, PaymentSourceClassificationService>();
             services.AddScoped<IPaymentsImportService, PaymentsImportService>();

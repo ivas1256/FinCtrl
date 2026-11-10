@@ -30,9 +30,11 @@ public class PaymentRepositoryTests
     }
 
     // Имена колонок результата: алиас после AS (или после пробела), иначе имя колонки после точки.
+    // Список колонок заканчивается на FROM Payments (подзапросы в колонках, например EXISTS, своим FROM его не обрывают);
+    // подзапрос в колонке не должен содержать запятых — разбиение идёт по ним.
     private static List<string> GetSelectColumnNames(string sql)
     {
-        var match = Regex.Match(sql, @"SELECT(?<cols>.*?)\bFROM\b", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        var match = Regex.Match(sql, @"SELECT(?<cols>.*?)\bFROM\s+Payments\b", RegexOptions.Singleline | RegexOptions.IgnoreCase);
         Assert.True(match.Success);
 
         return match.Groups["cols"].Value

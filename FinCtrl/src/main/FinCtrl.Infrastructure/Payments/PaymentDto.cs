@@ -17,6 +17,7 @@ namespace FinCtrl.Infrastructure.Payments
         public DateTime? PaymentLastUpdatedAt { get; set; }
 
         public bool ExcludeFromStats { get; set; }
+        public bool HasReceipt { get; set; }
 
         // Transfer fields
         public int? TransferId { get; set; }
@@ -76,6 +77,7 @@ namespace FinCtrl.Infrastructure.Payments
                 CreatedAt = PaymentCreatedAt,
                 LastUpdatedAt = PaymentLastUpdatedAt,
                 ExcludeFromStats = ExcludeFromStats,
+                HasReceipt = HasReceipt,
                 TransferId = TransferId,
                 TransferPairPaymentId = TransferPairPaymentId,
             };

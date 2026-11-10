@@ -33,6 +33,9 @@ public class PaymentDto
 
     public string? PaymentDescription { get; set; }
     public bool ExcludeFromStats { get; set; }
+
+    /// <summary>У платежа есть позиции чека (<c>GET api/PaymentsApi/{id}/receipt</c>).</summary>
+    public bool HasReceipt { get; set; }
     public List<TagDto> Tags { get; set; } = new();
 
     /// <summary>Перевод между своими счетами, в который входит платёж; <c>null</c> — не связан.</summary>
@@ -63,6 +66,7 @@ public class PaymentDto
                 : null,
             PaymentDescription = payment.PaymentDescription,
             ExcludeFromStats = payment.ExcludeFromStats,
+            HasReceipt = payment.HasReceipt,
             Tags = payment.Tags.Select(TagDto.FromModel).ToList(),
             TransferId = payment.TransferId,
             TransferPairPaymentId = payment.TransferPairPaymentId,

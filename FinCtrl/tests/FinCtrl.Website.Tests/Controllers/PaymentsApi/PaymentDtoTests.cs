@@ -74,6 +74,7 @@ public class PaymentDtoTests
             PaymentDate = new DateTime(2025, 10, 15),
             PaymentDescription = "Обед",
             ExcludeFromStats = true,
+            HasReceipt = true,
             PaymentSource = new PaymentSource(3, "Кафе у дома", null, "Описание", SourceCreatedAt, null),
             Account = new Account(5, "40817", "Карта", SourceCreatedAt, null) { IsSavings = true },
             TransferId = 4,
@@ -89,6 +90,7 @@ public class PaymentDtoTests
         Assert.Equal(new DateTime(2025, 10, 15), dto.PaymentDate);
         Assert.Equal("Обед", dto.PaymentDescription);
         Assert.True(dto.ExcludeFromStats);
+        Assert.True(dto.HasReceipt);
         Assert.Equal("Кафе у дома", dto.PaymentSource!.PaymentSourceName);
         Assert.Equal("Описание", dto.PaymentSource.Description);
         Assert.Equal(SourceCreatedAt, dto.PaymentSource.CreatedAt);

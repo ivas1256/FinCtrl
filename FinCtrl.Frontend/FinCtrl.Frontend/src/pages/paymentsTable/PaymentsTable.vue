@@ -177,6 +177,7 @@
                             :payments="selectedPayments"
                             :categories="availableCategories"
                             @edit-payment="openEditModal"
+                            @open-receipt="receiptModal.open($event)"
                         />
                     </div>
                 </div>
@@ -199,6 +200,8 @@
     </div>
 
     <!-- Модальное окно редактирования платежа -->
+    <ReceiptModal ref="receiptModal" />
+
     <div class="modal fade" id="editPaymentModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -308,6 +311,7 @@ import { getErrorMessage } from '../../utils/apiError'
 import { APP_CONFIG } from '../../config'
 import PaymentCategoryRow from './PaymentCategoryRow.vue'
 import PaymentList from './PaymentList.vue'
+import ReceiptModal from './ReceiptModal.vue'
 import CategoryTreeSelect from '../../components/CategoryTreeSelect.vue'
 import TagMultiSelect from '../../components/TagMultiSelect.vue'
 import { Modal } from 'bootstrap'
@@ -489,6 +493,7 @@ const selectedCategoryId = ref(null)
 const selectedPeriodKey = ref(null)
 const editingPayment = ref(null)
 const { error, showError, clearAlerts } = useAlerts()
+const receiptModal = ref(null)
 // Ошибка сохранения платежа показывается внутри модалки
 const modalError = ref(null)
 

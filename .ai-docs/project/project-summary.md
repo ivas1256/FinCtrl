@@ -124,7 +124,7 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 - `ReceiptItems` (миграция 0008): ReceiptItemId PK, PaymentId FK → Payments (индекс `IX_ReceiptItems_PaymentId`,
   у платежа много позиций), ItemName NVARCHAR(500), Price DECIMAL(18,2) — цена за единицу, Quantity DECIMAL(18,3),
   UnitId FK → Units (индекс `IX_ReceiptItems_UnitId`), TotalPrice DECIMAL(18,2), CreatedAt, LastUpdatedAt NULL.
-  Каскада нет. Кодом пока не используется (задача 0041 — только схема).
+  Каскада нет. Читается `ReceiptItemRepository` (`GET api/PaymentsApi/{id}/receipt`, задача 0041); записи кодом пока нет.
 - `Units` (миграция 0008): UnitId PK, UnitName NVARCHAR(20) (уникальный `UQ_Units_UnitName`; как в чеке — «кг», «шт.»),
   CreatedAt, LastUpdatedAt NULL. Миграция заполняет шт., кг, г, л, мл; остальные — get-or-create по названию при импорте.
 
@@ -575,4 +575,6 @@ Characterization-тесты на места, не покрытые профил�
 
 ## Позиции чеков (задача 0041, 2026-11-10)
 - Миграция `0008_receipt_items.sql`: таблица `ReceiptItems` — позиции кассового чека, привязанные к платежу (`PaymentId` FK, без каскада). Поля как в чеке: название, цена за единицу, количество, единица измерения (FK на справочник `Units`), итоговая цена; плюс `CreatedAt`/`LastUpdatedAt`. Заголовок чека (продавец, ИНН, фискальные реквизиты) не хранится.
-- Не сделано: Domain/репозиторий/API и разбор чеков (.eml от ОФД) — отдельными задачами.
+- API чтения чека: `GET api/PaymentsApi/{paymentId}/receipt` → `{ paymentId, totalSum, items: [{ receiptItemId, itemName, price, quantity, unitId, unitName, totalPrice }] }` (позиции по `ReceiptItemId`, `totalSum` — сумма `totalPrice`). Платёж без позиций — 200 с пустым `items`, несуществующий/удалённый платёж — 404. Цепочка: Domain `Receipts/` (`Unit`, `ReceiptItem`, `Receipt`) → `IReceiptItemRepository`/`ReceiptService` (Application `Receipts/`, существование платежа — `IPaymentRepository.Get`) → `ReceiptItemRepository` (Dapper, `ReceiptItems JOIN Units`) → `PaymentsApiController.GetReceipt` + `ReceiptDto`.
+- UI просмотра (только чтение): на главной в списке платежей ячейки (`PaymentList`) у каждого платежа кнопка 🧾 «Открыть чек» (emit `open-receipt`; у платежа без чека — `disabled`, title «Чека нет»; признак — поле платежа `hasReceipt`, вычисляется в `SelectPayment` через `EXISTS ReceiptItems` и есть во всех ответах с `PaymentDto`, кроме `TopPaymentDto` дашборда) → `pages/paymentsTable/ReceiptModal.vue` (`open(payment)` через ref в `PaymentsTable`): узкая модалка «бумажный чек» моноширинным шрифтом, позиция — название + «количество единица × цена … итог», внизу «ИТОГ»; пустой чек — «У этой операции нет чека»; при расхождении `totalSum` с суммой операции — приглушённая строка «Сумма операции». Количество форматируется `formatQuantity` (`utils/format.js`, до 3 знаков).
+- Не сделано: запись/правка позиций через API и UI, кнопка чека на странице «Операции», разбор чеков (.eml от ОФД) — отдельными задачами.

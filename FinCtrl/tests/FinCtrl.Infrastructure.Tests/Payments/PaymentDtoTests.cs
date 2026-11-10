@@ -21,6 +21,7 @@ public class PaymentDtoTests
             PaymentCreatedAt = Created,
             PaymentLastUpdatedAt = Updated,
             ExcludeFromStats = true,
+            HasReceipt = true,
             TransferId = 4,
             TransferPairPaymentId = 11,
             PaymentSourceId = 3,
@@ -65,6 +66,7 @@ public class PaymentDtoTests
         Assert.Equal(Created, payment.CreatedAt);
         Assert.Equal(Updated, payment.LastUpdatedAt);
         Assert.True(payment.ExcludeFromStats);
+        Assert.True(payment.HasReceipt);
         Assert.Equal((4, 11), (payment.TransferId, payment.TransferPairPaymentId));
 
         var source = Assert.IsType<PaymentSource>(payment.PaymentSource);

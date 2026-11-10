@@ -30,6 +30,7 @@ namespace FinCtrl.Infrastructure.Payments
                 p.CreatedAt AS PaymentCreatedAt,
                 p.LastUpdatedAt AS PaymentLastUpdatedAt,
                 p.ExcludeFromStats,
+                CAST(CASE WHEN EXISTS (SELECT 1 FROM ReceiptItems ri WHERE ri.PaymentId = p.PaymentId) THEN 1 ELSE 0 END AS BIT) AS HasReceipt,
 
                 tr.TransferId,
                 CASE WHEN tr.OutPaymentId = p.PaymentId THEN tr.InPaymentId ELSE tr.OutPaymentId END AS TransferPairPaymentId,
