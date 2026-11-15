@@ -13,7 +13,7 @@
 
 Один git-репозиторий в корне (`root.FinCtrl`, базовая ветка `main`), три части:
 
-- `FinCtrl/` — backend, .NET 9 + MS SQL Server.
+- `FinCtrl/` — backend, .NET 9 + PostgreSQL 18 (до задачи 0041 — MS SQL Server).
 - `FinCtrl.Frontend/FinCtrl.Frontend/` — фронтенд, Vue 3 + Vite.
 - `FinCtrl.AiAssistant/` — Python-сервис (FastAPI) классификации источников платежей через LLM, см. `FinCtrl.AiAssistant/README.md`.
 
@@ -48,7 +48,7 @@ Frontend показывает текст через `src/utils/apiError.js` → 
 переписать бэкенд на EF Core ("clean architecture" rewrite вне `.sln`)
 удалена задачей 0010.
 
-**Доступ к данным:** без ORM, чистый Dapper поверх Microsoft.Data.SqlClient. Все запросы — raw SQL
+**Доступ к данным:** без ORM, чистый Dapper поверх Npgsql (до задачи 0041 — Microsoft.Data.SqlClient). Все запросы — raw SQL
 внутри репозиториев. `RepositoryBase` даёт только async-хелперы
 `Execute/ExecuteScalar/Query/FirstOrDefault` (с задачи 0015 синхронных вызовов Dapper нет). Dommel/FluentMap в коде нет, раньше
 документация упоминала их по ошибке.
@@ -60,19 +60,22 @@ Frontend показывает текст через `src/utils/apiError.js` → 
 при открытой транзакции возвращает вложенную no-op — репозиторий может сам защищать свою многошаговую запись
 (`SetPaymentTags`, `AddTagsToPayments`, `TagRepository.Delete`), а сервис — объединять несколько репозиториев (импорт).
 
-**БД:** MS SQL Server, дев-строка подключения в
+**БД:** PostgreSQL 18 (задача 0041), дев-строка подключения в
 `FinCtrl.Website/appsettings.Development.json`:
-`Server=Ivan; Database=FinCtrl_db_dev2` (Windows-аутентификация,
-локальный сервер на машине пользователя).
+`Host=localhost;Port=5433;Database=finctrl_db_dev2;Username=finctrl` (пароль — в
+`%APPDATA%\postgresql\pgpass.conf`, не в репозитории). Прод — `finctrl_db`, строку
+подключения для Production пользователь задаёт сам.
 
 **Миграции:** `FinCtrl/db/migrations/*.sql` — просто папка SQL-файлов,
 без раннера и без таблицы учёта применённых миграций. Конвенция:
 `000N_короткое_описание.sql`, номера сквозные, накатывать вручную:
 ```
-sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
+psql -h localhost -p 5433 -U finctrl -d <база> -v ON_ERROR_STOP=1 -f db/migrations/000N_....sql
 ```
 Подробности — `db/migrations/README.md`. Файлы на сейчас:
-- `0001_initial.sql` — базовая схема (Categories, PaymentSources, Payments).
+- `0001_initial.sql` — baseline-схема PostgreSQL (все таблицы ниже, задача 0041).
+  T-SQL-миграции 0001–0007 времён SQL Server — архив `db/migrations-mssql/` (пометки
+  «миграция N» ниже относятся к нему).
 - `0002_accounts.sql` — таблица `Accounts` + колонка `Payments.AccountId`.
 
 ## Доменная модель
@@ -106,20 +109,20 @@ sqlcmd -S <сервер> -d <база> -E -C -i db\migrations\000N_....sql
 - `Categories`: CategoryId PK, CategoryName, ParentCategoryCategoryId
   (self FK), IsOnlyIncome, OrderIndex, Color.
 - `PaymentSources`: PaymentSourceId PK, PaymentSourceName, CategoryId FK,
-  CreatedAt, LastUpdatedAt, Description, Classification (NVARCHAR(200) NULL),
-  IsAiClassified (BIT, default 0; миграция 0004).
+  CreatedAt, LastUpdatedAt, Description, Classification (varchar(200) NULL),
+  IsAiClassified (boolean, default false; миграция 0004).
 - `Accounts`: AccountId PK, ExcelAccountName (с миграции 0006 не уникально),
-  AccountNumber (NVARCHAR(50) NULL, уникальный фильтрованный индекс `UQ_Accounts_AccountNumber`; миграция 0006),
-  DisplayName, IsSavings (BIT, default 0; миграция 0005), CreatedAt, LastUpdatedAt.
+  AccountNumber (varchar(50) NULL, уникальный частичный индекс `UQ_Accounts_AccountNumber`; миграция 0006),
+  DisplayName, IsSavings (boolean, default false; миграция 0005), CreatedAt, LastUpdatedAt.
 - `Payments`: PaymentId PK, PaymentType, PaymentSum, PaymentDate,
   PaymentSourceId FK, AccountId FK → Accounts, PaymentCategoryCategoryId
   FK, PaymentDescription, CreatedAt, LastUpdatedAt, IsDeleted,
   ExcludeFromStats. Индексы на (PaymentDate, IsDeleted),
-  PaymentCategoryCategoryId, PaymentSourceId, AccountId; уникальный фильтрованный
-  `UQ_Payments_Account_Date_Sum (AccountId, PaymentDate, PaymentSum) WHERE AccountId IS NOT NULL AND IsDeleted = 0`
-  (миграция 0005; из-за фильтрованных индексов DML через `sqlcmd` — только с `-I`).
+  PaymentCategoryCategoryId, PaymentSourceId, AccountId; уникальный частичный
+  `UQ_Payments_Account_Date_Sum (AccountId, PaymentDate, PaymentSum) WHERE AccountId IS NOT NULL AND IsDeleted = false`
+  (миграция 0005).
 - `Transfers` (миграция 0005): TransferId PK, OutPaymentId FK → Payments (уникальный; списание),
-  InPaymentId FK → Payments NULL (уникальный фильтрованный; поступление, NULL — вторая сторона не указана),
+  InPaymentId FK → Payments NULL (уникальный частичный; поступление, NULL — вторая сторона не указана),
   CreatedAt. Каскада нет.
 
 ## Импорт из Excel/CSV
@@ -566,3 +569,13 @@ Characterization-тесты на места, не покрытые профил�
 - Миграция `0007_savings_by_accounts.sql` (только данные): снята собственная категория «Накопления» у операций 2026 года и категория «Проценты на остаток» у операций со счётом. Старые (до 2026) операции с категорией «Накопления» считаются по-прежнему по категории.
 - Frontend: модалка главной больше не подставляет «Накопления» (`utils/transferCategory.js` удалён); подсказка «Накопительный» на «Счетах».
 - Не сделано: категория «Проценты на остаток» не удалена — на неё ссылаются источники и через них старые операции без счёта.
+
+## Перенос БД на PostgreSQL (задача 0041, 2026-11-15)
+- СУБД — PostgreSQL 18 (локально `localhost:5433`, служба `postgresql-x64-18`, роль `finctrl`, базы `finctrl_db_dev2` и `finctrl_db`); драйвер — Npgsql вместо Microsoft.Data.SqlClient (`IDbConnectionFactory` отдаёт `NpgsqlConnection`/`NpgsqlTransaction`). Пароль — в `%APPDATA%\postgresql\pgpass.conf`, в строке подключения его нет.
+- Схема — новый baseline `db/migrations/0001_initial.sql` (итог T-SQL-миграций 0001–0006); старые миграции — архив `db/migrations-mssql/`. Имена без кавычек — в PostgreSQL они в нижнем регистре, SQL в C# пишется PascalCase. Типы: `integer GENERATED BY DEFAULT AS IDENTITY`, `text`/`varchar(n)`, `timestamp`, `boolean`, `numeric(18,2)`; фильтрованные индексы — частичные.
+- SQL: `RETURNING` вместо `OUTPUT INSERTED`, `LIMIT` вместо `TOP`, `= ANY(@Ids)` с массивом вместо `IN @Ids` (разбивка тегов пачками по 2000 id из задачи 0015 убрана — лимита 2100 параметров больше нет), флаги `= false`, `INSERT ... ON CONFLICT DO NOTHING` в `AddTagsToPayments`; в динамическом `ORDER BY` списка операций — `NULLS FIRST`/`NULLS LAST`, как было в SQL Server.
+- Данные перенесены одноразовым скриптом `db/mssql-to-postgres/Copy-MssqlToPostgres.ps1` (Windows PowerShell 5.1: чтение System.Data.SqlClient → CSV → `psql \copy`, id сохраняются, identity сдвигается, сверка числа строк и сумм). Базы SQL Server оставлены как есть.
+- **Грабля:** сравнение строк, `LIKE` и сортировка — с учётом регистра (решение пользователя: без citext и `lower()`): get-or-create источника по имени и поиск источников чувствительны к регистру; хвостовые пробелы при `=` тоже значимы (SQL Server их игнорировал).
+- **Грабля:** после ошибки внутри транзакции PostgreSQL отклоняет все команды до отката — не перехватывать ошибки БД внутри транзакции с продолжением работы.
+- **Грабля:** колонки `timestamp` без зоны — в БД писать `DateTime` с `Kind` `Unspecified`/`Local` (`TimeProvider.GetLocalNow().DateTime`); `Utc` Npgsql отклонит.
+- `appsettings.Production.json` в задаче не менялся (правку блокирует хук): строку подключения прода к `finctrl_db` пользователь задаёт сам.

@@ -6,13 +6,13 @@
 - Frontend: нет. Контракт API не меняется.
 
 ## Шаги
-- [ ] 1. Перенести T-SQL-миграции в `db/migrations-mssql/`, написать PostgreSQL-baseline `db/migrations/0001_initial.sql` (идемпотентный: `IF NOT EXISTS`)
-- [ ] 2. Npgsql вместо Microsoft.Data.SqlClient в фабрике соединений и транзакциях
-- [ ] 3. Переписать T-SQL в репозиториях (`RETURNING`, `LIMIT`, `false/true`, без `dbo.`, `= ANY(@Ids)` без разбивки на пачки)
-- [ ] 4. Проверить, что ошибки БД не перехватываются внутри транзакции с продолжением работы
-- [ ] 5. Строка подключения Development → PostgreSQL (без пароля в репозитории: пароль — `pgpass.conf`)
+- [x] 1. Перенести T-SQL-миграции в `db/migrations-mssql/`, написать PostgreSQL-baseline `db/migrations/0001_initial.sql` (идемпотентный: `IF NOT EXISTS`)
+- [x] 2. Npgsql вместо Microsoft.Data.SqlClient в фабрике соединений и транзакциях
+- [x] 3. Переписать T-SQL в репозиториях (`RETURNING`, `LIMIT`, `false/true`, без `dbo.`, `= ANY(@Ids)` без разбивки на пачки)
+- [x] 4. Проверить, что ошибки БД не перехватываются внутри транзакции с продолжением работы
+- [x] 5. Строка подключения Development → PostgreSQL (без пароля в репозитории: пароль — `pgpass.conf`)
 - [ ] 6. Скрипт переноса данных (PowerShell: чтение через System.Data.SqlClient → CSV → `psql \copy`), перенос `FinCtrl_db_dev2` и `FinCtrl_db`, сверка
-- [ ] 7. Документация: `CLAUDE.md`, `project-summary.md`, `backend-guide.md`, README миграций
+- [x] 7. Документация: `CLAUDE.md`, `project-summary.md`, `backend-guide.md`, README миграций
 - [ ] Сборка + тесты + ручная проверка (Definition of Done)
 - [ ] PR
 
@@ -35,6 +35,7 @@ SQL репозиториев юнит-тестами не покрывается
 ## Журнал решений
 - 2026-11-15: имена без кавычек (нижний регистр в PG) — минимум правок SQL; `timestamp` без зоны — как `DATETIME2`, `DateTime` с `Kind=Unspecified` работает без конвертации.
 - 2026-11-15: регистр сравнения — по умолчанию PostgreSQL, без доп. мер (решение пользователя).
+- 2026-11-15: в динамическом ORDER BY списка операций — NULLS FIRST (ASC) / NULLS LAST (DESC), как в SQL Server (находка backend-dev); `AddTagsToPayments` — `ON CONFLICT DO NOTHING`.
 - 2026-11-15: перенос данных — PowerShell + `psql \copy`: не нужны pgloader и дополнительные драйверы.
 
 ## Вне объёма (найдено попутно)

@@ -14,7 +14,7 @@ model: sonnet
 ## Работа
 - Меняй только то, что нужно по шагам задания. Соседний код читай точечно: Grep, затем Read с offset/limit. Образцы CRUD — `Accounts` и `Tags`, их не читай целиком.
 - Цепочка: миграция → Domain → интерфейс репозитория (Application) → реализация (Infrastructure) + DI → сервис + DI → `*ApiController` + DTO → тесты.
-- Миграция — новый идемпотентный файл `FinCtrl/db/migrations/000N_*.sql`; накатить: `sqlcmd -S Ivan -d FinCtrl_db_dev2 -E -C -I -i <файл> | tail -5`.
+- Миграция — новый идемпотентный файл `FinCtrl/db/migrations/000N_*.sql`; накатить: `& "C:\Program Files\PostgreSQL8in\psql.exe" -h localhost -p 5433 -U finctrl -d finctrl_db_dev2 -v ON_ERROR_STOP=1 -q -f <файл> 2>&1 | tail -5` (диалект PostgreSQL, идемпотентно).
 - Проверка — только `node .claude/scripts/check.mjs backend` (точечно — `--filter FullyQualifiedName~<Класс>`). Прямой `dotnet build/test` заблокирован хуком.
 - Цикл «правка → check» — не больше 3 раз на одну ошибку. Не сходится — остановись и опиши проблему, не переписывай тесты под код.
 - Если сборка упала из-за файлов, заблокированных запущенным `FinCtrl.Website`, ничего не останавливай — верни это как блокер.
