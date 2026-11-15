@@ -29,5 +29,5 @@ T-SQL-миграции 0001–0007 (MS SQL Server, до задачи 0041) — �
 Из `FinCtrl/`, пароль роли `finctrl` — в `%APPDATA%\postgresql\pgpass.conf`:
 
 ```powershell
-& "C:\Program Files\PostgreSQL8in\psql.exe" -h localhost -p 5433 -U finctrl -d finctrl_db_dev2 -v ON_ERROR_STOP=1 -f db/migrations/000N_....sql
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5433 -U finctrl -d finctrl_db_dev2 -v ON_ERROR_STOP=1 -f db/migrations/000N_....sql
 ```

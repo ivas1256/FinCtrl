@@ -50,7 +50,7 @@ Backend-тесты — xUnit + NSubstitute в `FinCtrl/tests/FinCtrl.<Проек
 ### Миграции БД
 `FinCtrl/db/migrations/000N_описание.sql` — просто SQL-файлы, без раннера и без таблицы учёта применённых миграций. Не править существующие файлы — добавлять новый со следующим номером; накатывать вручную (из `FinCtrl/`):
 ```powershell
-& "C:\Program Files\PostgreSQL8in\psql.exe" -h localhost -p 5433 -U finctrl -d finctrl_db_dev2 -v ON_ERROR_STOP=1 -f db/migrations/000N_....sql
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5433 -U finctrl -d finctrl_db_dev2 -v ON_ERROR_STOP=1 -f db/migrations/000N_....sql
 ```
 `0001_initial.sql` — baseline-схема PostgreSQL на момент переноса (задача 0041). Миграции идемпотентны (`IF NOT EXISTS`). Имена таблиц/колонок в DDL и SQL — без кавычек: PostgreSQL хранит их в нижнем регистре, в C# SQL пишется PascalCase, Dapper маппит без учёта регистра.
 
