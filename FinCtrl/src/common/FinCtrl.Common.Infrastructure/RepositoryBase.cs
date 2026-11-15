@@ -24,7 +24,7 @@ namespace FinCtrl.Common.Infrastructure
             return await conn.ExecuteAsync(sql, param, _connectionFactory.CurrentTransaction);
         }
 
-        /// <summary>Выполняет запрос и возвращает первую колонку первой строки (например, id из <c>OUTPUT INSERTED</c>).</summary>
+        /// <summary>Выполняет запрос и возвращает первую колонку первой строки (например, id из <c>RETURNING</c>).</summary>
         protected async Task<T?> ExecuteScalar<T>(string sql, object? param = null)
         {
             var conn = await _connectionFactory.GetConnectionAsync();

@@ -1,6 +1,6 @@
 using FinCtrl.Common;
 using FinCtrl.Common.Infrastructure;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.Extensions.Configuration;
 
 namespace FinCtrl.Infrastructure
@@ -12,16 +12,16 @@ namespace FinCtrl.Infrastructure
     internal class DbConnectionFactory : IDbConnectionFactory, IAsyncDisposable, IDisposable
     {
         private readonly IConfiguration _configuration;
-        private SqlConnection? _connection;
+        private NpgsqlConnection? _connection;
 
         public DbConnectionFactory(IConfiguration configuration)
         {
             _configuration = configuration;
         }
 
-        public SqlTransaction? CurrentTransaction { get; private set; }
+        public NpgsqlTransaction? CurrentTransaction { get; private set; }
 
-        public async Task<SqlConnection> GetConnectionAsync()
+        public async Task<NpgsqlConnection> GetConnectionAsync()
         {
             if (_connection is not null)
             {
@@ -30,7 +30,7 @@ namespace FinCtrl.Infrastructure
 
             var connStr = _configuration.GetConnectionString("DefaultDatabase");
 
-            _connection = new SqlConnection(connStr);
+            _connection = new NpgsqlConnection(connStr);
             await _connection.OpenAsync();
             return _connection;
         }
@@ -43,7 +43,7 @@ namespace FinCtrl.Infrastructure
             }
 
             var connection = await GetConnectionAsync();
-            CurrentTransaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
+            CurrentTransaction = (NpgsqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
             return new RootTransaction(this, CurrentTransaction);
         }
@@ -67,12 +67,12 @@ namespace FinCtrl.Infrastructure
         }
 
         /// <summary>Транзакция верхнего уровня: фиксирует или (при освобождении без фиксации) откатывает изменения.</summary>
-        private sealed class RootTransaction(DbConnectionFactory owner, SqlTransaction transaction) : ITransaction
+        private sealed class RootTransaction(DbConnectionFactory owner, NpgsqlTransaction transaction) : ITransaction
         {
             public Task Commit(CancellationToken cancellationToken = default) => transaction.CommitAsync(cancellationToken);
 
-            // SqlTransaction при освобождении без Commit сам откатывает изменения и не бросает,
-            // если сервер уже откатил транзакцию из-за ошибки, — исходное исключение не маскируется.
+            // NpgsqlTransaction при освобождении без Commit откатывает изменения и не бросает,
+            // даже если PostgreSQL перевёл транзакцию в состояние ошибки, — исходное исключение не маскируется.
             public async ValueTask DisposeAsync()
             {
                 await transaction.DisposeAsync();
