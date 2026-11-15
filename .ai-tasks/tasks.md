@@ -45,3 +45,4 @@
 | 0039 | `feature/0039-transfer-accounts-in-list` | `.ai-tasks/feature/0039-transfer-accounts-in-list/` | на ревью | [#43](https://github.com/ivas1256/FinCtrl/pull/43) |
 | 0038 | `feature/0038-account-number` | `.ai-tasks/feature/0038-account-number/` | на ревью | https://github.com/ivas1256/FinCtrl/pull/42 |
 | 0040 | `feature/0040-savings-by-accounts` | `.ai-tasks/feature/0040-savings-by-accounts/` | в работе | |
+| 0041 | `chore/0041-migrate-to-postgres` | `.ai-tasks/chore/0041-migrate-to-postgres/` | в работе | |
