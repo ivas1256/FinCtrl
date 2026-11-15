@@ -51,14 +51,14 @@ namespace FinCtrl.Infrastructure.Accounts
         public async Task<int> CountPayments(int accountId)
         {
             // Без фильтра IsDeleted: удалённые операции тоже держат внешний ключ FK_Payments_Accounts_AccountId
-            return await ExecuteScalar<int>("SELECT COUNT(*) FROM dbo.Payments WHERE AccountId = @accountId", new { accountId });
+            return await ExecuteScalar<int>("SELECT COUNT(*) FROM Payments WHERE AccountId = @accountId", new { accountId });
         }
 
         public async Task<int> Create(Account account)
         {
-            var sql = @"INSERT INTO dbo.Accounts (ExcelAccountName, DisplayName, AccountNumber, IsSavings, CreatedAt, LastUpdatedAt)
-                        OUTPUT INSERTED.AccountId
-                        VALUES (@ExcelAccountName, @DisplayName, @AccountNumber, @IsSavings, @CreatedAt, @LastUpdatedAt);";
+            var sql = @"INSERT INTO Accounts (ExcelAccountName, DisplayName, AccountNumber, IsSavings, CreatedAt, LastUpdatedAt)
+                        VALUES (@ExcelAccountName, @DisplayName, @AccountNumber, @IsSavings, @CreatedAt, @LastUpdatedAt)
+                        RETURNING AccountId;";
 
             return await ExecuteScalar<int>(sql, new
             {
@@ -97,7 +97,7 @@ namespace FinCtrl.Infrastructure.Accounts
 
         public async Task Delete(params Account[] accounts)
         {
-            var sql = @"DELETE FROM dbo.Accounts WHERE AccountId = @AccountId;";
+            var sql = @"DELETE FROM Accounts WHERE AccountId = @AccountId;";
 
             foreach (var account in accounts)
             {

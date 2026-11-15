@@ -13,9 +13,6 @@ namespace FinCtrl.Infrastructure.Payments
         {
         }
 
-        // SQL Server принимает не больше 2100 параметров в запросе, а `IN @Ids` разворачивается в параметр на каждый id.
-        private const int MaxIdsPerQuery = 2000;
-
         // Единственный SELECT платежей: алиасы колонок совпадают со свойствами PaymentDto
         // (соответствие проверяет PaymentRepositoryTests). internal — ради этого теста.
         internal const string SelectPayment = @"SELECT
@@ -83,7 +80,7 @@ namespace FinCtrl.Infrastructure.Payments
 
         public async Task<Payment?> Get(int paymentId)
         {
-            var sql = $"{SelectPayment} WHERE p.PaymentId = @PaymentId AND p.IsDeleted = 0";
+            var sql = $"{SelectPayment} WHERE p.PaymentId = @PaymentId AND p.IsDeleted = false";
 
             var paymentDto = await FirstOrDefault<PaymentDto>(sql, new { PaymentId = paymentId });
 
@@ -95,8 +92,8 @@ namespace FinCtrl.Infrastructure.Payments
             var sql = @$"{SelectPayment}
                 WHERE p.PaymentDate >= @From
                     AND p.PaymentDate < @To
-                    AND p.IsDeleted = 0
-                    AND p.ExcludeFromStats = 0";
+                    AND p.IsDeleted = false
+                    AND p.ExcludeFromStats = false";
 
             var payments = (await Query<PaymentDto>(sql, new { dateRange.From, dateRange.To }))
                 .Select(x => x.MapToPayment())
@@ -117,13 +114,9 @@ namespace FinCtrl.Infrastructure.Payments
             var sql = @"SELECT pt.PaymentId, t.TagId, t.TagName, t.CreatedAt, t.LastUpdatedAt
                 FROM PaymentTags pt
                 JOIN Tags t ON t.TagId = pt.TagId
-                WHERE pt.PaymentId IN @Ids";
+                WHERE pt.PaymentId = ANY(@Ids)";
 
-            var rows = new List<PaymentTagRow>();
-            foreach (var chunk in paymentIds.Distinct().Chunk(MaxIdsPerQuery))
-            {
-                rows.AddRange(await Query<PaymentTagRow>(sql, new { Ids = chunk }));
-            }
+            var rows = await Query<PaymentTagRow>(sql, new { Ids = paymentIds.Distinct().ToArray() });
 
             return rows
                 .GroupBy(x => x.PaymentId)
@@ -145,12 +138,12 @@ namespace FinCtrl.Infrastructure.Payments
             // DELETE + INSERT — в одной транзакции, иначе ошибка на вставке оставит платёж без тегов.
             await using var transaction = await BeginTransaction();
 
-            var sql = @"DELETE FROM dbo.PaymentTags WHERE PaymentId = @PaymentId;";
+            var sql = @"DELETE FROM PaymentTags WHERE PaymentId = @PaymentId;";
             await Execute(sql, new { PaymentId = paymentId });
 
             if (tagIds.Count > 0)
             {
-                var insertSql = @"INSERT INTO dbo.PaymentTags (PaymentId, TagId) VALUES (@PaymentId, @TagId);";
+                var insertSql = @"INSERT INTO PaymentTags (PaymentId, TagId) VALUES (@PaymentId, @TagId);";
                 await Execute(insertSql, tagIds.Select(tagId => new { PaymentId = paymentId, TagId = tagId }));
             }
 
@@ -164,8 +157,8 @@ namespace FinCtrl.Infrastructure.Payments
             if (ids.Count == 0 || tags.Count == 0)
                 return;
 
-            var sql = @"IF NOT EXISTS (SELECT 1 FROM dbo.PaymentTags WHERE PaymentId = @PaymentId AND TagId = @TagId)
-                INSERT INTO dbo.PaymentTags (PaymentId, TagId) VALUES (@PaymentId, @TagId);";
+            var sql = @"INSERT INTO PaymentTags (PaymentId, TagId) VALUES (@PaymentId, @TagId)
+                ON CONFLICT (PaymentId, TagId) DO NOTHING;";
 
             var pairs = ids.SelectMany(paymentId => tags.Select(tagId => new { PaymentId = paymentId, TagId = tagId }));
 
@@ -177,7 +170,7 @@ namespace FinCtrl.Infrastructure.Payments
 
         public async Task<int> Create(Payment payment)
         {
-            var sql = @"INSERT INTO dbo.Payments (PaymentType
+            var sql = @"INSERT INTO Payments (PaymentType
                   , PaymentSum
                   , PaymentDate
                   , PaymentSourceId
@@ -187,7 +180,6 @@ namespace FinCtrl.Infrastructure.Payments
                   , CreatedAt
                   , LastUpdatedAt
                   , ExcludeFromStats)
-                  OUTPUT INSERTED.PaymentId
                   VALUES (@PaymentType
                   , @PaymentSum
                   , @PaymentDate
@@ -197,7 +189,8 @@ namespace FinCtrl.Infrastructure.Payments
                   , @PaymentDescription
                   , @CreatedAt
                   , @LastUpdatedAt
-                  , @ExcludeFromStats);";
+                  , @ExcludeFromStats)
+                  RETURNING PaymentId;";
 
             return await ExecuteScalar<int>(sql, new
             {
@@ -218,7 +211,7 @@ namespace FinCtrl.Infrastructure.Payments
         {
             // Сумма пишется нормализованной (расход — отрицательная, см. Payment.NormalizeSumSign): иначе расход, сохранённый
             // с положительной суммой, при смене типа на Transfer стал бы поступлением
-            var sql = @"UPDATE dbo.Payments
+            var sql = @"UPDATE Payments
                 SET
                   PaymentType = @PaymentType
                  ,PaymentSum = @PaymentSum
@@ -252,7 +245,7 @@ namespace FinCtrl.Infrastructure.Payments
         {
             // tr — связь кандидата из SelectPayment; tr.InPaymentId IS NULL — перевод-списание без второй стороны
             var sql = $@"{SelectPayment}
-                WHERE p.IsDeleted = 0
+                WHERE p.IsDeleted = false
                     AND p.PaymentId <> @paymentId
                     AND ABS(p.PaymentSum) = @absSum
                     AND p.PaymentDate >= @from
@@ -269,10 +262,10 @@ namespace FinCtrl.Infrastructure.Payments
         public async Task<List<Payment>> GetByDateAndSums(IReadOnlyCollection<decimal> paymentSums, DateTime paymentDate)
         {
             var sql = $@"{SelectPayment}
-                WHERE p.PaymentSum IN @paymentSums AND p.PaymentDate = @paymentDate AND p.IsDeleted = 0
+                WHERE p.PaymentSum = ANY(@paymentSums) AND p.PaymentDate = @paymentDate AND p.IsDeleted = false
                 ORDER BY p.PaymentId";
 
-            return (await Query<PaymentDto>(sql, new { paymentSums, paymentDate }))
+            return (await Query<PaymentDto>(sql, new { paymentSums = paymentSums.ToArray(), paymentDate }))
                 .Select(x => x.MapToPayment())
                 .ToList();
         }
@@ -280,7 +273,7 @@ namespace FinCtrl.Infrastructure.Payments
         public async Task<List<Payment>> GetBySource(int PaymentSourceId)
         {
             var sql = @$"{SelectPayment}
-                WHERE p.PaymentSourceId = @PaymentSourceId AND p.IsDeleted = 0";
+                WHERE p.PaymentSourceId = @PaymentSourceId AND p.IsDeleted = false";
 
             return (await Query<PaymentDto>(sql, new { PaymentSourceId }))
                 .Select(x => x.MapToPayment())
@@ -304,9 +297,10 @@ namespace FinCtrl.Infrastructure.Payments
                 "category" => "COALESCE(c.CategoryName, c_ps.CategoryName)",
                 _          => "p.PaymentDate"
             };
-            var orderDir = sortDir == "asc" ? "ASC" : "DESC";
+            // NULL — как было в SQL Server: первыми при ASC, последними при DESC (в PostgreSQL по умолчанию наоборот).
+            var orderDir = sortDir == "asc" ? "ASC NULLS FIRST" : "DESC NULLS LAST";
 
-            var whereClause = new StringBuilder(" WHERE p.IsDeleted = 0");
+            var whereClause = new StringBuilder(" WHERE p.IsDeleted = false");
             if (from.HasValue)
                 whereClause.Append(" AND p.PaymentDate >= @From");
             if (to.HasValue)
@@ -316,7 +310,7 @@ namespace FinCtrl.Infrastructure.Payments
             if (noCategoryOnly)
                 whereClause.Append(" AND p.PaymentCategoryCategoryId IS NULL AND ps.CategoryId IS NULL");
             if (tagIds is { Length: > 0 })
-                whereClause.Append(" AND EXISTS (SELECT 1 FROM PaymentTags pt WHERE pt.PaymentId = p.PaymentId AND pt.TagId IN @TagIds)");
+                whereClause.Append(" AND EXISTS (SELECT 1 FROM PaymentTags pt WHERE pt.PaymentId = p.PaymentId AND pt.TagId = ANY(@TagIds))");
 
             var queryParams = new
             {

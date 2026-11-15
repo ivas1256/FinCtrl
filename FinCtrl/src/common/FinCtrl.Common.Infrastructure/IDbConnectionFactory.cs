@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+using Npgsql;
 
 namespace FinCtrl.Common.Infrastructure
 {
@@ -6,9 +6,9 @@ namespace FinCtrl.Common.Infrastructure
     public interface IDbConnectionFactory : IUnitOfWork
     {
         /// <summary>Открытое соединение scope (создаётся при первом обращении).</summary>
-        public Task<SqlConnection> GetConnectionAsync();
+        public Task<NpgsqlConnection> GetConnectionAsync();
 
         /// <summary>Текущая транзакция соединения или <c>null</c>, если она не открыта.</summary>
-        public SqlTransaction? CurrentTransaction { get; }
+        public NpgsqlTransaction? CurrentTransaction { get; }
     }
 }

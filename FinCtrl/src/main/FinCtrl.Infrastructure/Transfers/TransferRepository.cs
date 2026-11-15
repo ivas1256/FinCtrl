@@ -18,7 +18,7 @@ namespace FinCtrl.Infrastructure.Transfers
                          ,t.OutPaymentId
                          ,t.InPaymentId
                          ,t.CreatedAt
-                      FROM dbo.Transfers t
+                      FROM Transfers t
                       WHERE t.OutPaymentId = @paymentId OR t.InPaymentId = @paymentId";
 
             return await FirstOrDefault<Transfer>(sql, new { paymentId });
@@ -26,9 +26,9 @@ namespace FinCtrl.Infrastructure.Transfers
 
         public async Task<int> Create(Transfer transfer)
         {
-            var sql = @"INSERT INTO dbo.Transfers (OutPaymentId, InPaymentId, CreatedAt)
-                        OUTPUT INSERTED.TransferId
-                        VALUES (@OutPaymentId, @InPaymentId, @CreatedAt);";
+            var sql = @"INSERT INTO Transfers (OutPaymentId, InPaymentId, CreatedAt)
+                        VALUES (@OutPaymentId, @InPaymentId, @CreatedAt)
+                        RETURNING TransferId;";
 
             return await ExecuteScalar<int>(sql, new
             {
@@ -40,7 +40,7 @@ namespace FinCtrl.Infrastructure.Transfers
 
         public async Task Update(Transfer transfer)
         {
-            var sql = @"UPDATE dbo.Transfers
+            var sql = @"UPDATE Transfers
                         SET OutPaymentId = @OutPaymentId
                            ,InPaymentId = @InPaymentId
                         WHERE TransferId = @TransferId;";
@@ -55,7 +55,7 @@ namespace FinCtrl.Infrastructure.Transfers
 
         public async Task Delete(int transferId)
         {
-            await Execute("DELETE FROM dbo.Transfers WHERE TransferId = @transferId;", new { transferId });
+            await Execute("DELETE FROM Transfers WHERE TransferId = @transferId;", new { transferId });
         }
     }
 }
