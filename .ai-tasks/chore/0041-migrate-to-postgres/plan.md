@@ -14,7 +14,7 @@
 - [x] 6. Скрипт переноса данных (PowerShell: чтение через System.Data.SqlClient → CSV → `psql \copy`), перенос `FinCtrl_db_dev2` и `FinCtrl_db`, сверка
 - [x] 7. Документация: `CLAUDE.md`, `project-summary.md`, `backend-guide.md`, README миграций
 - [x] Сборка + тесты + ручная проверка (Definition of Done)
-- [ ] PR
+- [x] PR — https://github.com/ivas1256/FinCtrl/pull/44
 
 ## Тесты
 | Что тестируем | Сценарии |
