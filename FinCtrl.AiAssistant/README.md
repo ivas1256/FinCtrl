@@ -11,7 +11,7 @@ copy .env.example .env   # вписать LLM_API_KEY
 .venv\Scripts\python -m uvicorn main:app --port 8000
 ```
 
-Настройки — переменные окружения или `.env`: `LLM_API_KEY` (обязательна), `LLM_BASE_URL`, `LLM_MODEL`, `LOG_FILE` (по умолчанию `logs/errors.log`). Swagger — `/docs`.
+Настройки — переменные окружения или `.env`: `LLM_API_KEY` (обязательна), `LLM_BASE_URL`, `LLM_MODEL`, `LOG_DIR` — папка логов (по умолчанию `logs/`; файл на каждый день `yyyymmdd.log`, уровень INFO, дублируется в консоль). Swagger — `/docs`.
 
 ## API
 

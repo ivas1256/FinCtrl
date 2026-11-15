@@ -6,7 +6,7 @@ FinCtrl — личное приложение для учёта финансов
 
 - `FinCtrl/` — backend, .NET 9 + MS SQL Server (Dapper, без ORM).
 - `FinCtrl.Frontend/FinCtrl.Frontend/` — frontend, Vue 3 + Vite.
-- `FinCtrl.AiAssistant/` — Python-сервис (FastAPI, `.venv`) классификации источников платежей через LLM: `POST /payment-sources/classify`, ключ LLM — в `.env` (образец `.env.example`), ошибки — в `logs/errors.log`, preview-конфигурация `ai-assistant`; автотестов нет. Подробности — `FinCtrl.AiAssistant/README.md`.
+- `FinCtrl.AiAssistant/` — Python-сервис (FastAPI, `.venv`) классификации источников платежей через LLM: `POST /payment-sources/classify`, ключ LLM — в `.env` (образец `.env.example`), логи — в `logs/yyyymmdd.log` и консоль, preview-конфигурация `ai-assistant`; автотестов нет. Подробности — `FinCtrl.AiAssistant/README.md`.
 
 Подробный контекст проекта — в `.ai-docs/`, сгруппирован по двум папкам:
 

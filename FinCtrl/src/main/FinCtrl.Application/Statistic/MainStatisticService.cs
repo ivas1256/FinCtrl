@@ -37,7 +37,7 @@ namespace FinCtrl.Application.Statistic
 
             tree.Add(Category.CreateFakeTransfers());
             tree.Add(Category.CreateFakeEmpty());
-            tree.Add(Category.CreateFakeTotal());
+            tree.Add(Category.CreateFakeTotal( ));
 
             var periodRanges = items.Select(x => x.Period).ToList();
             // Т без платежей всё равно получает колонку, если пересекается с фильтром: колонка Δ стоит сразу после неё.

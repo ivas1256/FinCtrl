@@ -538,7 +538,7 @@ Characterization-тесты на места, не покрытые профил�
 - `FinCtrl.AiAssistant/` из скрипта стал FastAPI-сервисом: `POST /payment-sources/classify` (`list[PaymentSource]` → `list[ClassifiedPaymentSource]`), запуск — `uvicorn main:app --port 8000` (preview-конфигурация `ai-assistant`).
 - Ключ/адрес/модель LLM — из env или `.env` (`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`), образец — `.env.example`; `.env`, `logs/`, `payment-sources.json` не коммитятся.
 - Запрос к LLM — `LlmClient` (`llm_client.py`, ошибки openai → `LlmError`); проверка ответа — `parse_classification` (`response_validation.py`): JSON (массив или объект с одним полем-списком, ```json-ограждение срезается), схема, те же Id без дублей, непустая классификация; `Name` — из запроса.
-- Ошибки: 422 — невалидный запрос (WARNING в лог), любая другая — 500 `{"detail": "Внутренняя ошибка сервиса"}` + трейс в `logs/errors.log`. Автотестов нет (решение пользователя).
+- Ошибки: 422 — невалидный запрос (WARNING в лог), любая другая — 500 `{"detail": "Внутренняя ошибка сервиса"}` + трейс в лог (`logs/yyyymmdd.log` + консоль, уровень INFO). Автотестов нет (решение пользователя).
 
 ## Классификация источников через AiAssistant (задача 0036, 2026-11-03)
 - БД (миграция `0004`): `PaymentSources.Classification` (`NVARCHAR(200) NULL`) и `IsAiClassified` (`BIT NOT NULL DEFAULT 0`). Поля есть в `SelectPaymentSource`, `SelectPayment` (`PaymentSource_Classification`/`_IsAiClassified`) и в `PaymentSourceDto` (`classification`, `isAiClassified`), т.е. и во вложенном источнике `PaymentDto`.

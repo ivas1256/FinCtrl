@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr
     llm_base_url: str = "https://api.orcarouter.ai/v1"
     llm_model: str = "deepseek/deepseek-v4-flash-free"
-    log_file: Path = BASE_DIR / "logs" / "errors.log"
+    log_dir: Path = BASE_DIR / "logs"
 
 
 @lru_cache
