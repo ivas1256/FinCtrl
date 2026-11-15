@@ -2,7 +2,7 @@
 -- Итоговая схема после миграций 0001-0006 прежней истории на SQL Server (архив — db/migrations-mssql/);
 -- 0007 (только данные) в baseline не входит.
 -- Накатывается через psql, например:
---   psql -h localhost -p 5433 -U finctrl -d finctrl_db_dev2 -f db/migrations/0001_initial.sql
+--   psql -h localhost -U finctrl -d finctrl_db_dev2 -f db/migrations/0001_initial.sql
 -- Идемпотентен: повторный запуск ничего не меняет.
 -- Имена без кавычек: PostgreSQL приводит их к нижнему регистру, Dapper маппит без учёта регистра.
 

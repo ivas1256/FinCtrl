@@ -31,7 +31,7 @@ dotnet build FinCtrl.Backend.sln
 dotnet test FinCtrl.Backend.sln   # xUnit-тесты из tests/
 dotnet run --project FinCtrl.Website/FinCtrl.Website.csproj --urls http://localhost:5000
 ```
-Swagger — `/swagger` в Development. Dev-строка подключения (`FinCtrl.Website/appsettings.Development.json`): локальный PostgreSQL 18 (`localhost:5433`, служба `postgresql-x64-18`), база `finctrl_db_dev2`, роль `finctrl`; пароля в строке нет — Npgsql и `psql` берут его из `%APPDATA%\postgresql\pgpass.conf`. До задачи 0041 БД была на MS SQL Server (`Ivan`, `FinCtrl_db_dev2`/`FinCtrl_db`; не удалены), T-SQL-миграции — архив `db/migrations-mssql/`, перенос данных — `db/mssql-to-postgres/Copy-MssqlToPostgres.ps1`.
+Swagger — `/swagger` в Development. Dev-строка подключения (`FinCtrl.Website/appsettings.Development.json`): локальный PostgreSQL 18 (`localhost:5432`, служба `postgresql-x64-18`), база `finctrl_db_dev2`, роль `finctrl`; пароля в строке нет — Npgsql и `psql` берут его из `%APPDATA%\postgresql\pgpass.conf`. До задачи 0041 БД была на MS SQL Server (`Ivan`, `FinCtrl_db_dev2`/`FinCtrl_db`; не удалены), T-SQL-миграции — архив `db/migrations-mssql/`, перенос данных — `db/mssql-to-postgres/Copy-MssqlToPostgres.ps1`.
 
 Frontend (из `FinCtrl.Frontend/FinCtrl.Frontend/`):
 ```bash
@@ -50,7 +50,7 @@ Backend-тесты — xUnit + NSubstitute в `FinCtrl/tests/FinCtrl.<Проек
 ### Миграции БД
 `FinCtrl/db/migrations/000N_описание.sql` — просто SQL-файлы, без раннера и без таблицы учёта применённых миграций. Не править существующие файлы — добавлять новый со следующим номером; накатывать вручную (из `FinCtrl/`):
 ```powershell
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5433 -U finctrl -d finctrl_db_dev2 -v ON_ERROR_STOP=1 -f db/migrations/000N_....sql
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -U finctrl -d finctrl_db_dev2 -v ON_ERROR_STOP=1 -f db/migrations/000N_....sql
 ```
 `0001_initial.sql` — baseline-схема PostgreSQL на момент переноса (задача 0041). Миграции идемпотентны (`IF NOT EXISTS`). Имена таблиц/колонок в DDL и SQL — без кавычек: PostgreSQL хранит их в нижнем регистре, в C# SQL пишется PascalCase, Dapper маппит без учёта регистра.
 

@@ -22,7 +22,7 @@ param(
     [Parameter(Mandatory = $true)][string]$SourceDb,
     [Parameter(Mandatory = $true)][string]$TargetDb,
     [string]$PgHost = 'localhost',
-    [int]$PgPort = 5433,
+    [int]$PgPort = 5432,
     [string]$PgUser = 'finctrl',
     [string]$Psql = 'C:\Program Files\PostgreSQL\18\bin\psql.exe'
 )
