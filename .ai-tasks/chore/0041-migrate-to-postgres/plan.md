@@ -11,7 +11,7 @@
 - [x] 3. Переписать T-SQL в репозиториях (`RETURNING`, `LIMIT`, `false/true`, без `dbo.`, `= ANY(@Ids)` без разбивки на пачки)
 - [x] 4. Проверить, что ошибки БД не перехватываются внутри транзакции с продолжением работы
 - [x] 5. Строка подключения Development → PostgreSQL (без пароля в репозитории: пароль — `pgpass.conf`)
-- [ ] 6. Скрипт переноса данных (PowerShell: чтение через System.Data.SqlClient → CSV → `psql \copy`), перенос `FinCtrl_db_dev2` и `FinCtrl_db`, сверка
+- [x] 6. Скрипт переноса данных (PowerShell: чтение через System.Data.SqlClient → CSV → `psql \copy`), перенос `FinCtrl_db_dev2` и `FinCtrl_db`, сверка
 - [x] 7. Документация: `CLAUDE.md`, `project-summary.md`, `backend-guide.md`, README миграций
 - [ ] Сборка + тесты + ручная проверка (Definition of Done)
 - [ ] PR
@@ -37,6 +37,9 @@ SQL репозиториев юнит-тестами не покрывается
 - 2026-11-15: регистр сравнения — по умолчанию PostgreSQL, без доп. мер (решение пользователя).
 - 2026-11-15: в динамическом ORDER BY списка операций — NULLS FIRST (ASC) / NULLS LAST (DESC), как в SQL Server (находка backend-dev); `AddTagsToPayments` — `ON CONFLICT DO NOTHING`.
 - 2026-11-15: перенос данных — PowerShell + `psql \copy`: не нужны pgloader и дополнительные драйверы.
+- 2026-11-15: PostgreSQL 16 удалён пользователем, PostgreSQL 18 переведён на стандартный порт 5432 (по подтверждению пользователя: postgresql.conf, pgpass.conf, строка подключения и документация).
+- 2026-11-15: прод-база SQL Server `FinCtrl_db` оказалась устаревшей копией (схема времён EF без Accounts/Tags/Transfers/IsDeleted, 3119 платежей до 2024-03; 3116 из них есть в dev2, ещё 3 — мусор с датой в 9999 году). По решению пользователя `finctrl_db` заполнена копией `FinCtrl_db_dev2`.
+- 2026-11-15: перенос выполнен: `FinCtrl_db_dev2` → `finctrl_db_dev2` и `FinCtrl_db_dev2` → `finctrl_db`; сверка сошлась по всем 7 таблицам (Categories 25, PaymentSources 1335, Accounts 10, Payments 7091, Tags 2, PaymentTags 18, Transfers 136; сумма PaymentSum 8857852.12), кириллица и даты проверены выборочно, счётчики identity — за максимальным id.
 
 ## Вне объёма (найдено попутно)
 -

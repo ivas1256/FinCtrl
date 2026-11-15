@@ -24,12 +24,16 @@ param(
     [string]$PgHost = 'localhost',
     [int]$PgPort = 5432,
     [string]$PgUser = 'finctrl',
-    [string]$Psql = 'C:\Program Files\PostgreSQL\18\bin\psql.exe'
+    [string]$Psql = 'C:\Program Files\PostgreSQL\18\bin\psql.exe',
+    # Только сверка уже перенесённых данных, без накатки схемы и загрузки.
+    [switch]$VerifyOnly
 )
 
 $ErrorActionPreference = 'Stop'
 # CSV пишется в UTF-8; без этого psql считает данные в кодировке консоли.
 $env:PGCLIENTENCODING = 'UTF8'
+# Без NOTICE «уже существует» при повторной накатке идемпотентной схемы.
+$env:PGOPTIONS = '-c client_min_messages=warning'
 $inv = [System.Globalization.CultureInfo]::InvariantCulture
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
@@ -55,14 +59,17 @@ New-Item -ItemType Directory -Path $workDir | Out-Null
 
 function Invoke-Psql([string[]]$extraArgs) {
     $psqlArgs = @('-h', $PgHost, '-p', $PgPort, '-U', $PgUser, '-d', $TargetDb, '-v', 'ON_ERROR_STOP=1', '-X', '-q') + $extraArgs
+    # Ошибку определяет код возврата: stderr при Stop PowerShell 5.1 считает исключением, а там и NOTICE.
+    $ErrorActionPreference = 'Continue'
     $out = & $Psql @psqlArgs 2>&1
     if ($LASTEXITCODE -ne 0) { throw "psql завершился с кодом ${LASTEXITCODE}: $out" }
-    return $out
+    return $out | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }
 }
 
 function Get-PgRow([string]$sql) {
     $line = Invoke-Psql @('-A', '-t', '-F', '|', '-c', $sql) | Select-Object -Last 1
-    return ($line -split '\|')
+    # Запятая: иначе PowerShell развернёт массив из одного элемента в строку.
+    return , ([string[]]($line -split '\|'))
 }
 
 function Format-Value($value) {
@@ -81,6 +88,7 @@ function Format-Number([string]$text) {
 $sql = New-Object System.Data.SqlClient.SqlConnection("Server=$SqlServer;Database=$SourceDb;Integrated Security=True;TrustServerCertificate=True")
 $sql.Open()
 try {
+  if (-not $VerifyOnly) {
     $migration = Join-Path $PSScriptRoot '..\migrations\0001_initial.sql'
     Write-Host "Схема: $migration -> $TargetDb"
     # Копия во временной папке: путь к репозиторию с кириллицей psql в PowerShell 5.1 может не принять.
@@ -89,7 +97,7 @@ try {
     Invoke-Psql @('-f', $migrationCopy) | Out-Null
 
     foreach ($t in $tables) {
-        $n = [int](Get-PgRow "SELECT COUNT(*) FROM $t")[0]
+        $n = [int]((Get-PgRow "SELECT COUNT(*) FROM $t")[0])
         if ($n -ne 0) { throw "Таблица $t в $TargetDb не пуста ($n строк) — перенос только в пустую базу." }
     }
 
@@ -133,6 +141,7 @@ try {
     [System.IO.File]::WriteAllText($loadFile, $load.ToString(), $utf8)
     Invoke-Psql @('-f', $loadFile) | Out-Null
     Write-Host "Загрузка в $TargetDb завершена."
+  }
 
     $failed = $false
     foreach ($t in $checks.Keys) {
@@ -142,7 +151,7 @@ try {
         [void]$r.Read()
         $src = @(); for ($i = 0; $i -lt $r.FieldCount; $i++) { $src += Format-Number ([System.Convert]::ToString($r.GetValue($i), $inv)) }
         $r.Close()
-        $dst = Get-PgRow ("SELECT " + $checks[$t].Replace('{T}', 'true') + " FROM $t") | ForEach-Object { Format-Number $_ }
+        $dst = (Get-PgRow ("SELECT " + $checks[$t].Replace('{T}', 'true') + " FROM $t")) | ForEach-Object { Format-Number $_ }
         $ok = (($src -join '|') -eq ($dst -join '|'))
         if (-not $ok) { $failed = $true }
         Write-Host ("  {0,-15} {1}  mssql=[{2}] pg=[{3}]" -f $t, $(if ($ok) { 'OK  ' } else { 'DIFF' }), ($src -join ' '), ($dst -join ' '))
