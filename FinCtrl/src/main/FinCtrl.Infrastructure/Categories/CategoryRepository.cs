@@ -19,7 +19,7 @@ namespace FinCtrl.Infrastructure.Categories
                  ,c.IsOnlyIncome
                  ,c.OrderIndex
                  ,c.Color
-                FROM dbo.Categories c";
+                FROM Categories c";
 
         public async Task<IEnumerable<Category>> GetAll()
         {
@@ -35,9 +35,9 @@ namespace FinCtrl.Infrastructure.Categories
         {
             // Без фильтра IsDeleted: удалённые операции тоже держат внешний ключ на категорию
             var sql = @"SELECT
-                  (SELECT COUNT(*) FROM dbo.Categories WHERE ParentCategoryCategoryId = @categoryId) ChildCount
-                 ,(SELECT COUNT(*) FROM dbo.PaymentSources WHERE CategoryId = @categoryId) PaymentSourceCount
-                 ,(SELECT COUNT(*) FROM dbo.Payments WHERE PaymentCategoryCategoryId = @categoryId) PaymentCount";
+                  (SELECT COUNT(*) FROM Categories WHERE ParentCategoryCategoryId = @categoryId) ChildCount
+                 ,(SELECT COUNT(*) FROM PaymentSources WHERE CategoryId = @categoryId) PaymentSourceCount
+                 ,(SELECT COUNT(*) FROM Payments WHERE PaymentCategoryCategoryId = @categoryId) PaymentCount";
 
             var row = await FirstOrDefault<CategoryUsageRow>(sql, new { categoryId });
 
@@ -46,7 +46,7 @@ namespace FinCtrl.Infrastructure.Categories
 
         public async Task Delete(params Category[] categories)
         {
-            var sql = @"DELETE FROM dbo.Categories WHERE CategoryId = @CategoryId;";
+            var sql = @"DELETE FROM Categories WHERE CategoryId = @CategoryId;";
 
             foreach (var category in categories)
             {
@@ -56,7 +56,7 @@ namespace FinCtrl.Infrastructure.Categories
 
         public async Task Update(params Category[] categories)
         {
-            var sql = @"UPDATE dbo.Categories
+            var sql = @"UPDATE Categories
                 SET
                     CategoryName = @CategoryName,
                     LastUpdatedAt = @LastUpdatedAt,
@@ -84,9 +84,9 @@ namespace FinCtrl.Infrastructure.Categories
 
         public async Task<int> Create(Category category)
         {
-            var sql = @"INSERT INTO dbo.Categories (CategoryName, ParentCategoryCategoryId, IsOnlyIncome, OrderIndex, Color, CreatedAt)
-                        OUTPUT INSERTED.CategoryId
-                        VALUES (@CategoryName, @ParentCategoryId, @IsOnlyIncome, @OrderIndex, @Color, @CreatedAt);";
+            var sql = @"INSERT INTO Categories (CategoryName, ParentCategoryCategoryId, IsOnlyIncome, OrderIndex, Color, CreatedAt)
+                        VALUES (@CategoryName, @ParentCategoryId, @IsOnlyIncome, @OrderIndex, @Color, @CreatedAt)
+                        RETURNING CategoryId;";
 
             if (string.IsNullOrWhiteSpace(category.Color))
             {

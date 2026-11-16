@@ -39,9 +39,9 @@ namespace FinCtrl.Infrastructure.Tags
 
         public async Task<int> Create(Tag tag)
         {
-            var sql = @"INSERT INTO dbo.Tags (TagName, CreatedAt, LastUpdatedAt)
-                        OUTPUT INSERTED.TagId
-                        VALUES (@TagName, @CreatedAt, @LastUpdatedAt);";
+            var sql = @"INSERT INTO Tags (TagName, CreatedAt, LastUpdatedAt)
+                        VALUES (@TagName, @CreatedAt, @LastUpdatedAt)
+                        RETURNING TagId;";
 
             return await ExecuteScalar<int>(sql, new
             {
@@ -73,8 +73,8 @@ namespace FinCtrl.Infrastructure.Tags
         {
             // Нет каскадного удаления на уровне БД (FK_PaymentTags_Tags — NO ACTION),
             // поэтому сначала вручную чистим связи, затем сам тег — в одной транзакции.
-            var deleteLinksSql = @"DELETE FROM dbo.PaymentTags WHERE TagId = @TagId;";
-            var deleteTagSql = @"DELETE FROM dbo.Tags WHERE TagId = @TagId;";
+            var deleteLinksSql = @"DELETE FROM PaymentTags WHERE TagId = @TagId;";
+            var deleteTagSql = @"DELETE FROM Tags WHERE TagId = @TagId;";
 
             await using var transaction = await BeginTransaction();
 

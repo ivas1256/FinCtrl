@@ -58,9 +58,10 @@ namespace FinCtrl.Infrastructure.PaymentSources
 
         public async Task<List<PaymentSource>> GetLatestUnclassified(int count)
         {
-            var sql = $@"SELECT TOP (@count) *
+            var sql = $@"SELECT *
                          FROM ({SelectPaymentSource} WHERE ps.Classification IS NULL) x
-                         ORDER BY x.CreatedAt DESC, x.PaymentSourceId DESC;";
+                         ORDER BY x.CreatedAt DESC, x.PaymentSourceId DESC
+                         LIMIT @count;";
 
             return (await Query<PaymentSourceRow>(sql, new { count }))
                 .Select(x => x.MapToPaymentSource())
@@ -148,9 +149,9 @@ namespace FinCtrl.Infrastructure.PaymentSources
 
         public async Task<int> Create(PaymentSource paymentSource)
         {
-            var sql = @"INSERT INTO dbo.PaymentSources (PaymentSourceName, CategoryId, CreatedAt, LastUpdatedAt, Description, Classification, IsAiClassified)
-                        OUTPUT INSERTED.PaymentSourceId
-                        VALUES (@PaymentSourceName, @CategoryId, @CreatedAt, @LastUpdatedAt, @Description, @Classification, @IsAiClassified);";
+            var sql = @"INSERT INTO PaymentSources (PaymentSourceName, CategoryId, CreatedAt, LastUpdatedAt, Description, Classification, IsAiClassified)
+                        VALUES (@PaymentSourceName, @CategoryId, @CreatedAt, @LastUpdatedAt, @Description, @Classification, @IsAiClassified)
+                        RETURNING PaymentSourceId;";
 
             return await ExecuteScalar<int>(sql, new
             {
